@@ -1,14 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { TableCell, TableRow } from "@/components/ui/table";
 import Icon from "@/components/ui/icon";
@@ -47,6 +40,9 @@ const ClientExpandedRow = ({
   onClientUpdated,
 }: ClientExpandedRowProps) => {
   const [selectedBreed, setSelectedBreed] = useState("");
+  const [breedSearch, setBreedSearch] = useState("");
+  const [breedOpen, setBreedOpen] = useState(false);
+  const breedRef = useRef<HTMLDivElement>(null);
   const [givingMagnet, setGivingMagnet] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
@@ -67,7 +63,26 @@ const ClientExpandedRow = ({
       .finally(() => setOrdersLoading(false));
   }, [client.id]);
 
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (breedRef.current && !breedRef.current.contains(e.target as Node)) {
+        setBreedOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
   const collectedBreeds = new Set(magnets.map((m) => m.breed));
+
+  const availableBreeds = WOOD_BREEDS
+    .filter((b) => !collectedBreeds.has(b.breed))
+    .map((b) => ({ ...b, stock: inventory[b.breed] ?? 0 }))
+    .sort((a, b) => b.stock - a.stock);
+
+  const filteredBreeds = breedSearch.trim()
+    ? availableBreeds.filter((b) => b.breed.toLowerCase().includes(breedSearch.toLowerCase()))
+    : availableBreeds;
 
   const startEdit = () => {
     setEditing(true);
@@ -259,27 +274,46 @@ const ClientExpandedRow = ({
             )}
 
             <div className="flex items-end gap-2 flex-wrap">
-              <div className="flex-1 min-w-[200px]">
+              <div className="flex-1 min-w-[200px] relative" ref={breedRef}>
                 <Label className="text-xs mb-1 block">Выдать магнит</Label>
-                <Select value={selectedBreed} onValueChange={setSelectedBreed}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Выберите породу..." />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px]">
-                    {WOOD_BREEDS.filter((b) => !collectedBreeds.has(b.breed)).map((b) => {
-                      const stock = inventory[b.breed] ?? 0;
-                      const hasStock = stock > 0;
+                <div className="relative">
+                  <Input
+                    className="h-9 pr-8 text-sm"
+                    placeholder="Введите или выберите породу..."
+                    value={breedOpen ? breedSearch : selectedBreed}
+                    onFocus={() => { setBreedOpen(true); setBreedSearch(""); }}
+                    onChange={(e) => { setBreedSearch(e.target.value); setSelectedBreed(""); }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  {selectedBreed && !breedOpen && (
+                    <button className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); setSelectedBreed(""); setBreedSearch(""); }}>
+                      <Icon name="X" size={14} />
+                    </button>
+                  )}
+                </div>
+                {breedOpen && (
+                  <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg max-h-[260px] overflow-y-auto">
+                    {filteredBreeds.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-muted-foreground">Порода не найдена</div>
+                    )}
+                    {filteredBreeds.map((b) => {
+                      const hasStock = b.stock > 0;
                       return (
-                        <SelectItem key={b.breed} value={b.breed} disabled={!hasStock}>
-                          {STAR_LABELS[b.stars]} {b.breed} — {STAR_NAMES[b.stars]}
-                          <span className={`ml-1 ${hasStock ? "text-green-600" : "text-red-500"}`}>
-                            ({stock} шт)
+                        <button
+                          key={b.breed}
+                          disabled={!hasStock}
+                          className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed`}
+                          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedBreed(b.breed); setBreedSearch(""); setBreedOpen(false); }}
+                        >
+                          <span>{STAR_LABELS[b.stars]} {b.breed} — {STAR_NAMES[b.stars]}</span>
+                          <span className={`text-xs shrink-0 ${hasStock ? "text-green-600" : "text-red-500"}`}>
+                            {b.stock} шт
                           </span>
-                        </SelectItem>
+                        </button>
                       );
                     })}
-                  </SelectContent>
-                </Select>
+                  </div>
+                )}
               </div>
               <Button
                 size="sm"
