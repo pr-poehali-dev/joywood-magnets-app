@@ -88,6 +88,8 @@ const ClientsSection = () => {
   const [magnetsLoading, setMagnetsLoading] = useState<Record<number, boolean>>({});
   const [selectedBreed, setSelectedBreed] = useState("");
   const [givingMagnet, setGivingMagnet] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const loadClients = () => {
     setLoading(true);
@@ -162,6 +164,21 @@ const ClientsSection = () => {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось выдать магнит");
     } finally { setGivingMagnet(false); }
+  };
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id);
+    try {
+      const res = await fetch(`${ADD_CLIENT_URL}?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Ошибка");
+      toast.success("Клиент удалён");
+      setConfirmDeleteId(null);
+      if (expandedId === id) setExpandedId(null);
+      loadClients();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось удалить");
+    } finally { setDeletingId(null); }
   };
 
   const filtered = clients.filter((c) => {
@@ -319,6 +336,7 @@ const ClientsSection = () => {
                             <div className="flex items-end gap-2 flex-wrap">
                               <div className="flex-1 min-w-[200px]">
                                 <Label className="text-xs mb-1 block">Выдать магнит</Label>
+
                                 <Select value={selectedBreed} onValueChange={setSelectedBreed}>
                                   <SelectTrigger className="h-9">
                                     <SelectValue placeholder="Выберите породу..." />
@@ -341,6 +359,22 @@ const ClientsSection = () => {
                                 {givingMagnet ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Plus" size={14} />}
                                 Выдать
                               </Button>
+                            </div>
+
+                            <div className="border-t pt-4 mt-4 flex items-center justify-between">
+                              {confirmDeleteId === client.id ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm text-red-600">Удалить клиента и все его магниты?</span>
+                                  <Button size="sm" variant="destructive" disabled={deletingId === client.id} onClick={(e) => { e.stopPropagation(); handleDelete(client.id); }}>
+                                    {deletingId === client.id ? <Icon name="Loader2" size={14} className="animate-spin" /> : "Да, удалить"}
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}>Отмена</Button>
+                                </div>
+                              ) : (
+                                <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50 gap-1.5" onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(client.id); }}>
+                                  <Icon name="Trash2" size={14} />Удалить клиента
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>

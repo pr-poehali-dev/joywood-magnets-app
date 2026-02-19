@@ -32,6 +32,18 @@
       "path": "/",
       "body": {},
       "expectedStatus": 400
+    },
+    {
+      "name": "DELETE without id fails",
+      "method": "DELETE",
+      "path": "/",
+      "expectedStatus": 400
+    },
+    {
+      "name": "DELETE non-existent client",
+      "method": "DELETE",
+      "path": "/?id=999999",
+      "expectedStatus": 404
     }
   ]
 }

@@ -19,6 +19,24 @@ def handler(event, context):
 
     cors = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
 
+    if event.get('httpMethod') == 'DELETE':
+        params = event.get('queryStringParameters') or {}
+        client_id = params.get('id')
+        if not client_id or not client_id.isdigit():
+            return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите id клиента'})}
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT id FROM registrations WHERE id = %s" % int(client_id))
+            if not cur.fetchone():
+                return {'statusCode': 404, 'headers': cors, 'body': json.dumps({'error': 'Клиент не найден'})}
+            cur.execute("DELETE FROM client_magnets WHERE registration_id = %s" % int(client_id))
+            cur.execute("DELETE FROM registrations WHERE id = %s" % int(client_id))
+            conn.commit()
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'ok': True})}
+        finally:
+            conn.close()
+
     if event.get('httpMethod') != 'POST':
         return {'statusCode': 405, 'headers': cors, 'body': json.dumps({'error': 'Method not allowed'})}
 
