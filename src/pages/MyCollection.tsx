@@ -168,7 +168,7 @@ const MyCollection = () => {
               </div>
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full bg-orange-500 hover:bg-orange-600"
                 disabled={!isValid || loading}
               >
                 {loading ? (
@@ -184,22 +184,35 @@ const MyCollection = () => {
                 )}
               </Button>
             </form>
-          </CardContent>
-        </Card>
 
-        {notFound && (
-          <Card className="border-yellow-200 bg-yellow-50">
-            <CardContent className="pt-6 text-center space-y-3">
-              <Icon name="UserX" size={40} className="mx-auto text-yellow-500 opacity-60" />
-              <p className="text-sm text-yellow-800">
-                Участник с таким номером не найден.
-              </p>
+            <div className="mt-4 pt-4 border-t text-center">
+              <p className="text-sm text-muted-foreground mb-2">Ещё не участвуете в акции?</p>
               <a
                 href="/register"
                 className="inline-flex items-center gap-2 text-sm font-medium text-orange-600 hover:text-orange-700"
               >
                 <Icon name="UserPlus" size={16} />
-                Зарегистрироваться в акции
+                Зарегистрироваться
+              </a>
+            </div>
+          </CardContent>
+        </Card>
+
+        {notFound && (
+          <Card className="border-orange-200 bg-orange-50">
+            <CardContent className="pt-6 text-center space-y-4">
+              <Icon name="UserX" size={44} className="mx-auto text-orange-400" />
+              <div>
+                <p className="font-semibold text-orange-900">Номер не найден</p>
+                <p className="text-sm text-orange-700 mt-1">
+                  Возможно, вы ещё не зарегистрированы в акции или указали другой номер
+                </p>
+              </div>
+              <a href="/register">
+                <Button className="w-full bg-orange-500 hover:bg-orange-600 gap-2">
+                  <Icon name="UserPlus" size={16} />
+                  Зарегистрироваться в акции
+                </Button>
               </a>
             </CardContent>
           </Card>
