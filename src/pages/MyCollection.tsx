@@ -143,12 +143,17 @@ const MyCollection = () => {
   return (
     <div className="min-h-screen bg-white px-4 py-8">
       <div className="w-full max-w-lg mx-auto space-y-6">
-        <div className="rounded-2xl overflow-hidden shadow-md">
+        <div className="rounded-2xl overflow-hidden shadow-md relative">
           <img
             src="https://cdn.poehali.dev/projects/d4862cdc-db07-4efa-aa4f-e8229141eeb3/bucket/02ee238c-d0fc-4c07-b7d0-eecd501612a7.jpg"
             alt="Атлас пород Joywood"
-            className="w-full object-cover"
+            className="w-full object-cover max-h-64"
           />
+        </div>
+
+        <div className="text-center space-y-1 px-2">
+          <h1 className="text-xl font-bold text-foreground">Собирайте бесплатные образцы ценных пород дерева</h1>
+          <p className="text-sm text-muted-foreground">Введите номер телефона, чтобы увидеть свою коллекцию, или зарегистрируйтесь и получите первый магнит</p>
         </div>
 
         <Card className="shadow-lg border-gold-200">
