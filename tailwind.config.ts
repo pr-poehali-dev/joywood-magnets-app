@@ -6,10 +6,13 @@ export default {
 		"./pages/**/*.{ts,tsx}",
 		"./components/**/*.{ts,tsx}",
 		"./app/**/*.{ts,tsx}",
-		"./src/**/*.{ts,tsx}",
+		"./src/**/*.{ts,tsx}"
 	],
 	prefix: "",
 	theme: {
+		fontFamily: {
+			sans: ['Inter', 'system-ui', 'sans-serif'],
+		},
 		container: {
 			center: true,
 			padding: '2rem',
