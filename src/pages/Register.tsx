@@ -4,40 +4,34 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Icon from "@/components/ui/icon";
-import { CHANNELS } from "@/lib/store";
 import { toast } from "sonner";
 
 const REGISTER_URL = "https://functions.poehali.dev/40f9e8db-184c-407c-ace9-d0877ed306b9";
-
-const CLIENT_CHANNELS = CHANNELS.filter((ch) => ch !== "Телефон");
 
 const Register = () => {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [channel, setChannel] = useState("");
   const [ozonCode, setOzonCode] = useState("");
+  const [showOzon, setShowOzon] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const isOzon = channel === "Ozon";
-  const isValid = name.trim().length >= 2 && phone.trim().length >= 6 && channel && (!isOzon || ozonCode.trim().length >= 3);
+  const isValid =
+    name.trim().length >= 2 &&
+    phone.trim().length >= 6 &&
+    (!showOzon || ozonCode.trim().length >= 3);
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, "");
-    if (digits.length <= 1) return digits ? `+7` : "";
+    if (digits.length <= 1) return digits ? "+7" : "";
     const d = digits.startsWith("7") ? digits : "7" + digits;
-    let result = `+7`;
+    let result = "+7";
     if (d.length > 1) result += ` (${d.slice(1, 4)}`;
     if (d.length > 4) result += `) ${d.slice(4, 7)}`;
     if (d.length > 7) result += `-${d.slice(7, 9)}`;
     if (d.length > 9) result += `-${d.slice(9, 11)}`;
     return result;
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPhone(formatPhone(e.target.value));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,8 +46,7 @@ const Register = () => {
         body: JSON.stringify({
           name: name.trim(),
           phone: phone.trim(),
-          channel,
-          ozon_order_code: isOzon ? ozonCode.trim() : null,
+          ozon_order_code: showOzon && ozonCode.trim() ? ozonCode.trim() : null,
         }),
       });
 
@@ -62,8 +55,7 @@ const Register = () => {
 
       navigate("/my-collection?phone=" + encodeURIComponent(phone.trim()));
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Не удалось зарегистрироваться";
-      toast.error(message);
+      toast.error(err instanceof Error ? err.message : "Не удалось зарегистрироваться");
     } finally {
       setLoading(false);
     }
@@ -106,49 +98,51 @@ const Register = () => {
                   type="tel"
                   placeholder="+7 (___) ___-__-__"
                   value={phone}
-                  onChange={handlePhoneChange}
+                  onChange={(e) => setPhone(formatPhone(e.target.value))}
                   required
                 />
+                <p className="text-xs text-muted-foreground">
+                  По номеру телефона вы сможете войти в коллекцию в любое время
+                </p>
               </div>
 
               <div className="space-y-3">
-                <Label>Как вы получили первый магнит?</Label>
-                <RadioGroup value={channel} onValueChange={setChannel} className="grid gap-2">
-                  {CLIENT_CHANNELS.map((ch) => (
-                    <label
-                      key={ch}
-                      className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                        channel === ch
-                          ? "border-orange-400 bg-orange-50"
-                          : "border-border hover:bg-muted/50"
-                      }`}
-                    >
-                      <RadioGroupItem value={ch} />
-                      <span className="text-sm font-medium">{ch}</span>
-                    </label>
-                  ))}
-                </RadioGroup>
-              </div>
+                <button
+                  type="button"
+                  onClick={() => setShowOzon((v) => !v)}
+                  className={`w-full flex items-center justify-between rounded-lg border p-3 text-sm transition-colors ${
+                    showOzon
+                      ? "border-blue-400 bg-blue-50 text-blue-700"
+                      : "border-border hover:bg-muted/50 text-muted-foreground"
+                  }`}
+                >
+                  <span className="flex items-center gap-2 font-medium">
+                    <Icon name="Package" size={16} />
+                    Покупал(а) на Ozon
+                  </span>
+                  <Icon name={showOzon ? "ChevronUp" : "ChevronDown"} size={16} />
+                </button>
 
-              {isOzon && (
-                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <Label htmlFor="ozon-code">Код заказа Ozon</Label>
-                  <Input
-                    id="ozon-code"
-                    placeholder="Например: 12345678-0001"
-                    value={ozonCode}
-                    onChange={(e) => setOzonCode(e.target.value)}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Найдите код в разделе «Мои заказы» на Ozon
-                  </p>
-                </div>
-              )}
+                {showOzon && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <Label htmlFor="ozon-code">Номер заказа Ozon</Label>
+                    <Input
+                      id="ozon-code"
+                      placeholder="Например: 12345678-0001"
+                      value={ozonCode}
+                      onChange={(e) => setOzonCode(e.target.value)}
+                      className="font-mono"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Найдите номер в разделе «Мои заказы» на Ozon
+                    </p>
+                  </div>
+                )}
+              </div>
 
               <Button
                 type="submit"
-                className="w-full h-12 text-base"
+                className="w-full h-12 text-base bg-orange-500 hover:bg-orange-600"
                 disabled={!isValid || loading}
               >
                 {loading ? (

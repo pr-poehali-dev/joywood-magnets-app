@@ -1,6 +1,5 @@
 import json
 import os
-import re
 import psycopg2
 
 
@@ -26,7 +25,6 @@ def handler(event, context):
     body = json.loads(event.get('body', '{}'))
     name = (body.get('name') or '').strip()
     phone = (body.get('phone') or '').strip()
-    channel = (body.get('channel') or '').strip()
     ozon_order_code = (body.get('ozon_order_code') or '').strip() or None
 
     if len(name) < 2:
@@ -38,16 +36,6 @@ def handler(event, context):
         return {
             'statusCode': 400, 'headers': cors,
             'body': json.dumps({'error': 'Укажите корректный телефон'}, ensure_ascii=False),
-        }
-    if not channel:
-        return {
-            'statusCode': 400, 'headers': cors,
-            'body': json.dumps({'error': 'Выберите канал'}, ensure_ascii=False),
-        }
-    if channel == 'Ozon' and not ozon_order_code:
-        return {
-            'statusCode': 400, 'headers': cors,
-            'body': json.dumps({'error': 'Укажите код заказа Ozon'}, ensure_ascii=False),
         }
 
     conn = psycopg2.connect(os.environ['DATABASE_URL'])
@@ -73,13 +61,12 @@ def handler(event, context):
                     existing_id = row[0]
                     display_name = ('%s %s' % (ozon_prefix, name)).replace("'", "''")
                     cur.execute(
-                        "UPDATE registrations SET name='%s', phone='%s', channel='%s', "
+                        "UPDATE registrations SET name='%s', phone='%s', channel='Ozon', "
                         "ozon_order_code='%s', registered=TRUE "
                         "WHERE id=%d"
                         % (
                             display_name,
                             phone.replace("'", "''"),
-                            channel.replace("'", "''"),
                             ozon_order_code.replace("'", "''"),
                             existing_id,
                         )
@@ -88,19 +75,39 @@ def handler(event, context):
                     merged = True
 
         if not merged:
+            # Проверяем, существует ли уже клиент с таким телефоном
             cur.execute(
-                "INSERT INTO registrations (name, phone, channel, ozon_order_code, registered) "
-                "VALUES ('%s', '%s', '%s', %s, TRUE) RETURNING id, created_at"
-                % (
-                    name.replace("'", "''"),
-                    phone.replace("'", "''"),
-                    channel.replace("'", "''"),
-                    "'" + ozon_order_code.replace("'", "''") + "'" if ozon_order_code else 'NULL',
-                )
+                "SELECT id FROM registrations WHERE phone='%s' LIMIT 1"
+                % phone.replace("'", "''")
             )
-            row = cur.fetchone()
-            conn.commit()
-            existing_id = row[0]
+            existing = cur.fetchone()
+
+            if existing:
+                existing_id = existing[0]
+                cur.execute(
+                    "UPDATE registrations SET name='%s', registered=TRUE %s WHERE id=%d"
+                    % (
+                        name.replace("'", "''"),
+                        (", ozon_order_code='%s'" % ozon_order_code.replace("'", "''")) if ozon_order_code else '',
+                        existing_id,
+                    )
+                )
+                conn.commit()
+            else:
+                channel = 'Ozon' if ozon_order_code else 'Сайт Joywood'
+                cur.execute(
+                    "INSERT INTO registrations (name, phone, channel, ozon_order_code, registered) "
+                    "VALUES ('%s', '%s', '%s', %s, TRUE) RETURNING id, created_at"
+                    % (
+                        name.replace("'", "''"),
+                        phone.replace("'", "''"),
+                        channel,
+                        "'" + ozon_order_code.replace("'", "''") + "'" if ozon_order_code else 'NULL',
+                    )
+                )
+                row = cur.fetchone()
+                conn.commit()
+                existing_id = row[0]
 
         return {
             'statusCode': 200,

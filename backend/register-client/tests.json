@@ -7,13 +7,12 @@
       "expectedStatus": 200
     },
     {
-      "name": "POST register client",
+      "name": "POST register non-ozon client",
       "method": "POST",
       "path": "/",
       "body": {
         "name": "Test User",
         "phone": "+7 (900) 123-45-67",
-        "channel": "Avito",
         "ozon_order_code": null
       },
       "expectedStatus": 200
@@ -24,8 +23,17 @@
       "path": "/",
       "body": {
         "name": "",
-        "phone": "+7 (900) 123-45-67",
-        "channel": "Ozon"
+        "phone": "+7 (900) 123-45-67"
+      },
+      "expectedStatus": 400
+    },
+    {
+      "name": "POST missing phone",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "name": "Test User",
+        "phone": ""
       },
       "expectedStatus": 400
     },
