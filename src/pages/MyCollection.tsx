@@ -243,7 +243,7 @@ const MyCollection = () => {
                     <Icon name="User" size={20} className="text-gold-600" />
                   </div>
                   <div>
-                    <div className="font-semibold text-lg">{data.client_name}</div>
+                    <div className="font-semibold text-lg">{data.client_name.replace(/^\d+\s+/, "")}</div>
                     <div className="text-xs text-muted-foreground/50 tracking-widest">
                       {data.phone.replace(/\d(?=\d{4})/g, "•")}
                     </div>
