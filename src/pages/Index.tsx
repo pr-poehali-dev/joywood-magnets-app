@@ -4,14 +4,15 @@ import Icon from "@/components/ui/icon";
 import ClientsSection from "@/components/ClientsSection";
 import MagnetsSection from "@/components/MagnetsSection";
 import OrdersSection from "@/components/OrdersSection";
-
 import BonusTracker from "@/components/BonusTracker";
 import StatsSection from "@/components/StatsSection";
+import RecentRegistrations from "@/components/RecentRegistrations";
 
 const tabsList = [
   { value: "clients", label: "Клиенты", icon: "Users" },
   { value: "magnets", label: "Магниты", icon: "Magnet" },
   { value: "orders", label: "Заказы", icon: "ShoppingCart" },
+  { value: "registrations", label: "Регистрации", icon: "UserCheck" },
   { value: "bonuses", label: "Бонусы", icon: "Award" },
   { value: "stats", label: "Статистика", icon: "BarChart3" },
 ];
@@ -71,6 +72,9 @@ const Index = () => {
           </TabsContent>
           <TabsContent value="orders">
             <OrdersSection onOrderCreated={navigateToClient} />
+          </TabsContent>
+          <TabsContent value="registrations">
+            <RecentRegistrations onNavigateToClient={navigateToClient} />
           </TabsContent>
           <TabsContent value="bonuses">
             <BonusTracker />

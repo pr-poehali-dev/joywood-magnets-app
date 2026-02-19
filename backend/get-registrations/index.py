@@ -28,6 +28,9 @@ def handler(event, context):
     if action == 'client_orders':
         return _get_client_orders(params, cors)
 
+    if action == 'recent_registrations':
+        return _get_recent_registrations(cors)
+
     return _get_clients(cors)
 
 
@@ -61,6 +64,42 @@ def _get_clients(cors):
             'statusCode': 200,
             'headers': cors,
             'body': json.dumps({'clients': clients}, ensure_ascii=False),
+        }
+    finally:
+        conn.close()
+
+
+def _get_recent_registrations(cors):
+    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT r.id, r.name, r.phone, r.channel, r.registered, r.created_at, "
+            "COALESCE(SUM(o.amount), 0) as total_amount, "
+            "COUNT(o.id) as orders_count "
+            "FROM registrations r "
+            "LEFT JOIN orders o ON o.registration_id = r.id "
+            "WHERE r.registered = TRUE "
+            "GROUP BY r.id "
+            "ORDER BY r.created_at DESC "
+            "LIMIT 50"
+        )
+        rows = cur.fetchall()
+        items = []
+        for row in rows:
+            items.append({
+                'id': row[0],
+                'name': row[1],
+                'phone': row[2],
+                'channel': row[3],
+                'registered': bool(row[4]),
+                'created_at': str(row[5]),
+                'total_amount': float(row[6]),
+                'orders_count': int(row[7]),
+            })
+        return {
+            'statusCode': 200, 'headers': cors,
+            'body': json.dumps({'registrations': items}, ensure_ascii=False),
         }
     finally:
         conn.close()
