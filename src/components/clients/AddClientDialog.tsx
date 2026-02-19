@@ -20,10 +20,10 @@ import {
 import Icon from "@/components/ui/icon";
 import { CHANNELS } from "@/lib/store";
 import { toast } from "sonner";
-import { ADD_CLIENT_URL, formatPhone } from "./types";
+import { ADD_CLIENT_URL, formatPhone, Registration } from "./types";
 
 interface AddClientDialogProps {
-  onClientAdded: () => void;
+  onClientAdded: (client: Registration) => void;
 }
 
 const AddClientDialog = ({ onClientAdded }: AddClientDialogProps) => {
@@ -56,7 +56,16 @@ const AddClientDialog = ({ onClientAdded }: AddClientDialogProps) => {
       toast.success(`${isOzonOnly ? `Заказ ${newOzonCode.trim()}` : newName.trim()} — добавлен`);
       resetForm();
       setDialogOpen(false);
-      onClientAdded();
+      onClientAdded({
+        id: data.id,
+        name: isOzonOnly ? "" : newName.trim(),
+        phone: isOzonOnly ? "" : newPhone.trim(),
+        channel: isOzonOnly ? "Ozon" : newChannel,
+        ozon_order_code: newOzonCode.trim() || null,
+        created_at: data.created_at,
+        registered: data.registered,
+        total_amount: 0,
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось добавить клиента");
     } finally { setSaving(false); }

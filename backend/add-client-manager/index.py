@@ -163,10 +163,10 @@ def _handle_create_order(body, cors):
 
             cur.execute(
                 "INSERT INTO orders (registration_id, order_code, amount, channel) "
-                "VALUES (%d, '%s', %s, '%s') RETURNING id"
+                "VALUES (%d, '%s', %s, '%s') RETURNING id, created_at, status"
                 % (cid, order_number.replace("'", "''"), amount, channel.replace("'", "''"))
             )
-            order_id = cur.fetchone()[0]
+            ord_row = cur.fetchone()
             conn.commit()
 
             return {
@@ -175,7 +175,13 @@ def _handle_create_order(body, cors):
                 'body': json.dumps({
                     'client_id': cid,
                     'client_name': row[1],
-                    'order_id': order_id,
+                    'client_phone': row[2] or '',
+                    'order_id': ord_row[0],
+                    'order_code': order_number,
+                    'amount': amount,
+                    'channel': channel,
+                    'created_at': str(ord_row[1]),
+                    'status': ord_row[2] or 'active',
                     'is_new': False,
                     'message': 'Заказ добавлен к существующему клиенту',
                 }, ensure_ascii=False),
@@ -195,10 +201,10 @@ def _handle_create_order(body, cors):
 
             cur.execute(
                 "INSERT INTO orders (registration_id, order_code, amount, channel) "
-                "VALUES (%d, '%s', %s, '%s') RETURNING id"
+                "VALUES (%d, '%s', %s, '%s') RETURNING id, created_at, status"
                 % (new_id, order_number.replace("'", "''"), amount, channel.replace("'", "''"))
             )
-            order_id = cur.fetchone()[0]
+            ord_row = cur.fetchone()
             conn.commit()
 
             return {
@@ -207,7 +213,13 @@ def _handle_create_order(body, cors):
                 'body': json.dumps({
                     'client_id': new_id,
                     'client_name': client_name,
-                    'order_id': order_id,
+                    'client_phone': '',
+                    'order_id': ord_row[0],
+                    'order_code': order_number,
+                    'amount': amount,
+                    'channel': channel,
+                    'created_at': str(ord_row[1]),
+                    'status': ord_row[2] or 'active',
                     'is_new': True,
                     'message': 'Создан новый клиент',
                 }, ensure_ascii=False),
@@ -227,7 +239,7 @@ def _create_order_for_client(client_id, order_code, channel, amount, cors):
 
         cur.execute(
             "INSERT INTO orders (registration_id, order_code, amount, channel) "
-            "VALUES (%d, %s, %s, '%s') RETURNING id"
+            "VALUES (%d, %s, %s, '%s') RETURNING id, created_at, status"
             % (
                 client_id,
                 ("'" + order_code.replace("'", "''") + "'") if order_code else 'NULL',
@@ -235,8 +247,11 @@ def _create_order_for_client(client_id, order_code, channel, amount, cors):
                 channel.replace("'", "''"),
             )
         )
-        order_id = cur.fetchone()[0]
+        ord_row = cur.fetchone()
         conn.commit()
+
+        cur.execute("SELECT phone FROM registrations WHERE id = %d" % client_id)
+        phone_row = cur.fetchone()
 
         return {
             'statusCode': 200,
@@ -244,7 +259,13 @@ def _create_order_for_client(client_id, order_code, channel, amount, cors):
             'body': json.dumps({
                 'client_id': client_id,
                 'client_name': row[1],
-                'order_id': order_id,
+                'client_phone': phone_row[0] if phone_row else '',
+                'order_id': ord_row[0],
+                'order_code': order_code or '',
+                'amount': amount,
+                'channel': channel,
+                'created_at': str(ord_row[1]),
+                'status': ord_row[2] or 'active',
                 'is_new': False,
                 'message': 'Заказ оформлен',
             }, ensure_ascii=False),

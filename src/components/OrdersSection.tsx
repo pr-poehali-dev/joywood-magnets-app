@@ -117,7 +117,17 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
 
       setOrderNumber("");
       setAmount("");
-      loadOrders();
+      setOrders((prev) => [{
+        id: data.order_id,
+        order_code: data.order_code || "",
+        amount: data.amount || 0,
+        channel: data.channel,
+        status: data.status || "active",
+        created_at: data.created_at,
+        registration_id: data.client_id,
+        client_name: data.client_name,
+        client_phone: data.client_phone || "",
+      }, ...prev]);
 
       if (onOrderCreated && data.client_id) {
         onOrderCreated(data.client_id);
@@ -159,7 +169,17 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
       setSelectedClientId("");
       setRegularAmount("");
       setRegularCode("");
-      loadOrders();
+      setOrders((prev) => [{
+        id: data.order_id,
+        order_code: data.order_code || "",
+        amount: data.amount || 0,
+        channel: data.channel,
+        status: data.status || "active",
+        created_at: data.created_at,
+        registration_id: data.client_id,
+        client_name: data.client_name,
+        client_phone: data.client_phone || "",
+      }, ...prev]);
 
       if (onOrderCreated && data.client_id) {
         onOrderCreated(data.client_id);

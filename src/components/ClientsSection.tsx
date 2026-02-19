@@ -54,7 +54,6 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
     if (focusClientId != null) {
       loadClients();
       setExpandedId(focusClientId);
-      loadClientMagnets(focusClientId);
       onFocusHandled?.();
       setTimeout(() => {
         const el = document.getElementById(`client-row-${focusClientId}`);
@@ -85,10 +84,10 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
   useEffect(() => { loadClients(); }, []);
 
   useEffect(() => {
-    if (expandedId !== null) {
+    if (expandedId !== null && !clientMagnets[expandedId]) {
       loadClientMagnets(expandedId);
     }
-  }, [expandedId, loadClientMagnets]);
+  }, [expandedId, loadClientMagnets, clientMagnets]);
 
   const filtered = clients.filter((c) => {
     const q = search.toLowerCase();
@@ -103,7 +102,7 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
           <Input placeholder="Поиск по имени, телефону, каналу, коду Ozon..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
         <Badge variant="secondary" className="text-sm">{filtered.length} клиентов</Badge>
-        <AddClientDialog onClientAdded={loadClients} />
+        <AddClientDialog onClientAdded={(newClient) => setClients((prev) => [newClient, ...prev])} />
       </div>
 
       <Card>
@@ -159,7 +158,12 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
                       magnets={clientMagnets[client.id] || []}
                       magnetsLoading={!!magnetsLoading[client.id]}
                       inventory={inventory}
-                      onMagnetsChanged={loadClientMagnets}
+                      onMagnetGiven={(regId, magnet, breed, stockAfter) => {
+                        setClientMagnets((p) => ({ ...p, [regId]: [magnet, ...(p[regId] || [])] }));
+                        if (stockAfter !== null && stockAfter !== undefined) {
+                          setInventory((p) => ({ ...p, [breed]: stockAfter }));
+                        }
+                      }}
                       onInventoryChanged={loadInventory}
                       onClientDeleted={() => {
                         setExpandedId(null);

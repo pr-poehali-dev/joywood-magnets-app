@@ -30,7 +30,7 @@ interface ClientExpandedRowProps {
   magnets: ClientMagnet[];
   magnetsLoading: boolean;
   inventory: Record<string, number>;
-  onMagnetsChanged: (regId: number) => void;
+  onMagnetGiven: (regId: number, magnet: ClientMagnet, breed: string, stockAfter: number | null) => void;
   onInventoryChanged: () => void;
   onClientDeleted: () => void;
   onClientUpdated: (updated: { id: number; name: string; phone: string; registered: boolean }) => void;
@@ -41,7 +41,7 @@ const ClientExpandedRow = ({
   magnets,
   magnetsLoading: mLoading,
   inventory,
-  onMagnetsChanged,
+  onMagnetGiven,
   onInventoryChanged,
   onClientDeleted,
   onClientUpdated,
@@ -119,8 +119,12 @@ const ClientExpandedRow = ({
       if (!res.ok) throw new Error(data.error || "Ошибка");
       toast.success(`${breed.breed} ${STAR_LABELS[breed.stars]} выдан`);
       setSelectedBreed("");
-      onMagnetsChanged(client.id);
-      onInventoryChanged();
+      onMagnetGiven(
+        client.id,
+        { id: data.id, breed: breed.breed, stars: breed.stars, category: breed.category, given_at: data.given_at },
+        breed.breed,
+        data.stock_after ?? null,
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось выдать магнит");
     } finally { setGivingMagnet(false); }
