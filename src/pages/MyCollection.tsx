@@ -143,12 +143,12 @@ const MyCollection = () => {
   return (
     <div className="min-h-screen bg-white px-4 py-8">
       <div className="w-full max-w-lg mx-auto space-y-6">
-        <div className="text-center space-y-2">
-          <img src="https://cdn.poehali.dev/projects/d4862cdc-db07-4efa-aa4f-e8229141eeb3/bucket/1a067cd5-eb6a-42be-8edd-d1ca100bf90c.jpg" alt="Joywood" className="w-16 h-16 mx-auto object-contain" />
-          <h1 className="text-2xl font-bold text-foreground">Моя коллекция</h1>
-          <p className="text-muted-foreground text-sm">
-            Введите номер телефона, чтобы увидеть собранные магниты
-          </p>
+        <div className="rounded-2xl overflow-hidden shadow-md">
+          <img
+            src="https://cdn.poehali.dev/projects/d4862cdc-db07-4efa-aa4f-e8229141eeb3/bucket/02ee238c-d0fc-4c07-b7d0-eecd501612a7.jpg"
+            alt="Атлас пород Joywood"
+            className="w-full object-cover"
+          />
         </div>
 
         <Card className="shadow-lg border-gold-200">
