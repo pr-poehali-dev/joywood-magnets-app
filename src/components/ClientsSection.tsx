@@ -134,7 +134,12 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{client.phone || "—"}</TableCell>
-                    <TableCell>{client.channel ? <Badge variant="outline" className="text-xs">{client.channel}</Badge> : "—"}</TableCell>
+                    <TableCell>
+                      {(client.channels?.length > 0 ? client.channels : client.channel ? [client.channel] : []).map((ch, i) => (
+                        <Badge key={ch} variant="outline" className={`text-xs ${i > 0 ? "ml-1" : ""}`}>{ch}</Badge>
+                      ))}
+                      {!client.channels?.length && !client.channel && "—"}
+                    </TableCell>
                     <TableCell className="text-muted-foreground text-sm">{client.ozon_order_code || "—"}</TableCell>
                     <TableCell>
                       {client.registered ? (

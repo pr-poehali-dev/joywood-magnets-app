@@ -37,7 +37,8 @@ def _get_clients(cors):
         cur = conn.cursor()
         cur.execute(
             "SELECT r.id, r.name, r.phone, r.channel, r.ozon_order_code, r.created_at, r.registered, "
-            "COALESCE(SUM(o.amount), 0) as total_amount "
+            "COALESCE(SUM(o.amount), 0) as total_amount, "
+            "array_remove(array_agg(DISTINCT o.channel), NULL) as channels "
             "FROM registrations r "
             "LEFT JOIN orders o ON o.registration_id = r.id "
             "GROUP BY r.id ORDER BY r.created_at DESC"
@@ -54,6 +55,7 @@ def _get_clients(cors):
                 'created_at': str(row[5]),
                 'registered': bool(row[6]),
                 'total_amount': float(row[7]),
+                'channels': row[8] or [],
             })
         return {
             'statusCode': 200,

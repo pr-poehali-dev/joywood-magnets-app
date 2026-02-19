@@ -7,6 +7,7 @@ export interface Registration {
   name: string;
   phone: string;
   channel: string;
+  channels: string[];
   ozon_order_code: string | null;
   created_at: string;
   registered: boolean;
