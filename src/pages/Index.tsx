@@ -31,7 +31,7 @@ const Index = () => {
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-1">
             <div className="bg-orange-500 text-white rounded-lg p-2">
               <Icon name="TreeDeciduous" size={24} />
             </div>
@@ -40,8 +40,19 @@ const Index = () => {
                 Joywood Магниты
               </h1>
               <p className="text-sm text-muted-foreground">
-                Атлас пород — управление акцией
+                Панель управления акцией
               </p>
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <a
+                href="/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-orange-600 transition-colors"
+              >
+                <Icon name="ExternalLink" size={14} />
+                Страница клиента
+              </a>
             </div>
           </div>
         </div>
