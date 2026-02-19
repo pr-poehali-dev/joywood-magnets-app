@@ -66,6 +66,10 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
   const [regularChannel, setRegularChannel] = useState("");
   const [regularAmount, setRegularAmount] = useState("");
   const [regularCode, setRegularCode] = useState("");
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientPhone, setNewClientPhone] = useState("");
+
+  const isNewClient = selectedClientId === "__new__";
 
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
@@ -148,15 +152,39 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
       toast.error("Выберите канал");
       return;
     }
+    if (isNewClient && !newClientName.trim()) {
+      toast.error("Укажите имя нового клиента");
+      return;
+    }
 
     setSubmitting(true);
     try {
+      let clientId: number;
+
+      if (isNewClient) {
+        const addRes = await fetch(ADD_CLIENT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: newClientName.trim(),
+            phone: newClientPhone.trim(),
+            channel: regularChannel,
+          }),
+        });
+        const addData = await addRes.json();
+        if (!addRes.ok) throw new Error(addData.error || "Ошибка создания клиента");
+        clientId = addData.id;
+        setClients((prev) => [...prev, { id: clientId, name: newClientName.trim(), phone: newClientPhone.trim(), channel: regularChannel }]);
+      } else {
+        clientId = parseInt(selectedClientId);
+      }
+
       const res = await fetch(ADD_CLIENT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "create_order",
-          client_id: parseInt(selectedClientId),
+          client_id: clientId,
           channel: regularChannel,
           amount: parseFloat(regularAmount) || 0,
           order_number: regularCode.trim() || "",
@@ -169,6 +197,8 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
       setSelectedClientId("");
       setRegularAmount("");
       setRegularCode("");
+      setNewClientName("");
+      setNewClientPhone("");
       setOrders((prev) => [{
         id: data.order_id,
         order_code: data.order_code || "",
@@ -307,7 +337,7 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Клиент</Label>
-                  <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                  <Select value={selectedClientId} onValueChange={(v) => { setSelectedClientId(v); setNewClientName(""); setNewClientPhone(""); }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Выберите клиента" />
                     </SelectTrigger>
@@ -321,6 +351,12 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
                           onClick={(e) => e.stopPropagation()}
                         />
                       </div>
+                      <SelectItem value="__new__">
+                        <span className="flex items-center gap-1.5 text-orange-600 font-medium">
+                          <Icon name="UserPlus" size={14} />
+                          + Новый клиент
+                        </span>
+                      </SelectItem>
                       {filteredClients.slice(0, 30).map((c) => (
                         <SelectItem key={c.id} value={String(c.id)}>
                           {c.name || "Без имени"} {c.phone ? `· ${c.phone}` : ""}
@@ -347,6 +383,19 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
                 </div>
               </div>
 
+              {isNewClient && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                  <div className="space-y-2">
+                    <Label>Имя клиента <span className="text-red-500">*</span></Label>
+                    <Input placeholder="Введите имя" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Телефон <span className="text-muted-foreground font-normal">(необязательно)</span></Label>
+                    <Input type="tel" placeholder="+7 (___) ___-__-__" value={newClientPhone} onChange={(e) => setNewClientPhone(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Сумма, ₽</Label>
@@ -372,7 +421,7 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
               <Button
                 className="bg-orange-500 hover:bg-orange-600"
                 onClick={handleRegularSubmit}
-                disabled={submitting || !selectedClientId || !regularChannel}
+                disabled={submitting || !selectedClientId || !regularChannel || (isNewClient && !newClientName.trim())}
               >
                 {submitting ? (
                   <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
