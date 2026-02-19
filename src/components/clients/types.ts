@@ -21,6 +21,15 @@ export interface ClientMagnet {
   given_at: string;
 }
 
+export interface ClientOrder {
+  id: number;
+  order_code: string;
+  amount: number;
+  channel: string;
+  status: string;
+  created_at: string;
+}
+
 export const formatPhone = (value: string) => {
   const digits = value.replace(/\D/g, "");
   if (digits.length <= 1) return digits ? "+7" : "";

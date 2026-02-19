@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { TableCell, TableRow } from "@/components/ui/table";
 import Icon from "@/components/ui/icon";
 import { WOOD_BREEDS, STAR_LABELS, STAR_NAMES } from "@/lib/store";
@@ -16,8 +17,10 @@ import { toast } from "sonner";
 import {
   Registration,
   ClientMagnet,
+  ClientOrder,
   ADD_CLIENT_URL,
   GIVE_MAGNET_URL,
+  GET_REGISTRATIONS_URL,
   formatPhone,
   starBg,
 } from "./types";
@@ -51,6 +54,18 @@ const ClientExpandedRow = ({
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+
+  const [clientOrders, setClientOrders] = useState<ClientOrder[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+
+  useEffect(() => {
+    setOrdersLoading(true);
+    fetch(`${GET_REGISTRATIONS_URL}?action=client_orders&registration_id=${client.id}`)
+      .then((r) => r.json())
+      .then((data) => setClientOrders(data.orders || []))
+      .catch(() => {})
+      .finally(() => setOrdersLoading(false));
+  }, [client.id]);
 
   const collectedBreeds = new Set(magnets.map((m) => m.breed));
 
@@ -170,6 +185,35 @@ const ClientExpandedRow = ({
               <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground hover:text-orange-600 gap-1" onClick={(e) => { e.stopPropagation(); startEdit(); }}>
                 <Icon name="Pencil" size={12} />Редактировать
               </Button>
+            </div>
+          )}
+
+          {(ordersLoading || clientOrders.length > 0) && (
+            <div className="border-t pt-4">
+              <h4 className="font-semibold text-sm flex items-center gap-2 mb-3">
+                <Icon name="ShoppingCart" size={16} className="text-orange-500" />
+                Заказы ({clientOrders.length})
+              </h4>
+              {ordersLoading ? (
+                <div className="text-center py-3 text-muted-foreground text-sm">
+                  <Icon name="Loader2" size={16} className="mx-auto mb-1 animate-spin opacity-40" />
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {clientOrders.map((o) => (
+                    <div key={o.id} className="flex items-center gap-3 text-sm bg-white rounded-lg border px-3 py-2">
+                      <span className="font-mono text-muted-foreground text-xs">{o.order_code || "—"}</span>
+                      <Badge variant="outline" className="text-xs">{o.channel}</Badge>
+                      <span className="font-medium ml-auto">
+                        {o.amount > 0 ? `${o.amount.toLocaleString("ru-RU")} ₽` : "—"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(o.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

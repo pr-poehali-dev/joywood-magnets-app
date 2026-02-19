@@ -4,7 +4,7 @@ import psycopg2
 
 
 def handler(event, context):
-    """Получение списка зарегистрированных участников акции"""
+    """Получение клиентов и заказов"""
     if event.get('httpMethod') == 'OPTIONS':
         return {
             'statusCode': 200,
@@ -19,6 +19,19 @@ def handler(event, context):
 
     cors = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
 
+    params = event.get('queryStringParameters') or {}
+    action = params.get('action', '')
+
+    if action == 'orders':
+        return _get_orders(params, cors)
+
+    if action == 'client_orders':
+        return _get_client_orders(params, cors)
+
+    return _get_clients(cors)
+
+
+def _get_clients(cors):
     conn = psycopg2.connect(os.environ['DATABASE_URL'])
     try:
         cur = conn.cursor()
@@ -46,6 +59,74 @@ def handler(event, context):
             'statusCode': 200,
             'headers': cors,
             'body': json.dumps({'clients': clients}, ensure_ascii=False),
+        }
+    finally:
+        conn.close()
+
+
+def _get_orders(params, cors):
+    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT o.id, o.order_code, o.amount, o.channel, o.status, o.created_at, "
+            "o.registration_id, r.name, r.phone "
+            "FROM orders o "
+            "LEFT JOIN registrations r ON r.id = o.registration_id "
+            "ORDER BY o.created_at DESC LIMIT 200"
+        )
+        rows = cur.fetchall()
+        orders = []
+        for row in rows:
+            orders.append({
+                'id': row[0],
+                'order_code': row[1] or '',
+                'amount': float(row[2]) if row[2] else 0,
+                'channel': row[3],
+                'status': row[4],
+                'created_at': str(row[5]),
+                'registration_id': row[6],
+                'client_name': row[7] or '',
+                'client_phone': row[8] or '',
+            })
+        return {
+            'statusCode': 200,
+            'headers': cors,
+            'body': json.dumps({'orders': orders}, ensure_ascii=False),
+        }
+    finally:
+        conn.close()
+
+
+def _get_client_orders(params, cors):
+    reg_id = params.get('registration_id', '')
+    if not reg_id or not reg_id.isdigit():
+        return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'registration_id required'})}
+
+    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, order_code, amount, channel, status, created_at "
+            "FROM orders WHERE registration_id = %d "
+            "ORDER BY created_at DESC"
+            % int(reg_id)
+        )
+        rows = cur.fetchall()
+        orders = []
+        for row in rows:
+            orders.append({
+                'id': row[0],
+                'order_code': row[1] or '',
+                'amount': float(row[2]) if row[2] else 0,
+                'channel': row[3],
+                'status': row[4],
+                'created_at': str(row[5]),
+            })
+        return {
+            'statusCode': 200,
+            'headers': cors,
+            'body': json.dumps({'orders': orders}, ensure_ascii=False),
         }
     finally:
         conn.close()
