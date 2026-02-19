@@ -24,6 +24,7 @@ interface ClientExpandedRowProps {
   magnetsLoading: boolean;
   inventory: Record<string, number>;
   onMagnetGiven: (regId: number, magnet: ClientMagnet, breed: string, stockAfter: number | null) => void;
+  onMagnetsReload: (regId: number) => void;
   onInventoryChanged: () => void;
   onClientDeleted: () => void;
   onClientUpdated: (updated: { id: number; name: string; phone: string; registered: boolean }) => void;
@@ -35,6 +36,7 @@ const ClientExpandedRow = ({
   magnetsLoading: mLoading,
   inventory,
   onMagnetGiven,
+  onMagnetsReload,
   onInventoryChanged,
   onClientDeleted,
   onClientUpdated,
@@ -46,6 +48,8 @@ const ClientExpandedRow = ({
   const [givingMagnet, setGivingMagnet] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [deletingOrderId, setDeletingOrderId] = useState<number | null>(null);
+  const [confirmDeleteOrderId, setConfirmDeleteOrderId] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -159,6 +163,26 @@ const ClientExpandedRow = ({
     } finally { setDeletingId(null); }
   };
 
+  const handleDeleteOrder = async (orderId: number) => {
+    setDeletingOrderId(orderId);
+    try {
+      const res = await fetch(`${ADD_CLIENT_URL}?order_id=${orderId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Ошибка");
+      setClientOrders((prev) => prev.filter((o) => o.id !== orderId));
+      setConfirmDeleteOrderId(null);
+      if (data.magnet_removed) {
+        toast.success(`Заказ удалён, магнит «${data.magnet_breed}» возвращён на склад`);
+        onMagnetsReload(client.id);
+        onInventoryChanged();
+      } else {
+        toast.success("Заказ удалён");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось удалить заказ");
+    } finally { setDeletingOrderId(null); }
+  };
+
   return (
     <TableRow>
       <TableCell colSpan={6} className="bg-slate-50/80 p-0">
@@ -225,7 +249,7 @@ const ClientExpandedRow = ({
               ) : (
                 <div className="space-y-1.5">
                   {clientOrders.map((o) => (
-                    <div key={o.id} className="flex items-center gap-3 text-sm bg-white rounded-lg border px-3 py-2">
+                    <div key={o.id} className="flex items-center gap-2 text-sm bg-white rounded-lg border px-3 py-2">
                       <span className="font-mono text-muted-foreground text-xs">{o.order_code || "—"}</span>
                       <Badge variant="outline" className="text-xs">{o.channel}</Badge>
                       <span className="font-medium ml-auto">
@@ -234,6 +258,18 @@ const ClientExpandedRow = ({
                       <span className="text-xs text-muted-foreground">
                         {new Date(o.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
                       </span>
+                      {confirmDeleteOrderId === o.id ? (
+                        <div className="flex items-center gap-1 ml-1">
+                          <Button size="sm" variant="destructive" className="h-6 px-2 text-xs" disabled={deletingOrderId === o.id} onClick={(e) => { e.stopPropagation(); handleDeleteOrder(o.id); }}>
+                            {deletingOrderId === o.id ? <Icon name="Loader2" size={10} className="animate-spin" /> : "Да"}
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={(e) => { e.stopPropagation(); setConfirmDeleteOrderId(null); }}>Нет</Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500 ml-1" onClick={(e) => { e.stopPropagation(); setConfirmDeleteOrderId(o.id); }}>
+                          <Icon name="Trash2" size={12} />
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>

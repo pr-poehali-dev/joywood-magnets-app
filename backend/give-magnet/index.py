@@ -139,14 +139,23 @@ def handler(event, context):
 
             phone = reg[1] or ''
             cur.execute(
-                "INSERT INTO client_magnets (registration_id, phone, breed, stars, category) "
-                "VALUES (%d, '%s', '%s', %d, '%s') RETURNING id, given_at"
+                "SELECT id FROM orders WHERE registration_id = %d ORDER BY created_at DESC LIMIT 1"
+                % int(registration_id)
+            )
+            order_row = cur.fetchone()
+            last_order_id = order_row[0] if order_row else None
+            order_id_sql = str(last_order_id) if last_order_id else 'NULL'
+
+            cur.execute(
+                "INSERT INTO client_magnets (registration_id, phone, breed, stars, category, order_id) "
+                "VALUES (%d, '%s', '%s', %d, '%s', %s) RETURNING id, given_at"
                 % (
                     int(registration_id),
                     phone.replace("'", "''"),
                     breed.replace("'", "''"),
                     int(stars),
                     category.replace("'", "''"),
+                    order_id_sql,
                 )
             )
             row = cur.fetchone()

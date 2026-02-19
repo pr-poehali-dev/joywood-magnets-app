@@ -20,6 +20,9 @@ def handler(event, context):
     cors = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
 
     if event.get('httpMethod') == 'DELETE':
+        params = event.get('queryStringParameters') or {}
+        if params.get('order_id'):
+            return _handle_delete_order(params, cors)
         return _handle_delete(event, cors)
 
     if event.get('httpMethod') == 'PUT':
@@ -36,6 +39,41 @@ def handler(event, context):
         return _handle_create_order(body, cors)
 
     return _handle_add_client(body, cors)
+
+
+def _handle_delete_order(params, cors):
+    order_id = params.get('order_id')
+    if not order_id or not str(order_id).isdigit():
+        return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите order_id'}, ensure_ascii=False)}
+    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM orders WHERE id = %d" % int(order_id))
+        if not cur.fetchone():
+            return {'statusCode': 404, 'headers': cors, 'body': json.dumps({'error': 'Заказ не найден'}, ensure_ascii=False)}
+
+        cur.execute(
+            "SELECT id, breed FROM client_magnets WHERE order_id = %d" % int(order_id)
+        )
+        magnet = cur.fetchone()
+
+        if magnet:
+            cur.execute("UPDATE magnet_inventory SET stock = stock + 1, updated_at = now() WHERE breed = '%s'" % magnet[1].replace("'", "''"))
+            cur.execute("DELETE FROM client_magnets WHERE id = %d" % magnet[0])
+
+        cur.execute("DELETE FROM orders WHERE id = %d" % int(order_id))
+        conn.commit()
+
+        return {
+            'statusCode': 200, 'headers': cors,
+            'body': json.dumps({
+                'ok': True,
+                'magnet_removed': magnet is not None,
+                'magnet_breed': magnet[1] if magnet else None,
+            }, ensure_ascii=False),
+        }
+    finally:
+        conn.close()
 
 
 def _handle_delete(event, cors):

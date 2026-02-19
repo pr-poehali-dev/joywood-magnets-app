@@ -164,6 +164,7 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
                           setInventory((p) => ({ ...p, [breed]: stockAfter }));
                         }
                       }}
+                      onMagnetsReload={loadClientMagnets}
                       onInventoryChanged={loadInventory}
                       onClientDeleted={() => {
                         setExpandedId(null);

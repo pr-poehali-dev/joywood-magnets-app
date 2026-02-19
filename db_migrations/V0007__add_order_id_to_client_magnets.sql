@@ -1,0 +1,1 @@
+ALTER TABLE client_magnets ADD COLUMN IF NOT EXISTS order_id INTEGER;
