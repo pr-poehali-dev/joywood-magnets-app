@@ -7,12 +7,37 @@
       "expectedStatus": 200
     },
     {
+      "name": "GET inventory",
+      "method": "GET",
+      "path": "/?action=inventory",
+      "expectedStatus": 200
+    },
+    {
+      "name": "PUT update inventory",
+      "method": "PUT",
+      "path": "/",
+      "body": {
+        "items": [
+          {"breed": "Граб", "stars": 1, "category": "Обычный", "stock": 10},
+          {"breed": "Платан", "stars": 1, "category": "Обычный", "stock": 5}
+        ]
+      },
+      "expectedStatus": 200
+    },
+    {
+      "name": "PUT empty items fails",
+      "method": "PUT",
+      "path": "/",
+      "body": {},
+      "expectedStatus": 400
+    },
+    {
       "name": "POST give magnet",
       "method": "POST",
       "path": "/",
       "body": {
-        "registration_id": 5,
-        "breed": "Платан",
+        "registration_id": 12,
+        "breed": "Граб",
         "stars": 1,
         "category": "Обычный"
       },
@@ -21,7 +46,7 @@
     {
       "name": "GET client magnets",
       "method": "GET",
-      "path": "/?registration_id=5",
+      "path": "/?registration_id=12",
       "expectedStatus": 200
     },
     {

@@ -4,7 +4,7 @@ import psycopg2
 
 
 def handler(event, context):
-    """POST — выдать магнит клиенту. GET — получить магниты клиента по registration_id."""
+    """POST — выдать магнит / обновить остатки. GET — магниты клиента / остатки всех пород."""
     if event.get('httpMethod') == 'OPTIONS':
         return {
             'statusCode': 200,
@@ -19,9 +19,25 @@ def handler(event, context):
 
     cors = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
     method = event.get('httpMethod')
+    params = event.get('queryStringParameters') or {}
+
+    if method == 'GET' and params.get('action') == 'inventory':
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT breed, stars, category, stock FROM magnet_inventory ORDER BY stars, breed")
+            rows = cur.fetchall()
+            inventory = {}
+            for row in rows:
+                inventory[row[0]] = {'stars': row[1], 'category': row[2], 'stock': row[3]}
+            return {
+                'statusCode': 200, 'headers': cors,
+                'body': json.dumps({'inventory': inventory}, ensure_ascii=False),
+            }
+        finally:
+            conn.close()
 
     if method == 'GET':
-        params = event.get('queryStringParameters') or {}
         reg_id = params.get('registration_id')
         if not reg_id:
             return {
@@ -53,6 +69,38 @@ def handler(event, context):
         finally:
             conn.close()
 
+    if method == 'PUT':
+        body = json.loads(event.get('body') or '{}')
+        items = body.get('items')
+        if not items or not isinstance(items, list):
+            return {
+                'statusCode': 400, 'headers': cors,
+                'body': json.dumps({'error': 'Укажите items — массив {breed, stars, category, stock}'}, ensure_ascii=False),
+            }
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        try:
+            cur = conn.cursor()
+            for item in items:
+                breed = (item.get('breed') or '').strip()
+                stars = int(item.get('stars', 1))
+                category = (item.get('category') or '').strip()
+                stock = int(item.get('stock', 0))
+                if not breed:
+                    continue
+                cur.execute(
+                    "INSERT INTO magnet_inventory (breed, stars, category, stock, updated_at) "
+                    "VALUES ('%s', %d, '%s', %d, now()) "
+                    "ON CONFLICT (breed) DO UPDATE SET stock = %d, updated_at = now()"
+                    % (breed.replace("'", "''"), stars, category.replace("'", "''"), stock, stock)
+                )
+            conn.commit()
+            return {
+                'statusCode': 200, 'headers': cors,
+                'body': json.dumps({'ok': True, 'updated': len(items)}, ensure_ascii=False),
+            }
+        finally:
+            conn.close()
+
     if method == 'POST':
         body = json.loads(event.get('body') or '{}')
         registration_id = body.get('registration_id')
@@ -77,6 +125,18 @@ def handler(event, context):
                     'body': json.dumps({'error': 'Клиент не найден'}, ensure_ascii=False),
                 }
 
+            cur.execute(
+                "SELECT stock FROM magnet_inventory WHERE breed = '%s'"
+                % breed.replace("'", "''")
+            )
+            inv_row = cur.fetchone()
+            current_stock = inv_row[0] if inv_row else 0
+            if inv_row and current_stock <= 0:
+                return {
+                    'statusCode': 400, 'headers': cors,
+                    'body': json.dumps({'error': 'Магнит «%s» закончился на складе (остаток: 0)' % breed}, ensure_ascii=False),
+                }
+
             phone = reg[1] or ''
             cur.execute(
                 "INSERT INTO client_magnets (registration_id, phone, breed, stars, category) "
@@ -90,6 +150,14 @@ def handler(event, context):
                 )
             )
             row = cur.fetchone()
+
+            if inv_row:
+                cur.execute(
+                    "UPDATE magnet_inventory SET stock = stock - 1, updated_at = now() "
+                    "WHERE breed = '%s' AND stock > 0"
+                    % breed.replace("'", "''")
+                )
+
             conn.commit()
             return {
                 'statusCode': 200, 'headers': cors,
@@ -98,6 +166,7 @@ def handler(event, context):
                     'given_at': str(row[1]),
                     'breed': breed,
                     'stars': int(stars),
+                    'stock_after': max(current_stock - 1, 0) if inv_row else None,
                 }, ensure_ascii=False),
             }
         finally:

@@ -90,6 +90,22 @@ const ClientsSection = () => {
   const [givingMagnet, setGivingMagnet] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [inventory, setInventory] = useState<Record<string, number>>({});
+
+  const loadInventory = useCallback(() => {
+    fetch(`${GIVE_MAGNET_URL}?action=inventory`)
+      .then((r) => r.json())
+      .then((data) => {
+        const inv: Record<string, number> = {};
+        for (const [breed, info] of Object.entries(data.inventory || {})) {
+          inv[breed] = (info as { stock: number }).stock;
+        }
+        setInventory(inv);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => { loadInventory(); }, [loadInventory]);
 
   const loadClients = () => {
     setLoading(true);
@@ -161,6 +177,7 @@ const ClientsSection = () => {
       toast.success(`${breed.breed} ${STAR_LABELS[breed.stars]} выдан`);
       setSelectedBreed("");
       loadClientMagnets(regId);
+      loadInventory();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось выдать магнит");
     } finally { setGivingMagnet(false); }
@@ -342,11 +359,18 @@ const ClientsSection = () => {
                                     <SelectValue placeholder="Выберите породу..." />
                                   </SelectTrigger>
                                   <SelectContent className="max-h-[300px]">
-                                    {WOOD_BREEDS.filter((b) => !collectedBreeds.has(b.breed)).map((b) => (
-                                      <SelectItem key={b.breed} value={b.breed}>
-                                        {STAR_LABELS[b.stars]} {b.breed} — {STAR_NAMES[b.stars]}
-                                      </SelectItem>
-                                    ))}
+                                    {WOOD_BREEDS.filter((b) => !collectedBreeds.has(b.breed)).map((b) => {
+                                      const stock = inventory[b.breed] ?? 0;
+                                      const hasStock = stock > 0;
+                                      return (
+                                        <SelectItem key={b.breed} value={b.breed} disabled={!hasStock}>
+                                          {STAR_LABELS[b.stars]} {b.breed} — {STAR_NAMES[b.stars]}
+                                          <span className={`ml-1 ${hasStock ? "text-green-600" : "text-red-500"}`}>
+                                            ({stock} шт)
+                                          </span>
+                                        </SelectItem>
+                                      );
+                                    })}
                                   </SelectContent>
                                 </Select>
                               </div>

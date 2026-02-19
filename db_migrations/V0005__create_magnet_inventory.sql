@@ -1,0 +1,8 @@
+CREATE TABLE magnet_inventory (
+  id SERIAL PRIMARY KEY,
+  breed VARCHAR(100) NOT NULL UNIQUE,
+  stars INTEGER NOT NULL DEFAULT 1,
+  category VARCHAR(50) NOT NULL DEFAULT '',
+  stock INTEGER NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP DEFAULT now()
+);
