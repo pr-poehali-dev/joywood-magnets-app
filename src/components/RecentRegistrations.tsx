@@ -27,9 +27,10 @@ interface RecentReg {
 
 interface Props {
   onNavigateToClient: (clientId: number) => void;
+  onCountChange?: (count: number) => void;
 }
 
-const RecentRegistrations = ({ onNavigateToClient }: Props) => {
+const RecentRegistrations = ({ onNavigateToClient, onCountChange }: Props) => {
   const [items, setItems] = useState<RecentReg[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
@@ -39,12 +40,15 @@ const RecentRegistrations = ({ onNavigateToClient }: Props) => {
     fetch(`${GET_REGISTRATIONS_URL}?action=recent_registrations`)
       .then((r) => r.json())
       .then((data) => {
-        setItems(data.registrations || []);
+        const regs: RecentReg[] = data.registrations || [];
+        setItems(regs);
         setLastRefresh(new Date());
+        const todayCount = regs.filter((r) => isNew(r.created_at)).length;
+        onCountChange?.(todayCount);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [onCountChange]);
 
   useEffect(() => {
     load();

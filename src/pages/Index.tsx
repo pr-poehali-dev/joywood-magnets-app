@@ -20,6 +20,7 @@ const tabsList = [
 const Index = () => {
   const [activeTab, setActiveTab] = useState("clients");
   const [focusClientId, setFocusClientId] = useState<number | null>(null);
+  const [newRegsCount, setNewRegsCount] = useState(0);
 
   const navigateToClient = useCallback((clientId: number) => {
     setFocusClientId(clientId);
@@ -57,6 +58,11 @@ const Index = () => {
               >
                 <Icon name={tab.icon} size={16} />
                 {tab.label}
+                {tab.value === "registrations" && newRegsCount > 0 && (
+                  <span className="ml-1 bg-green-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                    {newRegsCount > 9 ? "9+" : newRegsCount}
+                  </span>
+                )}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -74,7 +80,7 @@ const Index = () => {
             <OrdersSection onOrderCreated={navigateToClient} />
           </TabsContent>
           <TabsContent value="registrations">
-            <RecentRegistrations onNavigateToClient={navigateToClient} />
+            <RecentRegistrations onNavigateToClient={navigateToClient} onCountChange={setNewRegsCount} />
           </TabsContent>
           <TabsContent value="bonuses">
             <BonusTracker />
