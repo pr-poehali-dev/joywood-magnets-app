@@ -1,0 +1,39 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "POST register client",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "name": "Test User",
+        "phone": "+7 (900) 123-45-67",
+        "channel": "Avito",
+        "ozon_order_code": null
+      },
+      "expectedStatus": 200
+    },
+    {
+      "name": "POST missing name",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "name": "",
+        "phone": "+7 (900) 123-45-67",
+        "channel": "Ozon"
+      },
+      "expectedStatus": 400
+    },
+    {
+      "name": "GET not allowed",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 405
+    }
+  ]
+}
