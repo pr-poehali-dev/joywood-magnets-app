@@ -94,7 +94,7 @@ def handler(event, context):
                 )
                 conn.commit()
             else:
-                channel = 'Ozon' if ozon_order_code else 'Сайт Joywood'
+                channel = 'Ozon' if ozon_order_code else ''
                 cur.execute(
                     "INSERT INTO registrations (name, phone, channel, ozon_order_code, registered) "
                     "VALUES ('%s', '%s', '%s', %s, TRUE) RETURNING id, created_at"
