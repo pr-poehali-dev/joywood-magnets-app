@@ -32,9 +32,7 @@ const Index = () => {
       <header className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center gap-3 flex-1">
-            <div className="bg-orange-500 text-white rounded-lg p-2">
-              <Icon name="TreeDeciduous" size={24} />
-            </div>
+            <img src="https://cdn.poehali.dev/projects/d4862cdc-db07-4efa-aa4f-e8229141eeb3/bucket/1a067cd5-eb6a-42be-8edd-d1ca100bf90c.jpg" alt="Joywood" className="w-10 h-10 object-contain" />
             <div>
               <h1 className="text-xl font-bold text-foreground">
                 Joywood Магниты
