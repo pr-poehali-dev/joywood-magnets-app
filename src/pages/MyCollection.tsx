@@ -30,9 +30,9 @@ interface CollectionData {
 }
 
 const categoryColors: Record<string, string> = {
-  "Классика": "bg-amber-100 text-amber-800 border-amber-200",
-  "Премиум": "bg-orange-100 text-orange-800 border-orange-200",
-  "Экзотика": "bg-red-100 text-red-800 border-red-200",
+  "Обычный": "bg-amber-100 text-amber-800 border-amber-200",
+  "Особенный": "bg-orange-100 text-orange-800 border-orange-200",
+  "Элитный": "bg-red-100 text-red-800 border-red-200",
 };
 
 const starBg: Record<number, string> = {

@@ -21,15 +21,15 @@ import type { Client, MagnetRecommendation } from "@/lib/store";
 const categories = [...new Set(WOOD_BREEDS.map((b) => b.category))];
 
 const categoryColors: Record<string, string> = {
-  "Классика": "bg-amber-50 border-amber-200",
-  "Премиум": "bg-orange-50 border-orange-300",
-  "Экзотика": "bg-red-50 border-red-200",
+  "Обычный": "bg-amber-50 border-amber-200",
+  "Особенный": "bg-orange-50 border-orange-300",
+  "Элитный": "bg-red-50 border-red-200",
 };
 
 const categoryBadgeColors: Record<string, string> = {
-  "Классика": "bg-amber-100 text-amber-800",
-  "Премиум": "bg-orange-100 text-orange-800",
-  "Экзотика": "bg-red-100 text-red-800",
+  "Обычный": "bg-amber-100 text-amber-800",
+  "Особенный": "bg-orange-100 text-orange-800",
+  "Элитный": "bg-red-100 text-red-800",
 };
 
 function makeVirtualClient(totalSpent: number, isNew: boolean): Client {
