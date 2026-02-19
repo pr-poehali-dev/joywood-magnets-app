@@ -1,10 +1,11 @@
 import json
 import os
+import re
 import psycopg2
 
 
 def handler(event, context):
-    """Регистрация нового участника акции Атлас пород"""
+    """Регистрация участника акции. Если код Ozon совпадает с уже добавленным менеджером — объединяет записи."""
     if event.get('httpMethod') == 'OPTIONS':
         return {
             'statusCode': 200,
@@ -17,14 +18,10 @@ def handler(event, context):
             'body': '',
         }
 
-    cors = {'Access-Control-Allow-Origin': '*'}
+    cors = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
 
     if event.get('httpMethod') != 'POST':
-        return {
-            'statusCode': 405,
-            'headers': cors,
-            'body': json.dumps({'error': 'Method not allowed'}),
-        }
+        return {'statusCode': 405, 'headers': cors, 'body': json.dumps({'error': 'Method not allowed'})}
 
     body = json.loads(event.get('body', '{}'))
     name = (body.get('name') or '').strip()
@@ -34,53 +31,82 @@ def handler(event, context):
 
     if len(name) < 2:
         return {
-            'statusCode': 400,
-            'headers': cors,
+            'statusCode': 400, 'headers': cors,
             'body': json.dumps({'error': 'Укажите имя (минимум 2 символа)'}, ensure_ascii=False),
         }
-
     if len(phone) < 6:
         return {
-            'statusCode': 400,
-            'headers': cors,
+            'statusCode': 400, 'headers': cors,
             'body': json.dumps({'error': 'Укажите корректный телефон'}, ensure_ascii=False),
         }
-
     if not channel:
         return {
-            'statusCode': 400,
-            'headers': cors,
+            'statusCode': 400, 'headers': cors,
             'body': json.dumps({'error': 'Выберите канал'}, ensure_ascii=False),
         }
-
     if channel == 'Ozon' and not ozon_order_code:
         return {
-            'statusCode': 400,
-            'headers': cors,
+            'statusCode': 400, 'headers': cors,
             'body': json.dumps({'error': 'Укажите код заказа Ozon'}, ensure_ascii=False),
         }
 
     conn = psycopg2.connect(os.environ['DATABASE_URL'])
     try:
         cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO registrations (name, phone, channel, ozon_order_code) "
-            "VALUES ('%s', '%s', '%s', %s) RETURNING id, created_at"
-            % (
-                name.replace("'", "''"),
-                phone.replace("'", "''"),
-                channel.replace("'", "''"),
-                "'" + ozon_order_code.replace("'", "''") + "'" if ozon_order_code else 'NULL',
+
+        merged = False
+        existing_id = None
+
+        if ozon_order_code:
+            ozon_prefix = ozon_order_code.split('-')[0].strip()
+            if ozon_prefix:
+                cur.execute(
+                    "SELECT id FROM registrations "
+                    "WHERE ozon_order_code IS NOT NULL "
+                    "AND split_part(ozon_order_code, '-', 1) = '%s' "
+                    "AND registered = FALSE "
+                    "ORDER BY id LIMIT 1"
+                    % ozon_prefix.replace("'", "''")
+                )
+                row = cur.fetchone()
+                if row:
+                    existing_id = row[0]
+                    cur.execute(
+                        "UPDATE registrations SET name='%s', phone='%s', channel='%s', "
+                        "ozon_order_code='%s', registered=TRUE "
+                        "WHERE id=%d"
+                        % (
+                            name.replace("'", "''"),
+                            phone.replace("'", "''"),
+                            channel.replace("'", "''"),
+                            ozon_order_code.replace("'", "''"),
+                            existing_id,
+                        )
+                    )
+                    conn.commit()
+                    merged = True
+
+        if not merged:
+            cur.execute(
+                "INSERT INTO registrations (name, phone, channel, ozon_order_code, registered) "
+                "VALUES ('%s', '%s', '%s', %s, TRUE) RETURNING id, created_at"
+                % (
+                    name.replace("'", "''"),
+                    phone.replace("'", "''"),
+                    channel.replace("'", "''"),
+                    "'" + ozon_order_code.replace("'", "''") + "'" if ozon_order_code else 'NULL',
+                )
             )
-        )
-        row = cur.fetchone()
-        conn.commit()
+            row = cur.fetchone()
+            conn.commit()
+            existing_id = row[0]
+
         return {
             'statusCode': 200,
             'headers': cors,
             'body': json.dumps({
-                'id': row[0],
-                'created_at': str(row[1]),
+                'id': existing_id,
+                'merged': merged,
                 'message': 'Регистрация успешна',
             }, ensure_ascii=False),
         }

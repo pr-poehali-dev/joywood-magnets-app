@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -31,7 +32,7 @@ import { CHANNELS } from "@/lib/store";
 import { toast } from "sonner";
 
 const GET_REGISTRATIONS_URL = "https://functions.poehali.dev/bc5f0fde-e8e9-4666-9cdb-b19f49b506fe";
-const REGISTER_URL = "https://functions.poehali.dev/40f9e8db-184c-407c-ace9-d0877ed306b9";
+const ADD_CLIENT_URL = "https://functions.poehali.dev/16cf02a4-2bbe-4378-9c28-f8ad3393c028";
 
 interface Registration {
   id: number;
@@ -40,6 +41,7 @@ interface Registration {
   channel: string;
   ozon_order_code: string | null;
   created_at: string;
+  registered: boolean;
 }
 
 const formatPhone = (value: string) => {
@@ -60,6 +62,7 @@ const ClientsSection = () => {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [addMode, setAddMode] = useState<string>("ozon");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newChannel, setNewChannel] = useState("");
@@ -79,13 +82,12 @@ const ClientsSection = () => {
     loadClients();
   }, []);
 
-  const isOzon = newChannel === "Ozon";
   const phoneDigits = newPhone.replace(/\D/g, "");
-  const isFormValid =
-    newName.trim().length >= 2 &&
-    phoneDigits.length >= 11 &&
-    newChannel &&
-    (!isOzon || newOzonCode.trim().length >= 3);
+
+  const isOzonOnly = addMode === "ozon";
+  const isFormValid = isOzonOnly
+    ? newOzonCode.trim().length >= 3
+    : newName.trim().length >= 2 && phoneDigits.length >= 11 && newChannel;
 
   const resetForm = () => {
     setNewName("");
@@ -98,19 +100,25 @@ const ClientsSection = () => {
     if (!isFormValid) return;
     setSaving(true);
     try {
-      const res = await fetch(REGISTER_URL, {
+      const body = isOzonOnly
+        ? { ozon_order_code: newOzonCode.trim() }
+        : {
+            name: newName.trim(),
+            phone: newPhone.trim(),
+            channel: newChannel,
+            ozon_order_code: newChannel === "Ozon" ? newOzonCode.trim() || null : null,
+          };
+
+      const res = await fetch(ADD_CLIENT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newName.trim(),
-          phone: newPhone.trim(),
-          channel: newChannel,
-          ozon_order_code: isOzon ? newOzonCode.trim() : null,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка");
-      toast.success(`Клиент ${newName.trim()} добавлен`);
+
+      const label = isOzonOnly ? `Заказ ${newOzonCode.trim()}` : newName.trim();
+      toast.success(`${label} — добавлен`);
       resetForm();
       setDialogOpen(false);
       loadClients();
@@ -127,21 +135,22 @@ const ClientsSection = () => {
     return (
       c.name.toLowerCase().includes(q) ||
       c.phone.includes(q) ||
-      c.channel.toLowerCase().includes(q)
+      c.channel.toLowerCase().includes(q) ||
+      (c.ozon_order_code || "").toLowerCase().includes(q)
     );
   });
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 max-w-md min-w-[200px]">
           <Icon
             name="Search"
             size={18}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
           />
           <Input
-            placeholder="Поиск по имени, телефону или каналу..."
+            placeholder="Поиск по имени, телефону, каналу, коду Ozon..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -150,7 +159,7 @@ const ClientsSection = () => {
         <Badge variant="secondary" className="text-sm">
           {filtered.length} клиентов
         </Badge>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-1.5">
               <Icon name="UserPlus" size={16} />
@@ -161,41 +170,13 @@ const ClientsSection = () => {
             <DialogHeader>
               <DialogTitle>Новый клиент</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <Label>Имя</Label>
-                <Input
-                  placeholder="Имя клиента"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Телефон</Label>
-                <Input
-                  type="tel"
-                  placeholder="+7 (___) ___-__-__"
-                  value={newPhone}
-                  onChange={(e) => setNewPhone(formatPhone(e.target.value))}
-                />
-                <p className="text-xs text-muted-foreground">
-                  По этому номеру клиент сможет посмотреть свои магниты на странице /my-collection
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label>Канал</Label>
-                <Select value={newChannel} onValueChange={setNewChannel}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Откуда пришёл клиент" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CHANNELS.map((ch) => (
-                      <SelectItem key={ch} value={ch}>{ch}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {isOzon && (
+            <Tabs value={addMode} onValueChange={(v) => { setAddMode(v); resetForm(); }} className="pt-2">
+              <TabsList className="w-full">
+                <TabsTrigger value="ozon" className="flex-1">Только код Ozon</TabsTrigger>
+                <TabsTrigger value="full" className="flex-1">Полные данные</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="ozon" className="space-y-4 pt-2">
                 <div className="space-y-2">
                   <Label>Код заказа Ozon</Label>
                   <Input
@@ -203,23 +184,86 @@ const ClientsSection = () => {
                     value={newOzonCode}
                     onChange={(e) => setNewOzonCode(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Клиент сможет привязать этот заказ при регистрации — записи объединятся автоматически
+                  </p>
                 </div>
-              )}
-              <Button
-                className="w-full"
-                disabled={!isFormValid || saving}
-                onClick={handleAdd}
-              >
-                {saving ? (
-                  <span className="flex items-center gap-2">
-                    <Icon name="Loader2" size={16} className="animate-spin" />
-                    Сохранение...
-                  </span>
-                ) : (
-                  "Добавить клиента"
+                <Button
+                  className="w-full"
+                  disabled={!isFormValid || saving}
+                  onClick={handleAdd}
+                >
+                  {saving ? (
+                    <span className="flex items-center gap-2">
+                      <Icon name="Loader2" size={16} className="animate-spin" />
+                      Сохранение...
+                    </span>
+                  ) : (
+                    "Добавить по коду Ozon"
+                  )}
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="full" className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <Label>Имя</Label>
+                  <Input
+                    placeholder="Имя клиента"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Телефон</Label>
+                  <Input
+                    type="tel"
+                    placeholder="+7 (___) ___-__-__"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(formatPhone(e.target.value))}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    По этому номеру клиент увидит свои магниты на /my-collection
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Канал</Label>
+                  <Select value={newChannel} onValueChange={setNewChannel}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Откуда пришёл клиент" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CHANNELS.map((ch) => (
+                        <SelectItem key={ch} value={ch}>{ch}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {newChannel === "Ozon" && (
+                  <div className="space-y-2">
+                    <Label>Код заказа Ozon</Label>
+                    <Input
+                      placeholder="Например: 12345678-0001"
+                      value={newOzonCode}
+                      onChange={(e) => setNewOzonCode(e.target.value)}
+                    />
+                  </div>
                 )}
-              </Button>
-            </div>
+                <Button
+                  className="w-full"
+                  disabled={!isFormValid || saving}
+                  onClick={handleAdd}
+                >
+                  {saving ? (
+                    <span className="flex items-center gap-2">
+                      <Icon name="Loader2" size={16} className="animate-spin" />
+                      Сохранение...
+                    </span>
+                  ) : (
+                    "Добавить клиента"
+                  )}
+                </Button>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </div>
@@ -232,13 +276,14 @@ const ClientsSection = () => {
               <TableHead>Телефон</TableHead>
               <TableHead>Канал</TableHead>
               <TableHead>Код заказа Ozon</TableHead>
-              <TableHead>Дата регистрации</TableHead>
+              <TableHead>Статус</TableHead>
+              <TableHead>Дата</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                   <Icon name="Loader2" size={32} className="mx-auto mb-3 animate-spin opacity-40" />
                   Загрузка...
                 </TableCell>
@@ -259,46 +304,62 @@ const ClientsSection = () => {
                           size={16}
                           className="text-muted-foreground"
                         />
-                        {client.name}
+                        {client.name || <span className="text-muted-foreground italic">Не указано</span>}
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {client.phone}
+                      {client.phone || "—"}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {client.channel}
-                      </Badge>
+                      {client.channel ? (
+                        <Badge variant="outline" className="text-xs">{client.channel}</Badge>
+                      ) : "—"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-muted-foreground text-sm">
                       {client.ozon_order_code || "—"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell>
+                      {client.registered ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <Icon name="CheckCircle" size={12} />
+                          Зарегистрирован
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          <Icon name="Clock" size={12} />
+                          Ожидает регистрации
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
                       {new Date(client.created_at).toLocaleDateString("ru-RU", {
                         day: "numeric",
                         month: "short",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
                       })}
                     </TableCell>
                   </TableRow>
                   {isExpanded && (
                     <TableRow>
-                      <TableCell colSpan={5} className="bg-slate-50/80 p-0">
+                      <TableCell colSpan={6} className="bg-slate-50/80 p-0">
                         <div className="p-6 space-y-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Icon name="User" size={14} className="text-orange-500" />
-                            <span className="font-medium">{client.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Icon name="Phone" size={14} className="text-muted-foreground" />
-                            <span>{client.phone}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Icon name="MapPin" size={14} className="text-muted-foreground" />
-                            <span>Канал: {client.channel}</span>
-                          </div>
+                          {client.name && (
+                            <div className="flex items-center gap-2">
+                              <Icon name="User" size={14} className="text-orange-500" />
+                              <span className="font-medium">{client.name}</span>
+                            </div>
+                          )}
+                          {client.phone && (
+                            <div className="flex items-center gap-2">
+                              <Icon name="Phone" size={14} className="text-muted-foreground" />
+                              <span>{client.phone}</span>
+                            </div>
+                          )}
+                          {client.channel && (
+                            <div className="flex items-center gap-2">
+                              <Icon name="MapPin" size={14} className="text-muted-foreground" />
+                              <span>Канал: {client.channel}</span>
+                            </div>
+                          )}
                           {client.ozon_order_code && (
                             <div className="flex items-center gap-2">
                               <Icon name="Package" size={14} className="text-blue-500" />
@@ -307,7 +368,7 @@ const ClientsSection = () => {
                           )}
                           <div className="flex items-center gap-2 text-muted-foreground">
                             <Icon name="CalendarDays" size={14} />
-                            <span>Зарегистрирован: {new Date(client.created_at).toLocaleString("ru-RU")}</span>
+                            <span>Добавлен: {new Date(client.created_at).toLocaleString("ru-RU")}</span>
                           </div>
                         </div>
                       </TableCell>
@@ -319,7 +380,7 @@ const ClientsSection = () => {
             {!loading && filtered.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={6}
                   className="text-center py-12 text-muted-foreground"
                 >
                   <Icon name="SearchX" size={40} className="mx-auto mb-3 opacity-30" />

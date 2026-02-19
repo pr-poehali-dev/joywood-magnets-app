@@ -23,7 +23,7 @@ def handler(event, context):
     try:
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, name, phone, channel, ozon_order_code, created_at "
+            "SELECT id, name, phone, channel, ozon_order_code, created_at, registered "
             "FROM registrations ORDER BY created_at DESC"
         )
         rows = cur.fetchall()
@@ -36,6 +36,7 @@ def handler(event, context):
                 'channel': row[3],
                 'ozon_order_code': row[4],
                 'created_at': str(row[5]),
+                'registered': bool(row[6]),
             })
         return {
             'statusCode': 200,
