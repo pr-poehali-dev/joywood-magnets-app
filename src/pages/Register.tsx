@@ -8,6 +8,8 @@ import Icon from "@/components/ui/icon";
 import { CHANNELS } from "@/lib/store";
 import { toast } from "sonner";
 
+const REGISTER_URL = "https://functions.poehali.dev/40f9e8db-184c-407c-ace9-d0877ed306b9";
+
 const CLIENT_CHANNELS = CHANNELS.filter((ch) => ch !== "Телефон");
 
 const Register = () => {
@@ -43,11 +45,7 @@ const Register = () => {
 
     setLoading(true);
     try {
-      const { default: func2url } = await import("@/../func2url.json");
-      const url = (func2url as Record<string, string>)["register-client"];
-      if (!url) throw new Error("API not configured");
-
-      const res = await fetch(url, {
+      const res = await fetch(REGISTER_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
