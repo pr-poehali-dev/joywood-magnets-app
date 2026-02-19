@@ -43,6 +43,7 @@ interface Registration {
   ozon_order_code: string | null;
   created_at: string;
   registered: boolean;
+  total_amount: number;
 }
 
 interface ClientMagnet {
@@ -408,6 +409,7 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
                               {client.name && <div className="flex items-center gap-1.5"><Icon name="User" size={14} className="text-orange-500" /><span className="font-medium">{client.name}</span></div>}
                               {client.phone && <div className="flex items-center gap-1.5"><Icon name="Phone" size={14} className="text-muted-foreground" />{client.phone}</div>}
                               {client.ozon_order_code && <div className="flex items-center gap-1.5"><Icon name="Package" size={14} className="text-blue-500" />Ozon: <strong>{client.ozon_order_code}</strong></div>}
+                              {client.total_amount > 0 && <div className="flex items-center gap-1.5"><Icon name="Banknote" size={14} className="text-green-600" />Сумма заказов: <strong>{client.total_amount.toLocaleString("ru-RU")} ₽</strong></div>}
                               <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground hover:text-orange-600 gap-1" onClick={(e) => { e.stopPropagation(); startEditClient(client); }}>
                                 <Icon name="Pencil" size={12} />Редактировать
                               </Button>

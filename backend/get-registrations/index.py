@@ -23,8 +23,11 @@ def handler(event, context):
     try:
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, name, phone, channel, ozon_order_code, created_at, registered "
-            "FROM registrations ORDER BY created_at DESC"
+            "SELECT r.id, r.name, r.phone, r.channel, r.ozon_order_code, r.created_at, r.registered, "
+            "COALESCE(SUM(o.amount), 0) as total_amount "
+            "FROM registrations r "
+            "LEFT JOIN orders o ON o.registration_id = r.id "
+            "GROUP BY r.id ORDER BY r.created_at DESC"
         )
         rows = cur.fetchall()
         clients = []
@@ -37,6 +40,7 @@ def handler(event, context):
                 'ozon_order_code': row[4],
                 'created_at': str(row[5]),
                 'registered': bool(row[6]),
+                'total_amount': float(row[7]),
             })
         return {
             'statusCode': 200,
