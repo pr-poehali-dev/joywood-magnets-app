@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Icon from "@/components/ui/icon";
 import { CHANNELS } from "@/lib/store";
@@ -31,6 +40,18 @@ interface ClientOption {
   channel: string;
 }
 
+interface OrderRecord {
+  id: number;
+  order_code: string;
+  amount: number;
+  channel: string;
+  status: string;
+  created_at: string;
+  registration_id: number;
+  client_name: string;
+  client_phone: string;
+}
+
 const OrdersSection = ({ onOrderCreated }: Props) => {
   const [mode, setMode] = useState("ozon");
 
@@ -46,12 +67,26 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
   const [regularAmount, setRegularAmount] = useState("");
   const [regularCode, setRegularCode] = useState("");
 
+  const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [channelFilter, setChannelFilter] = useState("all");
+
+  const loadOrders = useCallback(() => {
+    setOrdersLoading(true);
+    fetch(`${GET_REGISTRATIONS_URL}?action=orders`)
+      .then((r) => r.json())
+      .then((data) => setOrders(data.orders || []))
+      .catch(() => {})
+      .finally(() => setOrdersLoading(false));
+  }, []);
+
   useEffect(() => {
     fetch(GET_REGISTRATIONS_URL)
       .then((r) => r.json())
       .then((data) => setClients(data.clients || []))
       .catch(() => {});
-  }, []);
+    loadOrders();
+  }, [loadOrders]);
 
   const handleOzonSubmit = async () => {
     if (!orderNumber.trim() || orderNumber.trim().length < 3) {
@@ -82,6 +117,7 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
 
       setOrderNumber("");
       setAmount("");
+      loadOrders();
 
       if (onOrderCreated && data.client_id) {
         onOrderCreated(data.client_id);
@@ -123,6 +159,7 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
       setSelectedClientId("");
       setRegularAmount("");
       setRegularCode("");
+      loadOrders();
 
       if (onOrderCreated && data.client_id) {
         onOrderCreated(data.client_id);
@@ -143,6 +180,13 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
       c.channel.toLowerCase().includes(q)
     );
   });
+
+  const filteredOrders = orders.filter((o) => {
+    if (channelFilter !== "all" && o.channel !== channelFilter) return false;
+    return true;
+  });
+
+  const totalSum = filteredOrders.reduce((s, o) => s + o.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -321,6 +365,87 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
           </Tabs>
         </CardContent>
       </Card>
+
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <h3 className="font-semibold text-lg flex items-center gap-2">
+            <Icon name="History" size={20} className="text-orange-500" />
+            История заказов
+          </h3>
+          <div className="flex-1" />
+          <Select value={channelFilter} onValueChange={setChannelFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Канал" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все каналы</SelectItem>
+              {CHANNELS.map((ch) => (
+                <SelectItem key={ch} value={ch}>{ch}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Badge variant="secondary">{filteredOrders.length} заказов</Badge>
+          {totalSum > 0 && (
+            <Badge variant="outline" className="text-green-700 border-green-300">
+              {totalSum.toLocaleString("ru-RU")} ₽
+            </Badge>
+          )}
+        </div>
+
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Клиент</TableHead>
+                <TableHead>Номер заказа</TableHead>
+                <TableHead className="text-right">Сумма</TableHead>
+                <TableHead>Канал</TableHead>
+                <TableHead>Дата</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {ordersLoading && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                    <Icon name="Loader2" size={32} className="mx-auto mb-3 animate-spin opacity-40" />
+                    Загрузка...
+                  </TableCell>
+                </TableRow>
+              )}
+              {!ordersLoading && filteredOrders.map((order) => (
+                <TableRow key={order.id} className="hover:bg-orange-50/30">
+                  <TableCell className="font-medium">
+                    {order.client_name || "—"}
+                    {order.client_phone && (
+                      <span className="text-muted-foreground text-xs ml-1.5">{order.client_phone}</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-mono text-sm text-muted-foreground">
+                    {order.order_code || "—"}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    {order.amount > 0 ? `${order.amount.toLocaleString("ru-RU")} ₽` : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-xs">{order.channel}</Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!ordersLoading && filteredOrders.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                    <Icon name="ShoppingCart" size={40} className="mx-auto mb-3 opacity-30" />
+                    Заказов пока нет
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Card>
+      </div>
     </div>
   );
 };

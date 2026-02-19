@@ -10,7 +10,37 @@
       "name": "GET registrations list",
       "method": "GET",
       "path": "/",
-      "expectedStatus": 200
+      "expectedStatus": 200,
+      "expectedBody": {
+        "clients": "array"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET all orders",
+      "method": "GET",
+      "path": "/?action=orders",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "orders": "array"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET client orders",
+      "method": "GET",
+      "path": "/?action=client_orders&registration_id=1",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "orders": "array"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET client orders without id fails",
+      "method": "GET",
+      "path": "/?action=client_orders",
+      "expectedStatus": 400
     }
   ]
 }
