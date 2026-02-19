@@ -72,7 +72,7 @@ const Register = () => {
           </p>
         </div>
 
-        <Card className="shadow-lg border-orange-200">
+        <Card className="shadow-lg border-gold-200">
           <CardHeader className="pb-4">
             <CardTitle className="text-lg">Регистрация участника</CardTitle>
           </CardHeader>
@@ -140,7 +140,7 @@ const Register = () => {
 
               <Button
                 type="submit"
-                className="w-full h-12 text-base bg-orange-500 hover:bg-orange-600"
+                className="w-full h-12 text-base bg-gold-500 hover:bg-gold-600"
                 disabled={!isValid || loading}
               >
                 {loading ? (

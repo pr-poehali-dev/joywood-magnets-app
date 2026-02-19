@@ -32,13 +32,13 @@ interface CollectionData {
 
 const categoryColors: Record<string, string> = {
   "Обычный": "bg-amber-100 text-amber-800 border-amber-200",
-  "Особенный": "bg-orange-100 text-orange-800 border-orange-200",
+  "Особенный": "bg-gold-100 text-gold-800 border-gold-200",
   "Элитный": "bg-red-100 text-red-800 border-red-200",
 };
 
 const starBg: Record<number, string> = {
   1: "bg-amber-50 border-amber-200",
-  2: "bg-orange-50 border-orange-300",
+  2: "bg-gold-50 border-gold-300",
   3: "bg-red-50 border-red-300",
 };
 
@@ -151,7 +151,7 @@ const MyCollection = () => {
           </p>
         </div>
 
-        <Card className="shadow-lg border-orange-200">
+        <Card className="shadow-lg border-gold-200">
           <CardContent className="pt-6">
             <form onSubmit={handleSearch} className="space-y-4">
               <div className="space-y-2">
@@ -166,7 +166,7 @@ const MyCollection = () => {
               </div>
               <Button
                 type="submit"
-                className="w-full bg-orange-500 hover:bg-orange-600"
+                className="w-full bg-gold-500 hover:bg-gold-600"
                 disabled={!isValid || loading}
               >
                 {loading ? (
@@ -187,7 +187,7 @@ const MyCollection = () => {
               <p className="text-sm text-muted-foreground mb-2">Ещё не участвуете в акции?</p>
               <a
                 href="/register"
-                className="inline-flex items-center gap-2 text-sm font-medium text-orange-600 hover:text-orange-700"
+                className="inline-flex items-center gap-2 text-sm font-medium text-gold-600 hover:text-gold-700"
               >
                 <Icon name="UserPlus" size={16} />
                 Зарегистрироваться
@@ -197,17 +197,17 @@ const MyCollection = () => {
         </Card>
 
         {notFound && (
-          <Card className="border-orange-200 bg-orange-50">
+          <Card className="border-gold-200 bg-gold-50">
             <CardContent className="pt-6 text-center space-y-4">
-              <Icon name="UserX" size={44} className="mx-auto text-orange-400" />
+              <Icon name="UserX" size={44} className="mx-auto text-gold-400" />
               <div>
-                <p className="font-semibold text-orange-900">Номер не найден</p>
-                <p className="text-sm text-orange-700 mt-1">
+                <p className="font-semibold text-gold-900">Номер не найден</p>
+                <p className="text-sm text-gold-700 mt-1">
                   Возможно, вы ещё не зарегистрированы в акции или указали другой номер
                 </p>
               </div>
               <a href="/register">
-                <Button className="w-full bg-orange-500 hover:bg-orange-600 gap-2">
+                <Button className="w-full bg-gold-500 hover:bg-gold-600 gap-2">
                   <Icon name="UserPlus" size={16} />
                   Зарегистрироваться в акции
                 </Button>
@@ -218,11 +218,11 @@ const MyCollection = () => {
 
         {data && (
           <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <Card className="border-orange-200">
+            <Card className="border-gold-200">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-orange-100 rounded-full p-2">
-                    <Icon name="User" size={20} className="text-orange-600" />
+                  <div className="bg-gold-100 rounded-full p-2">
+                    <Icon name="User" size={20} className="text-gold-600" />
                   </div>
                   <div>
                     <div className="font-semibold">{data.client_name}</div>
