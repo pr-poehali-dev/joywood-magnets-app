@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -42,10 +43,12 @@ const starBg: Record<number, string> = {
 };
 
 const MyCollection = () => {
+  const [searchParams] = useSearchParams();
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CollectionData | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const autoSearched = useRef(false);
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, "");
@@ -66,6 +69,33 @@ const MyCollection = () => {
 
   const phoneDigits = phone.replace(/\D/g, "");
   const isValid = phoneDigits.length >= 11;
+
+  const doSearch = useCallback(async (searchPhone: string) => {
+    setLoading(true);
+    setNotFound(false);
+    try {
+      const res = await fetch(LOOKUP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: searchPhone }),
+      });
+      if (res.status === 404) { setNotFound(true); setData(null); return; }
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Ошибка загрузки");
+      setData(result);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось загрузить данные");
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    const urlPhone = searchParams.get("phone");
+    if (urlPhone && !autoSearched.current) {
+      autoSearched.current = true;
+      setPhone(urlPhone);
+      doSearch(urlPhone);
+    }
+  }, [searchParams, doSearch]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();

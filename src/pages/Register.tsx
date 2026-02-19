@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,12 +14,12 @@ const REGISTER_URL = "https://functions.poehali.dev/40f9e8db-184c-407c-ace9-d087
 const CLIENT_CHANNELS = CHANNELS.filter((ch) => ch !== "Телефон");
 
 const Register = () => {
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [channel, setChannel] = useState("");
   const [ozonCode, setOzonCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
 
   const isOzon = channel === "Ozon";
   const isValid = name.trim().length >= 2 && phone.trim().length >= 6 && channel && (!isOzon || ozonCode.trim().length >= 3);
@@ -59,7 +60,7 @@ const Register = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка регистрации");
 
-      setDone(true);
+      navigate("/my-collection?phone=" + encodeURIComponent(phone.trim()));
     } catch (err) {
       const message = err instanceof Error ? err.message : "Не удалось зарегистрироваться";
       toast.error(message);
@@ -67,30 +68,6 @@ const Register = () => {
       setLoading(false);
     }
   };
-
-  if (done) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white flex items-center justify-center px-4">
-        <Card className="w-full max-w-md text-center shadow-lg border-orange-200">
-          <CardContent className="pt-10 pb-10 space-y-4">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-              <Icon name="Check" size={32} className="text-green-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-foreground">Вы зарегистрированы!</h2>
-            <p className="text-muted-foreground">
-              Добро пожаловать в акцию «Атлас пород». Собирайте магниты из ценных пород дерева с каждым заказом!
-            </p>
-            <div className="bg-orange-50 rounded-lg p-4 text-sm text-orange-800">
-              <div className="flex items-center gap-2 justify-center mb-1">
-                <Icon name="Gift" size={16} />
-                <span className="font-medium">Первый заказ — бонусный магнит Падук!</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white flex items-center justify-center px-4 py-8">
@@ -135,7 +112,7 @@ const Register = () => {
               </div>
 
               <div className="space-y-3">
-                <Label>Откуда узнали об акции?</Label>
+                <Label>Как вы получили первый магнит?</Label>
                 <RadioGroup value={channel} onValueChange={setChannel} className="grid gap-2">
                   {CLIENT_CHANNELS.map((ch) => (
                     <label
