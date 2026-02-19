@@ -96,6 +96,10 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [inventory, setInventory] = useState<Record<string, number>>({});
+  const [editingClient, setEditingClient] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const loadInventory = useCallback(() => {
     fetch(`${GIVE_MAGNET_URL}?action=inventory`)
@@ -217,6 +221,42 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
     } finally { setDeletingId(null); }
   };
 
+  const startEditClient = (client: Registration) => {
+    setEditingClient(client.id);
+    setEditName(client.name || "");
+    setEditPhone(client.phone || "");
+  };
+
+  const handleSaveEdit = async (clientId: number) => {
+    if (!editName.trim() && !editPhone.trim()) {
+      toast.error("Укажите хотя бы имя или телефон");
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      const res = await fetch(ADD_CLIENT_URL, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: clientId, name: editName.trim(), phone: editPhone.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Ошибка");
+      toast.success("Данные клиента обновлены");
+      setEditingClient(null);
+      setClients((prev) =>
+        prev.map((c) =>
+          c.id === clientId
+            ? { ...c, name: data.client.name, phone: data.client.phone, registered: data.client.registered }
+            : c
+        )
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось сохранить");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const filtered = clients.filter((c) => {
     const q = search.toLowerCase();
     return c.name.toLowerCase().includes(q) || c.phone.includes(q) || c.channel.toLowerCase().includes(q) || (c.ozon_order_code || "").toLowerCase().includes(q);
@@ -331,11 +371,48 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
                     <TableRow>
                       <TableCell colSpan={6} className="bg-slate-50/80 p-0">
                         <div className="p-6 space-y-5">
-                          <div className="flex items-center gap-4 text-sm flex-wrap">
-                            {client.name && <div className="flex items-center gap-1.5"><Icon name="User" size={14} className="text-orange-500" /><span className="font-medium">{client.name}</span></div>}
-                            {client.phone && <div className="flex items-center gap-1.5"><Icon name="Phone" size={14} className="text-muted-foreground" />{client.phone}</div>}
-                            {client.ozon_order_code && <div className="flex items-center gap-1.5"><Icon name="Package" size={14} className="text-blue-500" />Ozon: <strong>{client.ozon_order_code}</strong></div>}
-                          </div>
+                          {editingClient === client.id ? (
+                            <div className="flex items-end gap-3 flex-wrap">
+                              <div className="space-y-1 flex-1 min-w-[150px]">
+                                <Label className="text-xs">Имя</Label>
+                                <Input
+                                  value={editName}
+                                  onChange={(e) => setEditName(e.target.value)}
+                                  placeholder="Имя клиента"
+                                  className="h-8 text-sm"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </div>
+                              <div className="space-y-1 flex-1 min-w-[150px]">
+                                <Label className="text-xs">Телефон</Label>
+                                <Input
+                                  value={editPhone}
+                                  onChange={(e) => setEditPhone(formatPhone(e.target.value))}
+                                  placeholder="+7 (___) ___-__-__"
+                                  className="h-8 text-sm"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </div>
+                              <div className="flex gap-1.5">
+                                <Button size="sm" className="h-8 gap-1" disabled={savingEdit} onClick={(e) => { e.stopPropagation(); handleSaveEdit(client.id); }}>
+                                  {savingEdit ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Check" size={14} />}
+                                  Сохранить
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-8" onClick={(e) => { e.stopPropagation(); setEditingClient(null); }}>
+                                  Отмена
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-4 text-sm flex-wrap">
+                              {client.name && <div className="flex items-center gap-1.5"><Icon name="User" size={14} className="text-orange-500" /><span className="font-medium">{client.name}</span></div>}
+                              {client.phone && <div className="flex items-center gap-1.5"><Icon name="Phone" size={14} className="text-muted-foreground" />{client.phone}</div>}
+                              {client.ozon_order_code && <div className="flex items-center gap-1.5"><Icon name="Package" size={14} className="text-blue-500" />Ozon: <strong>{client.ozon_order_code}</strong></div>}
+                              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground hover:text-orange-600 gap-1" onClick={(e) => { e.stopPropagation(); startEditClient(client); }}>
+                                <Icon name="Pencil" size={12} />Редактировать
+                              </Button>
+                            </div>
+                          )}
 
                           <div className="border-t pt-4">
                             <div className="flex items-center justify-between mb-3">

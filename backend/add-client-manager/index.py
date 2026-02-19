@@ -4,7 +4,7 @@ import psycopg2
 
 
 def handler(event, context):
-    """Менеджер добавляет клиента или оформляет заказ по номеру"""
+    """Управление клиентами и заказами: добавление, редактирование, удаление, оформление заказов"""
     if event.get('httpMethod') == 'OPTIONS':
         return {
             'statusCode': 200,
@@ -20,22 +20,11 @@ def handler(event, context):
     cors = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
 
     if event.get('httpMethod') == 'DELETE':
-        params = event.get('queryStringParameters') or {}
-        client_id = params.get('id')
-        if not client_id or not client_id.isdigit():
-            return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите id клиента'})}
-        conn = psycopg2.connect(os.environ['DATABASE_URL'])
-        try:
-            cur = conn.cursor()
-            cur.execute("SELECT id FROM registrations WHERE id = %s" % int(client_id))
-            if not cur.fetchone():
-                return {'statusCode': 404, 'headers': cors, 'body': json.dumps({'error': 'Клиент не найден'})}
-            cur.execute("DELETE FROM client_magnets WHERE registration_id = %s" % int(client_id))
-            cur.execute("DELETE FROM registrations WHERE id = %s" % int(client_id))
-            conn.commit()
-            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'ok': True})}
-        finally:
-            conn.close()
+        return _handle_delete(event, cors)
+
+    if event.get('httpMethod') == 'PUT':
+        body = json.loads(event.get('body') or '{}')
+        return _handle_update_client(body, cors)
 
     if event.get('httpMethod') != 'POST':
         return {'statusCode': 405, 'headers': cors, 'body': json.dumps({'error': 'Method not allowed'})}
@@ -49,9 +38,97 @@ def handler(event, context):
     return _handle_add_client(body, cors)
 
 
+def _handle_delete(event, cors):
+    params = event.get('queryStringParameters') or {}
+    client_id = params.get('id')
+    if not client_id or not client_id.isdigit():
+        return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите id клиента'})}
+    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM registrations WHERE id = %s" % int(client_id))
+        if not cur.fetchone():
+            return {'statusCode': 404, 'headers': cors, 'body': json.dumps({'error': 'Клиент не найден'})}
+        cur.execute("DELETE FROM client_magnets WHERE registration_id = %s" % int(client_id))
+        cur.execute("DELETE FROM orders WHERE registration_id = %s" % int(client_id))
+        cur.execute("DELETE FROM registrations WHERE id = %s" % int(client_id))
+        conn.commit()
+        return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'ok': True})}
+    finally:
+        conn.close()
+
+
+def _handle_update_client(body, cors):
+    client_id = body.get('id')
+    if not client_id:
+        return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите id клиента'}, ensure_ascii=False)}
+
+    name = (body.get('name') or '').strip()
+    phone = (body.get('phone') or '').strip()
+
+    if not name and not phone:
+        return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите имя или телефон'}, ensure_ascii=False)}
+
+    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM registrations WHERE id = %s" % int(client_id))
+        if not cur.fetchone():
+            return {'statusCode': 404, 'headers': cors, 'body': json.dumps({'error': 'Клиент не найден'}, ensure_ascii=False)}
+
+        updates = []
+        if name:
+            updates.append("name = '%s'" % name.replace("'", "''"))
+        if phone:
+            updates.append("phone = '%s'" % phone.replace("'", "''"))
+
+        has_real_data = False
+        if name and len(name) >= 2:
+            has_real_data = True
+        if phone and len(phone.replace(' ', '').replace('(', '').replace(')', '').replace('-', '').replace('+', '')) >= 11:
+            has_real_data = True
+
+        if has_real_data:
+            updates.append("registered = TRUE")
+
+        cur.execute("UPDATE registrations SET %s WHERE id = %s" % (', '.join(updates), int(client_id)))
+        conn.commit()
+
+        cur.execute("SELECT id, name, phone, channel, ozon_order_code, registered FROM registrations WHERE id = %s" % int(client_id))
+        row = cur.fetchone()
+
+        return {
+            'statusCode': 200,
+            'headers': cors,
+            'body': json.dumps({
+                'ok': True,
+                'client': {
+                    'id': row[0],
+                    'name': row[1],
+                    'phone': row[2],
+                    'channel': row[3],
+                    'ozon_order_code': row[4],
+                    'registered': row[5],
+                },
+            }, ensure_ascii=False),
+        }
+    finally:
+        conn.close()
+
+
 def _handle_create_order(body, cors):
     order_number = (body.get('order_number') or '').strip()
     channel = (body.get('channel') or '').strip() or 'Ozon'
+    amount = body.get('amount', 0)
+    client_id = body.get('client_id')
+
+    try:
+        amount = float(amount) if amount else 0
+    except (ValueError, TypeError):
+        amount = 0
+
+    if client_id:
+        return _create_order_for_client(int(client_id), order_number, channel, amount, cors)
 
     if not order_number or len(order_number) < 3:
         return {
@@ -75,22 +152,30 @@ def _handle_create_order(body, cors):
         row = cur.fetchone()
 
         if row:
-            client_id = row[0]
+            cid = row[0]
             existing_code = row[3] or ''
             if order_number not in existing_code:
                 codes = existing_code + ', ' + order_number if existing_code else order_number
                 cur.execute(
                     "UPDATE registrations SET ozon_order_code = '%s' WHERE id = %d"
-                    % (codes.replace("'", "''"), client_id)
+                    % (codes.replace("'", "''"), cid)
                 )
-                conn.commit()
+
+            cur.execute(
+                "INSERT INTO orders (registration_id, order_code, amount, channel) "
+                "VALUES (%d, '%s', %s, '%s') RETURNING id"
+                % (cid, order_number.replace("'", "''"), amount, channel.replace("'", "''"))
+            )
+            order_id = cur.fetchone()[0]
+            conn.commit()
 
             return {
                 'statusCode': 200,
                 'headers': cors,
                 'body': json.dumps({
-                    'client_id': client_id,
+                    'client_id': cid,
                     'client_name': row[1],
+                    'order_id': order_id,
                     'is_new': False,
                     'message': 'Заказ добавлен к существующему клиенту',
                 }, ensure_ascii=False),
@@ -107,6 +192,13 @@ def _handle_create_order(body, cors):
                 )
             )
             new_id = cur.fetchone()[0]
+
+            cur.execute(
+                "INSERT INTO orders (registration_id, order_code, amount, channel) "
+                "VALUES (%d, '%s', %s, '%s') RETURNING id"
+                % (new_id, order_number.replace("'", "''"), amount, channel.replace("'", "''"))
+            )
+            order_id = cur.fetchone()[0]
             conn.commit()
 
             return {
@@ -115,10 +207,48 @@ def _handle_create_order(body, cors):
                 'body': json.dumps({
                     'client_id': new_id,
                     'client_name': client_name,
+                    'order_id': order_id,
                     'is_new': True,
                     'message': 'Создан новый клиент',
                 }, ensure_ascii=False),
             }
+    finally:
+        conn.close()
+
+
+def _create_order_for_client(client_id, order_code, channel, amount, cors):
+    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, name FROM registrations WHERE id = %d" % client_id)
+        row = cur.fetchone()
+        if not row:
+            return {'statusCode': 404, 'headers': cors, 'body': json.dumps({'error': 'Клиент не найден'}, ensure_ascii=False)}
+
+        cur.execute(
+            "INSERT INTO orders (registration_id, order_code, amount, channel) "
+            "VALUES (%d, %s, %s, '%s') RETURNING id"
+            % (
+                client_id,
+                ("'" + order_code.replace("'", "''") + "'") if order_code else 'NULL',
+                amount,
+                channel.replace("'", "''"),
+            )
+        )
+        order_id = cur.fetchone()[0]
+        conn.commit()
+
+        return {
+            'statusCode': 200,
+            'headers': cors,
+            'body': json.dumps({
+                'client_id': client_id,
+                'client_name': row[1],
+                'order_id': order_id,
+                'is_new': False,
+                'message': 'Заказ оформлен',
+            }, ensure_ascii=False),
+        }
     finally:
         conn.close()
 

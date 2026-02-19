@@ -46,18 +46,20 @@
       "expectedStatus": 404
     },
     {
-      "name": "POST create order by number",
+      "name": "POST create order by number with amount",
       "method": "POST",
       "path": "/",
       "body": {
         "action": "create_order",
         "order_number": "99887766-0001",
-        "channel": "Ozon"
+        "channel": "Ozon",
+        "amount": 3500
       },
       "expectedStatus": 200,
       "expectedBody": {
         "client_id": "number",
-        "is_new": "boolean"
+        "is_new": "boolean",
+        "order_id": "number"
       },
       "bodyMatcher": "partial"
     },
@@ -70,6 +72,25 @@
         "order_number": "ab"
       },
       "expectedStatus": 400
+    },
+    {
+      "name": "PUT update client without id fails",
+      "method": "PUT",
+      "path": "/",
+      "body": {
+        "name": "New Name"
+      },
+      "expectedStatus": 400
+    },
+    {
+      "name": "PUT update non-existent client",
+      "method": "PUT",
+      "path": "/",
+      "body": {
+        "id": 999999,
+        "name": "Ghost"
+      },
+      "expectedStatus": 404
     }
   ]
 }
