@@ -1,13 +1,5 @@
-import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -17,21 +9,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Icon from "@/components/ui/icon";
-import { CHANNELS } from "@/lib/store";
 import { OrderRecord } from "./types";
 
 interface Props {
   orders: OrderRecord[];
   loading: boolean;
+  ozonOnly?: boolean;
 }
 
-const OrdersTable = ({ orders, loading }: Props) => {
-  const [channelFilter, setChannelFilter] = useState("all");
-
-  const filteredOrders = orders.filter((o) => {
-    if (channelFilter !== "all" && o.channel !== channelFilter) return false;
-    return true;
-  });
+const OrdersTable = ({ orders, loading, ozonOnly = false }: Props) => {
+  const filteredOrders = ozonOnly
+    ? orders.filter((o) => o.channel === "Ozon")
+    : orders.filter((o) => o.channel !== "Ozon");
 
   const totalSum = filteredOrders.reduce((s, o) => s + o.amount, 0);
 
@@ -40,22 +29,9 @@ const OrdersTable = ({ orders, loading }: Props) => {
       <div className="flex flex-wrap items-center gap-3">
         <h3 className="font-semibold text-lg flex items-center gap-2">
           <Icon name="History" size={20} className="text-orange-500" />
-          История заказов
+          {ozonOnly ? "История заказов Ozon" : "История заказов"}
         </h3>
         <div className="flex-1" />
-        <Select value={channelFilter} onValueChange={setChannelFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Канал" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Все каналы</SelectItem>
-            {CHANNELS.map((ch) => (
-              <SelectItem key={ch} value={ch}>
-                {ch}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         <Badge variant="secondary">{filteredOrders.length} заказов</Badge>
         {totalSum > 0 && (
           <Badge variant="outline" className="text-green-700 border-green-300">
@@ -71,14 +47,14 @@ const OrdersTable = ({ orders, loading }: Props) => {
               <TableHead>Клиент</TableHead>
               <TableHead>Номер заказа</TableHead>
               <TableHead className="text-right">Сумма</TableHead>
-              <TableHead>Канал</TableHead>
+              {!ozonOnly && <TableHead>Канал</TableHead>}
               <TableHead>Дата</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={ozonOnly ? 4 : 5} className="text-center py-12 text-muted-foreground">
                   <Icon name="Loader2" size={32} className="mx-auto mb-3 animate-spin opacity-40" />
                   Загрузка...
                 </TableCell>
@@ -101,11 +77,13 @@ const OrdersTable = ({ orders, loading }: Props) => {
                   <TableCell className="text-right font-medium">
                     {order.amount > 0 ? `${order.amount.toLocaleString("ru-RU")} ₽` : "—"}
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {order.channel}
-                    </Badge>
-                  </TableCell>
+                  {!ozonOnly && (
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {order.channel}
+                      </Badge>
+                    </TableCell>
+                  )}
                   <TableCell className="text-sm text-muted-foreground">
                     {new Date(order.created_at).toLocaleDateString("ru-RU", {
                       day: "numeric",
@@ -118,7 +96,7 @@ const OrdersTable = ({ orders, loading }: Props) => {
               ))}
             {!loading && filteredOrders.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={ozonOnly ? 4 : 5} className="text-center py-12 text-muted-foreground">
                   <Icon name="ShoppingCart" size={40} className="mx-auto mb-3 opacity-30" />
                   Заказов пока нет
                 </TableCell>

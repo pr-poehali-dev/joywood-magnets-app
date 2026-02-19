@@ -2,15 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
-import { CHANNELS } from "@/lib/store";
 import { toast } from "sonner";
 import { ADD_CLIENT_URL, OrderRecord } from "./types";
 
@@ -20,7 +12,6 @@ interface Props {
 
 const OzonOrderForm = ({ onOrderCreated }: Props) => {
   const [orderNumber, setOrderNumber] = useState("");
-  const [channel, setChannel] = useState("Ozon");
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -38,7 +29,7 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
         body: JSON.stringify({
           action: "create_order",
           order_number: orderNumber.trim(),
-          channel,
+          channel: "Ozon",
           amount: parseFloat(amount) || 0,
         }),
       });
@@ -85,6 +76,7 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
             value={orderNumber}
             onChange={(e) => setOrderNumber(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            className="font-mono"
           />
         </div>
         <div className="space-y-1.5">
@@ -94,38 +86,23 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
             placeholder="0"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            min="0"
           />
         </div>
       </div>
-      <div className="flex items-end gap-4 flex-wrap">
-        <div className="space-y-1.5 min-w-[180px]">
-          <Label>Канал</Label>
-          <Select value={channel} onValueChange={setChannel}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CHANNELS.map((ch) => (
-                <SelectItem key={ch} value={ch}>
-                  {ch}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <Button
-          className="gap-1.5"
-          disabled={submitting || !orderNumber.trim()}
-          onClick={handleSubmit}
-        >
-          {submitting ? (
-            <Icon name="Loader2" size={16} className="animate-spin" />
-          ) : (
-            <Icon name="Plus" size={16} />
-          )}
-          Оформить заказ
-        </Button>
-      </div>
+      <Button
+        className="gap-1.5 bg-orange-500 hover:bg-orange-600"
+        disabled={submitting || !orderNumber.trim()}
+        onClick={handleSubmit}
+      >
+        {submitting ? (
+          <Icon name="Loader2" size={16} className="animate-spin" />
+        ) : (
+          <Icon name="Check" size={16} />
+        )}
+        Оформить заказ Ozon
+      </Button>
     </div>
   );
 };

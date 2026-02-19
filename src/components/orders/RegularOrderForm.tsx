@@ -14,6 +14,8 @@ import { CHANNELS } from "@/lib/store";
 import { toast } from "sonner";
 import { ADD_CLIENT_URL, ClientOption, OrderRecord } from "./types";
 
+const NON_OZON_CHANNELS = CHANNELS.filter((ch) => ch !== "Ozon");
+
 interface Props {
   clients: ClientOption[];
   onClientAdded: (client: ClientOption) => void;
@@ -33,7 +35,7 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
   const isNewClient = selectedClientId === "__new__";
 
   const filteredClients = clients.filter((c) => {
-    if (!clientSearch) return true;
+    if (!clientSearch.trim()) return true;
     const q = clientSearch.toLowerCase();
     return (
       c.name.toLowerCase().includes(q) ||
@@ -99,6 +101,7 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
 
       toast.success(`Заказ оформлен: ${data.client_name}`);
       setSelectedClientId("");
+      setClientSearch("");
       setRegularAmount("");
       setRegularCode("");
       setNewClientName("");
@@ -127,50 +130,81 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1.5">
-        <Label>Клиент</Label>
-        <Input
-          placeholder="Поиск клиента по имени, телефону..."
-          value={clientSearch}
-          onChange={(e) => setClientSearch(e.target.value)}
-          className="mb-1"
-        />
-        <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Выберите клиента" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__new__">
-              <span className="flex items-center gap-2 text-orange-600 font-medium">
-                <Icon name="UserPlus" size={14} />
-                + Новый клиент
-              </span>
-            </SelectItem>
-            {filteredClients.map((c) => (
-              <SelectItem key={c.id} value={String(c.id)}>
-                {c.name || "—"} {c.phone ? `· ${c.phone}` : ""}{" "}
-                <span className="text-muted-foreground text-xs">({c.channel})</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label>Клиент</Label>
+          <Select
+            value={selectedClientId}
+            onValueChange={(v) => {
+              setSelectedClientId(v);
+              setNewClientName("");
+              setNewClientPhone("");
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Выберите клиента" />
+            </SelectTrigger>
+            <SelectContent>
+              <div className="px-2 py-1.5">
+                <Input
+                  placeholder="Поиск по имени, телефону..."
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                  className="h-8 text-sm"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+              <SelectItem value="__new__">
+                <span className="flex items-center gap-1.5 text-orange-600 font-medium">
+                  <Icon name="UserPlus" size={14} />
+                  + Новый клиент
+                </span>
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              {filteredClients.slice(0, 50).map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.name || "Без имени"}{c.phone ? ` · ${c.phone}` : ""}
+                </SelectItem>
+              ))}
+              {filteredClients.length === 0 && (
+                <div className="text-sm text-muted-foreground text-center py-2">Не найдено</div>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Канал</Label>
+          <Select value={regularChannel} onValueChange={setRegularChannel}>
+            <SelectTrigger>
+              <SelectValue placeholder="Канал продажи" />
+            </SelectTrigger>
+            <SelectContent>
+              {NON_OZON_CHANNELS.map((ch) => (
+                <SelectItem key={ch} value={ch}>
+                  {ch}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {isNewClient && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 border border-orange-200 rounded-lg bg-orange-50">
           <div className="space-y-1.5">
-            <Label className="text-orange-700">Имя нового клиента</Label>
+            <Label className="text-orange-700">Имя клиента <span className="text-red-500">*</span></Label>
             <Input
-              placeholder="Имя"
+              placeholder="Введите имя"
               value={newClientName}
               onChange={(e) => setNewClientName(e.target.value)}
               className="border-orange-200 bg-white"
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-orange-700">Телефон (необязательно)</Label>
+            <Label className="text-orange-700">Телефон <span className="text-muted-foreground font-normal">(необязательно)</span></Label>
             <Input
-              placeholder="+7..."
+              type="tel"
+              placeholder="+7 (___) ___-__-__"
               value={newClientPhone}
               onChange={(e) => setNewClientPhone(e.target.value)}
               className="border-orange-200 bg-white"
@@ -179,22 +213,7 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="space-y-1.5">
-          <Label>Канал</Label>
-          <Select value={regularChannel} onValueChange={setRegularChannel}>
-            <SelectTrigger>
-              <SelectValue placeholder="Канал" />
-            </SelectTrigger>
-            <SelectContent>
-              {CHANNELS.map((ch) => (
-                <SelectItem key={ch} value={ch}>
-                  {ch}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>Сумма (₽)</Label>
           <Input
@@ -202,27 +221,29 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
             placeholder="0"
             value={regularAmount}
             onChange={(e) => setRegularAmount(e.target.value)}
+            min="0"
           />
         </div>
         <div className="space-y-1.5">
-          <Label>Код заказа (необязательно)</Label>
+          <Label>Номер заказа <span className="text-muted-foreground font-normal text-xs">(необязательно)</span></Label>
           <Input
-            placeholder="Номер / код"
+            placeholder="Артикул, номер чека..."
             value={regularCode}
             onChange={(e) => setRegularCode(e.target.value)}
+            className="font-mono"
           />
         </div>
       </div>
 
       <Button
-        className="gap-1.5"
-        disabled={submitting || !selectedClientId || !regularChannel}
+        className="gap-1.5 bg-orange-500 hover:bg-orange-600"
+        disabled={submitting || !selectedClientId || !regularChannel || (isNewClient && !newClientName.trim())}
         onClick={handleSubmit}
       >
         {submitting ? (
           <Icon name="Loader2" size={16} className="animate-spin" />
         ) : (
-          <Icon name="Plus" size={16} />
+          <Icon name="Check" size={16} />
         )}
         Оформить заказ
       </Button>

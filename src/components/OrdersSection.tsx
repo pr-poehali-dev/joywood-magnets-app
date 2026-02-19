@@ -55,11 +55,11 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
             <TabsList className="mb-4">
               <TabsTrigger value="ozon" className="flex items-center gap-1.5">
                 <Icon name="Package" size={14} />
-                По номеру заказа
+                Заказ Ozon
               </TabsTrigger>
               <TabsTrigger value="regular" className="flex items-center gap-1.5">
                 <Icon name="User" size={14} />
-                Для клиента
+                По данным клиента
               </TabsTrigger>
             </TabsList>
 
@@ -67,10 +67,9 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm flex items-start gap-2">
                 <Icon name="Info" size={16} className="text-amber-600 mt-0.5 shrink-0" />
                 <span>
-                  Введите номер заказа (например,{" "}
+                  Введите номер заказа Ozon (например,{" "}
                   <span className="font-mono font-semibold">12345678-0001</span>).
-                  Если клиент с таким номером (до дефиса) уже есть — заказ
-                  добавится к нему. Иначе будет создан новый клиент.
+                  Клиент самостоятельно зарегистрируется по этому номеру и данные объединятся.
                 </span>
               </div>
               <OzonOrderForm onOrderCreated={handleOrderCreated} />
@@ -80,7 +79,7 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm flex items-start gap-2">
                 <Icon name="Info" size={16} className="text-blue-600 mt-0.5 shrink-0" />
                 <span>
-                  Оформите заказ для существующего клиента — при покупке в магазине, через мессенджеры или другие каналы.
+                  Оформите заказ для клиента из магазина, мессенджеров или других каналов — где данные клиента известны напрямую.
                 </span>
               </div>
               <RegularOrderForm
@@ -93,7 +92,24 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
         </CardContent>
       </Card>
 
-      <OrdersTable orders={orders} loading={ordersLoading} />
+      <Tabs value={mode} onValueChange={setMode}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="ozon" className="flex items-center gap-1.5">
+            <Icon name="Package" size={14} />
+            Заказы Ozon
+          </TabsTrigger>
+          <TabsTrigger value="regular" className="flex items-center gap-1.5">
+            <Icon name="Store" size={14} />
+            Прочие заказы
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="ozon">
+          <OrdersTable orders={orders} loading={ordersLoading} ozonOnly={true} />
+        </TabsContent>
+        <TabsContent value="regular">
+          <OrdersTable orders={orders} loading={ordersLoading} ozonOnly={false} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
