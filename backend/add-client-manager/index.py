@@ -288,10 +288,13 @@ def _create_order_for_client(client_id, order_code, channel, amount, cors):
     conn = psycopg2.connect(os.environ['DATABASE_URL'])
     try:
         cur = conn.cursor()
-        cur.execute("SELECT id, name FROM registrations WHERE id = %d" % client_id)
+        cur.execute("SELECT id, name, phone FROM registrations WHERE id = %d" % client_id)
         row = cur.fetchone()
         if not row:
             return {'statusCode': 404, 'headers': cors, 'body': json.dumps({'error': 'Клиент не найден'}, ensure_ascii=False)}
+
+        cur.execute("SELECT COUNT(*) FROM orders WHERE registration_id = %d" % client_id)
+        existing_orders = cur.fetchone()[0]
 
         cur.execute(
             "INSERT INTO orders (registration_id, order_code, amount, channel) "
@@ -304,6 +307,11 @@ def _create_order_for_client(client_id, order_code, channel, amount, cors):
             )
         )
         ord_row = cur.fetchone()
+        order_id = ord_row[0]
+
+        if existing_orders == 0:
+            _give_paduk(cur, client_id, row[2] if len(row) > 2 else '', order_id)
+
         conn.commit()
 
         cur.execute("SELECT phone FROM registrations WHERE id = %d" % client_id)
@@ -316,13 +324,14 @@ def _create_order_for_client(client_id, order_code, channel, amount, cors):
                 'client_id': client_id,
                 'client_name': row[1],
                 'client_phone': phone_row[0] if phone_row else '',
-                'order_id': ord_row[0],
+                'order_id': order_id,
                 'order_code': order_code or '',
                 'amount': amount,
                 'channel': channel,
                 'created_at': str(ord_row[1]),
                 'status': ord_row[2] or 'active',
                 'is_new': False,
+                'magnet_given': 'Падук' if existing_orders == 0 else None,
                 'message': 'Заказ оформлен',
             }, ensure_ascii=False),
         }
