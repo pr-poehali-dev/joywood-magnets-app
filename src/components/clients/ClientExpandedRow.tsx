@@ -189,6 +189,11 @@ const ClientExpandedRow = ({
               <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground hover:text-orange-600 gap-1" onClick={(e) => { e.stopPropagation(); startEdit(); }}>
                 <Icon name="Pencil" size={12} />Редактировать
               </Button>
+              {client.phone && (
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-blue-500 hover:text-blue-700 hover:bg-blue-50 gap-1" onClick={(e) => { e.stopPropagation(); window.open(`/my-collection?phone=${encodeURIComponent(client.phone)}`, "_blank"); }}>
+                  <Icon name="ExternalLink" size={12} />Карточка клиента
+                </Button>
+              )}
             </div>
           )}
 
