@@ -143,25 +143,18 @@ const MyCollection = () => {
   return (
     <div className="min-h-screen bg-white px-4 py-8">
       <div className="w-full max-w-lg mx-auto space-y-6">
-        <div className="text-center">
+        <div className="text-center space-y-3">
           <img
             src="https://cdn.poehali.dev/projects/d4862cdc-db07-4efa-aa4f-e8229141eeb3/bucket/1a067cd5-eb6a-42be-8edd-d1ca100bf90c.jpg"
             alt="Joywood"
             className="w-20 h-20 mx-auto object-contain"
           />
-        </div>
-
-        <div className="rounded-2xl overflow-hidden shadow-sm border border-gold-100">
-          <img
-            src="https://cdn.poehali.dev/projects/d4862cdc-db07-4efa-aa4f-e8229141eeb3/bucket/02ee238c-d0fc-4c07-b7d0-eecd501612a7.jpg"
-            alt="Атлас пород Joywood"
-            className="w-full object-contain"
-          />
-        </div>
-
-        <div className="text-center space-y-1 px-2">
-          <h1 className="text-xl font-bold text-foreground">У вас уже есть магнит Падук!</h1>
-          <p className="text-sm text-muted-foreground">Войдите по номеру телефона и узнайте, сколько пород осталось собрать до приза</p>
+          <div className="space-y-1.5">
+            <h1 className="text-2xl font-bold text-foreground">Ваша коллекция уже началась</h1>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              В ваших руках — образец настоящей ценной породы дерева. Таких пород 20, и каждая следующая покупка приближает вас к редким экземплярам и подаркам от Joywood
+            </p>
+          </div>
         </div>
 
         <Card className="shadow-lg border-gold-200">
