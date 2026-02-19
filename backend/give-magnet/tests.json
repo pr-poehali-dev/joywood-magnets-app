@@ -1,0 +1,43 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "POST give magnet",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "registration_id": 5,
+        "breed": "Платан",
+        "stars": 1,
+        "category": "Обычный"
+      },
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET client magnets",
+      "method": "GET",
+      "path": "/?registration_id=5",
+      "expectedStatus": 200
+    },
+    {
+      "name": "POST missing fields",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "registration_id": 5
+      },
+      "expectedStatus": 400
+    },
+    {
+      "name": "GET without id",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 400
+    }
+  ]
+}
