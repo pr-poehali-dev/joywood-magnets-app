@@ -17,7 +17,6 @@ import {
   GET_REGISTRATIONS_URL,
   GIVE_MAGNET_URL,
 } from "./clients/types";
-import AddClientDialog from "./clients/AddClientDialog";
 import ClientExpandedRow from "./clients/ClientExpandedRow";
 
 interface ClientsSectionProps {
@@ -102,7 +101,6 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
           <Input placeholder="Поиск по имени, телефону, каналу, коду Ozon..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
         <Badge variant="secondary" className="text-sm">{filtered.length} клиентов</Badge>
-        <AddClientDialog onClientAdded={(newClient) => setClients((prev) => [newClient, ...prev])} />
       </div>
 
       <Card>

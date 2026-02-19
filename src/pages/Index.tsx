@@ -9,16 +9,16 @@ import StatsSection from "@/components/StatsSection";
 import RecentRegistrations from "@/components/RecentRegistrations";
 
 const tabsList = [
-  { value: "clients", label: "Клиенты", icon: "Users" },
-  { value: "magnets", label: "Магниты", icon: "Magnet" },
   { value: "orders", label: "Заказы", icon: "ShoppingCart" },
+  { value: "clients", label: "Клиенты", icon: "Users" },
   { value: "registrations", label: "Регистрации", icon: "UserCheck" },
+  { value: "magnets", label: "Магниты", icon: "Magnet" },
   { value: "bonuses", label: "Бонусы", icon: "Award" },
   { value: "stats", label: "Статистика", icon: "BarChart3" },
 ];
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState("clients");
+  const [activeTab, setActiveTab] = useState("orders");
   const [focusClientId, setFocusClientId] = useState<number | null>(null);
   const [newRegsCount, setNewRegsCount] = useState(0);
 
