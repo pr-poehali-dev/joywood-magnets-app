@@ -222,7 +222,19 @@ const MyCollection = () => {
           </Card>
         )}
 
-        {data && (
+        {data && (() => {
+          const n = data.total_magnets;
+          const nextMilestone = BONUS_MILESTONES.find((m) =>
+            (m.type === "magnets" ? data.total_magnets : data.unique_breeds) < m.count
+          );
+          const motivation = n === 1
+            ? { emoji: "🌱", title: "Коллекция началась!", text: "У вас первый магнит — Падук. Каждая новая покупка в Joywood приносит новый образец редкой породы дерева." }
+            : n < 5
+            ? { emoji: "🌿", title: "Коллекция растёт", text: `Уже ${n} породы в коллекции. Ещё ${5 - n} магнита — и получите первый подарок от Joywood.` }
+            : nextMilestone
+            ? { emoji: "🏅", title: "Вы на пути к награде", text: `До следующего приза — «${nextMilestone.reward}» — осталось совсем немного. Продолжайте покупать!` }
+            : { emoji: "👑", title: "Невероятная коллекция!", text: "Вы собрали редчайшие породы дерева. Вы — настоящий знаток Joywood." };
+          return (
           <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-300">
             <Card className="border-gold-200">
               <CardContent className="pt-6">
@@ -238,20 +250,28 @@ const MyCollection = () => {
 
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div className="bg-slate-50 rounded-lg p-3">
-                    <div className="text-2xl font-bold text-orange-600">{data.total_magnets}</div>
+                    <div className="text-2xl font-bold text-gold-600">{data.total_magnets}</div>
                     <div className="text-xs text-muted-foreground">Всего магнитов</div>
                   </div>
                   <div className="bg-slate-50 rounded-lg p-3">
-                    <div className="text-2xl font-bold text-orange-600">{data.unique_breeds}</div>
+                    <div className="text-2xl font-bold text-gold-600">{data.unique_breeds}</div>
                     <div className="text-xs text-muted-foreground">Уникальных пород</div>
                   </div>
                   <div className="bg-slate-50 rounded-lg p-3">
-                    <div className="text-2xl font-bold text-orange-600">{TOTAL_BREEDS - data.unique_breeds}</div>
+                    <div className="text-2xl font-bold text-gold-600">{TOTAL_BREEDS - data.unique_breeds}</div>
                     <div className="text-xs text-muted-foreground">Осталось собрать</div>
                   </div>
                 </div>
               </CardContent>
             </Card>
+
+            <div className="rounded-xl bg-gradient-to-r from-gold-50 to-amber-50 border border-gold-200 p-4 flex gap-3 items-start">
+              <span className="text-2xl leading-none mt-0.5">{motivation.emoji}</span>
+              <div>
+                <div className="font-semibold text-gold-900 text-sm">{motivation.title}</div>
+                <div className="text-sm text-gold-700 mt-0.5 leading-relaxed">{motivation.text}</div>
+              </div>
+            </div>
 
             <Card>
               <CardHeader className="pb-3">
@@ -353,7 +373,8 @@ const MyCollection = () => {
               </CardContent>
             </Card>
           </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
