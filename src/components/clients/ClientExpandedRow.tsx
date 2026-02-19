@@ -236,6 +236,20 @@ const ClientExpandedRow = ({
             </div>
           )}
 
+          {!ordersLoading && clientOrders.length > 0 && (() => {
+            const uniqueChannels = [...new Set(clientOrders.map((o) => o.channel).filter(Boolean))];
+            return uniqueChannels.length > 1 ? (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Icon name="GitBranch" size={12} />Каналы:
+                </span>
+                {uniqueChannels.map((ch) => (
+                  <Badge key={ch} variant="outline" className="text-xs">{ch}</Badge>
+                ))}
+              </div>
+            ) : null;
+          })()}
+
           {(ordersLoading || clientOrders.length > 0) && (
             <div className="border-t pt-4">
               <h4 className="font-semibold text-sm flex items-center gap-2 mb-3">

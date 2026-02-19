@@ -111,7 +111,7 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
             <TableRow>
               <TableHead>Имя</TableHead>
               <TableHead>Телефон</TableHead>
-              <TableHead>Канал</TableHead>
+              <TableHead>Первичный канал</TableHead>
               <TableHead>Код Ozon</TableHead>
               <TableHead>Статус</TableHead>
               <TableHead>Дата</TableHead>
