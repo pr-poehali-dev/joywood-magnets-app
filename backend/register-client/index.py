@@ -71,12 +71,13 @@ def handler(event, context):
                 row = cur.fetchone()
                 if row:
                     existing_id = row[0]
+                    display_name = ('%s %s' % (ozon_prefix, name)).replace("'", "''")
                     cur.execute(
                         "UPDATE registrations SET name='%s', phone='%s', channel='%s', "
                         "ozon_order_code='%s', registered=TRUE "
                         "WHERE id=%d"
                         % (
-                            name.replace("'", "''"),
+                            display_name,
                             phone.replace("'", "''"),
                             channel.replace("'", "''"),
                             ozon_order_code.replace("'", "''"),
