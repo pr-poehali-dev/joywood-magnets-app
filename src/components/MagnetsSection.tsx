@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -12,7 +11,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
-import { WOOD_BREEDS, STAR_LABELS, getMagnetRecommendation, formatMoney } from "@/lib/store";
+import {
+  WOOD_BREEDS,
+  STAR_LABELS,
+  getMagnetRecommendation,
+} from "@/lib/store";
+import type { Client, MagnetRecommendation } from "@/lib/store";
 
 const categories = [...new Set(WOOD_BREEDS.map((b) => b.category))];
 
@@ -28,6 +32,23 @@ const categoryBadgeColors: Record<string, string> = {
   "Экзотика": "bg-red-100 text-red-800",
 };
 
+function makeVirtualClient(totalSpent: number, isNew: boolean): Client {
+  return {
+    id: "__calc__",
+    name: "Калькулятор",
+    phone: "",
+    email: "",
+    channels: [],
+    totalSpent,
+    ordersCount: isNew ? 0 : 1,
+    magnetsCollected: [],
+    uniqueBreeds: 0,
+    status: "active",
+    createdAt: "",
+    notes: "",
+  };
+}
+
 const MagnetsSection = () => {
   const [orderAmount, setOrderAmount] = useState<number>(0);
   const [isFirstOrder, setIsFirstOrder] = useState(false);
@@ -35,9 +56,15 @@ const MagnetsSection = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [starsFilter, setStarsFilter] = useState<string>("all");
 
-  const recommendation = orderAmount > 0
-    ? getMagnetRecommendation(orderAmount, isFirstOrder, totalSpent)
-    : "";
+  const recommendation: MagnetRecommendation | null = useMemo(() => {
+    if (orderAmount <= 0) return null;
+    const virtualClient = makeVirtualClient(totalSpent, isFirstOrder);
+    return getMagnetRecommendation({
+      client: virtualClient,
+      amount: orderAmount,
+      isFirstOrder,
+    });
+  }, [orderAmount, isFirstOrder, totalSpent]);
 
   const filteredBreeds = WOOD_BREEDS.filter((b) => {
     if (categoryFilter !== "all" && b.category !== categoryFilter) return false;
@@ -82,7 +109,7 @@ const MagnetsSection = () => {
                   onCheckedChange={(v) => setIsFirstOrder(v === true)}
                 />
                 <Label htmlFor="firstOrder" className="text-sm cursor-pointer">
-                  Первый заказ
+                  Новый участник (нет магнитов)
                 </Label>
               </div>
             </div>
@@ -94,7 +121,18 @@ const MagnetsSection = () => {
                 <div className="text-xs text-muted-foreground mb-0.5">
                   Рекомендация
                 </div>
-                <div className="font-semibold text-sm">{recommendation}</div>
+                <div className="font-semibold text-sm">{recommendation.message}</div>
+                {recommendation.bonus && (
+                  <div className="text-xs text-orange-600 mt-1">
+                    + Стартовый {recommendation.bonus.breed} {STAR_LABELS[recommendation.bonus.stars]}
+                  </div>
+                )}
+                {recommendation.startStars && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Категория: {STAR_LABELS[recommendation.startStars]}
+                    {recommendation.startStars >= 2 && " (VIP или перелив)"}
+                  </div>
+                )}
               </div>
             </div>
           )}

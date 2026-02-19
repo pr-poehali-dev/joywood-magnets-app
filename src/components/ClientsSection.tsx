@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -71,9 +71,8 @@ const ClientsSection = () => {
               const isExpanded = expandedId === client.id;
               const status = statusConfig[client.status];
               return (
-                <>
+                <Fragment key={client.id}>
                   <TableRow
-                    key={client.id}
                     className="cursor-pointer hover:bg-orange-50/50 transition-colors"
                     onClick={() =>
                       setExpandedId(isExpanded ? null : client.id)
@@ -167,7 +166,7 @@ const ClientsSection = () => {
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               );
             })}
             {filtered.length === 0 && (
