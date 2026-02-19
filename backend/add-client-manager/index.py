@@ -4,7 +4,7 @@ import psycopg2
 
 
 def handler(event, context):
-    """Менеджер добавляет клиента — можно только по коду заказа Ozon, или с полными данными"""
+    """Менеджер добавляет клиента или оформляет заказ по номеру"""
     if event.get('httpMethod') == 'OPTIONS':
         return {
             'statusCode': 200,
@@ -41,6 +41,89 @@ def handler(event, context):
         return {'statusCode': 405, 'headers': cors, 'body': json.dumps({'error': 'Method not allowed'})}
 
     body = json.loads(event.get('body') or '{}')
+    action = body.get('action', '')
+
+    if action == 'create_order':
+        return _handle_create_order(body, cors)
+
+    return _handle_add_client(body, cors)
+
+
+def _handle_create_order(body, cors):
+    order_number = (body.get('order_number') or '').strip()
+    channel = (body.get('channel') or '').strip() or 'Ozon'
+
+    if not order_number or len(order_number) < 3:
+        return {
+            'statusCode': 400, 'headers': cors,
+            'body': json.dumps({'error': 'Укажите номер заказа (минимум 3 символа)'}, ensure_ascii=False),
+        }
+
+    prefix = order_number.split('-')[0].strip()
+
+    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    try:
+        cur = conn.cursor()
+
+        cur.execute(
+            "SELECT id, name, phone, ozon_order_code FROM registrations "
+            "WHERE ozon_order_code IS NOT NULL "
+            "AND split_part(ozon_order_code, '-', 1) = '%s' "
+            "ORDER BY id LIMIT 1"
+            % prefix.replace("'", "''")
+        )
+        row = cur.fetchone()
+
+        if row:
+            client_id = row[0]
+            existing_code = row[3] or ''
+            if order_number not in existing_code:
+                codes = existing_code + ', ' + order_number if existing_code else order_number
+                cur.execute(
+                    "UPDATE registrations SET ozon_order_code = '%s' WHERE id = %d"
+                    % (codes.replace("'", "''"), client_id)
+                )
+                conn.commit()
+
+            return {
+                'statusCode': 200,
+                'headers': cors,
+                'body': json.dumps({
+                    'client_id': client_id,
+                    'client_name': row[1],
+                    'is_new': False,
+                    'message': 'Заказ добавлен к существующему клиенту',
+                }, ensure_ascii=False),
+            }
+        else:
+            client_name = 'Клиент ' + prefix
+            cur.execute(
+                "INSERT INTO registrations (name, phone, channel, ozon_order_code, registered) "
+                "VALUES ('%s', '', '%s', '%s', FALSE) RETURNING id"
+                % (
+                    client_name.replace("'", "''"),
+                    channel.replace("'", "''"),
+                    order_number.replace("'", "''"),
+                )
+            )
+            new_id = cur.fetchone()[0]
+            conn.commit()
+
+            return {
+                'statusCode': 200,
+                'headers': cors,
+                'body': json.dumps({
+                    'client_id': new_id,
+                    'client_name': client_name,
+                    'is_new': True,
+                    'message': 'Создан новый клиент',
+                }, ensure_ascii=False),
+            }
+    finally:
+        conn.close()
+
+
+def _handle_add_client(body, cors):
     name = (body.get('name') or '').strip()
     phone = (body.get('phone') or '').strip()
     channel = (body.get('channel') or '').strip()

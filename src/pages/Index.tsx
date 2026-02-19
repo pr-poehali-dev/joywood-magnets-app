@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Icon from "@/components/ui/icon";
 import ClientsSection from "@/components/ClientsSection";
@@ -7,7 +8,7 @@ import OrderHistory from "@/components/OrderHistory";
 import BonusTracker from "@/components/BonusTracker";
 import StatsSection from "@/components/StatsSection";
 
-const tabs = [
+const tabsList = [
   { value: "clients", label: "Клиенты", icon: "Users" },
   { value: "magnets", label: "Магниты", icon: "Magnet" },
   { value: "orders", label: "Заказы", icon: "ShoppingCart" },
@@ -17,6 +18,14 @@ const tabs = [
 ];
 
 const Index = () => {
+  const [activeTab, setActiveTab] = useState("clients");
+  const [focusClientId, setFocusClientId] = useState<number | null>(null);
+
+  const navigateToClient = useCallback((clientId: number) => {
+    setFocusClientId(clientId);
+    setActiveTab("clients");
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b sticky top-0 z-30">
@@ -38,9 +47,9 @@ const Index = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        <Tabs defaultValue="clients" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="bg-white border shadow-sm h-auto flex-wrap p-1">
-            {tabs.map((tab) => (
+            {tabsList.map((tab) => (
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
@@ -53,13 +62,16 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="clients">
-            <ClientsSection />
+            <ClientsSection
+              focusClientId={focusClientId}
+              onFocusHandled={() => setFocusClientId(null)}
+            />
           </TabsContent>
           <TabsContent value="magnets">
             <MagnetsSection />
           </TabsContent>
           <TabsContent value="orders">
-            <OrdersSection />
+            <OrdersSection onOrderCreated={navigateToClient} />
           </TabsContent>
           <TabsContent value="history">
             <OrderHistory />

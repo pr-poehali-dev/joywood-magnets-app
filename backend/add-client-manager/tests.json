@@ -44,6 +44,32 @@
       "method": "DELETE",
       "path": "/?id=999999",
       "expectedStatus": 404
+    },
+    {
+      "name": "POST create order by number",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "action": "create_order",
+        "order_number": "99887766-0001",
+        "channel": "Ozon"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "client_id": "number",
+        "is_new": "boolean"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST create order short number fails",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "action": "create_order",
+        "order_number": "ab"
+      },
+      "expectedStatus": 400
     }
   ]
 }

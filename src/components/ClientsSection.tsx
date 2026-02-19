@@ -71,7 +71,12 @@ const starBg: Record<number, string> = {
   3: "bg-red-50 border-red-300",
 };
 
-const ClientsSection = () => {
+interface ClientsSectionProps {
+  focusClientId?: number | null;
+  onFocusHandled?: () => void;
+}
+
+const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) => {
   const [search, setSearch] = useState("");
   const [clients, setClients] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,6 +111,20 @@ const ClientsSection = () => {
   }, []);
 
   useEffect(() => { loadInventory(); }, [loadInventory]);
+
+  useEffect(() => {
+    if (focusClientId != null) {
+      loadClients();
+      setExpandedId(focusClientId);
+      loadClientMagnets(focusClientId);
+      onFocusHandled?.();
+      setTimeout(() => {
+        const el = document.getElementById(`client-row-${focusClientId}`);
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusClientId]);
 
   const loadClients = () => {
     setLoading(true);
@@ -282,7 +301,7 @@ const ClientsSection = () => {
 
               return (
                 <Fragment key={client.id}>
-                  <TableRow className="cursor-pointer hover:bg-orange-50/50 transition-colors" onClick={() => setExpandedId(isExpanded ? null : client.id)}>
+                  <TableRow id={`client-row-${client.id}`} className={`cursor-pointer hover:bg-orange-50/50 transition-colors ${focusClientId === client.id ? "bg-orange-50" : ""}`} onClick={() => setExpandedId(isExpanded ? null : client.id)}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <Icon name={isExpanded ? "ChevronDown" : "ChevronRight"} size={16} className="text-muted-foreground" />
