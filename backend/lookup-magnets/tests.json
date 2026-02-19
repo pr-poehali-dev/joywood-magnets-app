@@ -1,0 +1,37 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "POST lookup existing client",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "phone": "+7 (927) 767-74-77"
+      },
+      "expectedStatus": 200
+    },
+    {
+      "name": "POST lookup unknown phone",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "phone": "+7 (000) 000-00-00"
+      },
+      "expectedStatus": 404
+    },
+    {
+      "name": "POST invalid phone",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "phone": "123"
+      },
+      "expectedStatus": 400
+    }
+  ]
+}

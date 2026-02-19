@@ -1,4 +1,5 @@
 {
+  "lookup-magnets": "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6f26ec4",
   "get-registrations": "https://functions.poehali.dev/bc5f0fde-e8e9-4666-9cdb-b19f49b506fe",
   "register-client": "https://functions.poehali.dev/40f9e8db-184c-407c-ace9-d0877ed306b9"
 }
