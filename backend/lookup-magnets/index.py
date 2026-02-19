@@ -63,9 +63,9 @@ def handler(event, context):
 
         cur.execute(
             "SELECT id, breed, stars, category, given_at FROM client_magnets "
-            "WHERE regexp_replace(phone, '\\D', '', 'g') LIKE '%%%s%%' "
+            "WHERE registration_id = %d "
             "ORDER BY given_at DESC"
-            % digits[-10:]
+            % reg[0]
         )
         rows = cur.fetchall()
 
