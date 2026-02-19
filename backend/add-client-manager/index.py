@@ -154,6 +154,19 @@ def _handle_update_client(body, cors):
         conn.close()
 
 
+def _give_paduk(cur, registration_id, phone, order_id):
+    """Выдать магнит Падук клиенту и привязать к заказу. Уменьшает остаток на складе если есть."""
+    cur.execute(
+        "INSERT INTO client_magnets (registration_id, phone, breed, stars, category, order_id) "
+        "VALUES (%d, '%s', 'Падук', 2, 'Особенный', %d)"
+        % (registration_id, (phone or '').replace("'", "''"), order_id)
+    )
+    cur.execute(
+        "UPDATE magnet_inventory SET stock = GREATEST(stock - 1, 0), updated_at = now() "
+        "WHERE breed = 'Падук' AND stock > 0"
+    )
+
+
 def _handle_create_order(body, cors):
     order_number = (body.get('order_number') or '').strip()
     channel = (body.get('channel') or '').strip() or 'Ozon'
@@ -243,6 +256,10 @@ def _handle_create_order(body, cors):
                 % (new_id, order_number.replace("'", "''"), amount, channel.replace("'", "''"))
             )
             ord_row = cur.fetchone()
+            order_id = ord_row[0]
+
+            _give_paduk(cur, new_id, '', order_id)
+
             conn.commit()
 
             return {
@@ -252,13 +269,14 @@ def _handle_create_order(body, cors):
                     'client_id': new_id,
                     'client_name': client_name,
                     'client_phone': '',
-                    'order_id': ord_row[0],
+                    'order_id': order_id,
                     'order_code': order_number,
                     'amount': amount,
                     'channel': channel,
                     'created_at': str(ord_row[1]),
                     'status': ord_row[2] or 'active',
                     'is_new': True,
+                    'magnet_given': 'Падук',
                     'message': 'Создан новый клиент',
                 }, ensure_ascii=False),
             }
