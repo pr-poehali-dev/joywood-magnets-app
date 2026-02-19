@@ -48,7 +48,7 @@ def handler(event, context):
         try:
             cur = conn.cursor()
             cur.execute(
-                "SELECT id, breed, stars, category, given_at FROM client_magnets "
+                "SELECT id, breed, stars, category, given_at, order_id FROM client_magnets "
                 "WHERE registration_id = %d ORDER BY given_at DESC"
                 % int(reg_id)
             )
@@ -61,6 +61,7 @@ def handler(event, context):
                     'stars': row[2],
                     'category': row[3],
                     'given_at': str(row[4]),
+                    'order_id': row[5],
                 })
             return {
                 'statusCode': 200, 'headers': cors,

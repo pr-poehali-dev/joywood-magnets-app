@@ -248,10 +248,19 @@ const ClientExpandedRow = ({
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  {clientOrders.map((o) => (
+                  {clientOrders.map((o) => {
+                    const linkedMagnet = magnets.find((m) => m.order_id === o.id);
+                    return (
                     <div key={o.id} className="flex items-center gap-2 text-sm bg-white rounded-lg border px-3 py-2">
                       <span className="font-mono text-muted-foreground text-xs">{o.order_code || "—"}</span>
                       <Badge variant="outline" className="text-xs">{o.channel}</Badge>
+                      {linkedMagnet ? (
+                        <span className="flex items-center gap-1 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-1.5 py-0.5">
+                          <Icon name="Magnet" size={10} />{STAR_LABELS[linkedMagnet.stars]} {linkedMagnet.breed}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">магнит не выдан</span>
+                      )}
                       <span className="font-medium ml-auto">
                         {o.amount > 0 ? `${o.amount.toLocaleString("ru-RU")} ₽` : "—"}
                       </span>
@@ -271,7 +280,8 @@ const ClientExpandedRow = ({
                         </Button>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

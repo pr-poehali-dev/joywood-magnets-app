@@ -19,6 +19,7 @@ export interface ClientMagnet {
   stars: number;
   category: string;
   given_at: string;
+  order_id?: number | null;
 }
 
 export interface ClientOrder {
