@@ -39,17 +39,6 @@ interface CollectionData {
   bonuses: BonusRecord[];
 }
 
-const categoryColors: Record<string, string> = {
-  "Обычный": "bg-amber-100 text-amber-800 border-amber-200",
-  "Особенный": "bg-gold-100 text-gold-800 border-gold-200",
-  "Элитный": "bg-red-100 text-red-800 border-red-200",
-};
-
-const starBg: Record<number, string> = {
-  1: "bg-amber-50 border-amber-200",
-  2: "bg-gold-50 border-gold-300",
-  3: "bg-red-50 border-red-300",
-};
 
 const MyCollection = () => {
   const [searchParams] = useSearchParams();
@@ -369,44 +358,6 @@ const MyCollection = () => {
               </CardContent>
             </Card>
 
-            {data.magnets.length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Icon name="Magnet" size={18} className="text-orange-500" />
-                    Собранные магниты ({data.magnets.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {data.magnets.map((magnet) => (
-                      <div
-                        key={magnet.id}
-                        className={`rounded-lg border p-3 text-center shadow-sm ${starBg[magnet.stars] || "bg-white"}`}
-                      >
-                        <div className="text-2xl mb-1">
-                          {STAR_LABELS[magnet.stars] || "⭐"}
-                        </div>
-                        <div className="font-medium text-sm">{magnet.breed}</div>
-                        <Badge
-                          variant="outline"
-                          className={`text-[10px] mt-1 ${categoryColors[magnet.category] || ""}`}
-                        >
-                          {magnet.category}
-                        </Badge>
-                        <div className="text-[10px] text-muted-foreground mt-1">
-                          {new Date(magnet.given_at).toLocaleDateString("ru-RU", {
-                            day: "numeric",
-                            month: "short",
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -418,6 +369,7 @@ const MyCollection = () => {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {sortedBreeds.map((breed) => {
                     const collected = collectedBreeds.has(breed.breed);
+                    const magnet = collected ? data.magnets.find((m) => m.breed === breed.breed) : null;
                     return (
                       <div
                         key={breed.breed}
@@ -433,6 +385,11 @@ const MyCollection = () => {
                         <div className={`font-medium ${collected ? "" : "opacity-50"}`}>
                           {breed.breed}
                         </div>
+                        {magnet && (
+                          <div className="text-[10px] text-green-600 mt-0.5">
+                            {new Date(magnet.given_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
