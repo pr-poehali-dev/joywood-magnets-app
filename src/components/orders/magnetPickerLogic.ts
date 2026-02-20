@@ -82,7 +82,7 @@ export function pickBreedsForOption(
 export function calcRecommendedOptions(
   orderAmount: number,
   isFirstOrder: boolean,
-  _clientTotal: number,
+  clientTotal: number,
   alreadyOwned: Set<string>,
 ): RecommendedOption[] {
   if (isFirstOrder) return [];
@@ -97,16 +97,18 @@ export function calcRecommendedOptions(
 
   if (collectedAll3) return [];
 
-  // ≥10 000₽ — гарантированно 1×3⭐
+  const canHave3star = clientTotal >= 10000;
+
+  // ≥10 000₽ заказ — гарантированно 1×3⭐ (если накопленная сумма тоже ≥10 000₽)
   if (orderAmount >= 10000) {
-    if (collectedAll3) return [];
+    if (!canHave3star) return [{ label: "1 особенный ⭐⭐", slots: [{ stars: 2 }] }];
     return [{ label: "1 элитный ⭐⭐⭐", slots: [{ stars: 3 }] }];
   }
 
-  // ≥7 000₽ — на выбор: 1×3⭐ / 2×2⭐ / 3×1⭐
+  // ≥7 000₽ — на выбор: 1×3⭐ / 2×2⭐ / 3×1⭐ (3⭐ только если clientTotal ≥ 10 000₽)
   if (orderAmount >= 7000) {
     const opts: RecommendedOption[] = [];
-    if (!collectedAll3) opts.push({ label: "1 элитный ⭐⭐⭐", slots: [{ stars: 3 }] });
+    if (canHave3star && !collectedAll3) opts.push({ label: "1 элитный ⭐⭐⭐", slots: [{ stars: 3 }] });
     if (!collectedAll2) opts.push({ label: "2 особенных ⭐⭐", slots: [{ stars: 2 }, { stars: 2 }] });
     opts.push({ label: "3 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }, { stars: 1 }] });
     return opts;
@@ -144,6 +146,13 @@ export function validateGiven(
 
   const givenStars = given.map((g) => g.stars).sort();
   const givenCount = givenStars.length;
+
+  const canHave3star = clientTotal >= 10000;
+  const has3star = givenStars.includes(3);
+
+  if (has3star && !canHave3star) {
+    return `Магнит ⭐⭐⭐ доступен только при общей сумме заказов клиента ≥ 10 000 ₽ (сейчас ${clientTotal.toLocaleString("ru-RU")} ₽).`;
+  }
 
   // Минимально допустимое количество магнитов — минимум по всем вариантам
   const minAllowed = Math.min(...options.map((o) => o.slots.length));
