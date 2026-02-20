@@ -329,11 +329,13 @@ const MyCollection = () => {
                             <Badge className="bg-orange-100 text-orange-800 border border-orange-200 text-[10px] py-0 px-1.5 animate-pulse">Ожидает выдачи</Badge>
                           )}
                         </span>
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          {current}/{milestone.count}
-                        </span>
+                        {!reached && (
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {current}/{milestone.count}
+                          </span>
+                        )}
                       </div>
-                      <Progress value={pct} className={`h-2 ${reached ? "[&>div]:bg-green-500" : ""}`} />
+                      {!reached && <Progress value={pct} className="h-2" />}
                     </div>
                   );
                 })}
