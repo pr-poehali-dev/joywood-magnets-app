@@ -284,6 +284,24 @@ const MyCollection = () => {
               </div>
             </div>
 
+            {data.total_magnets > 0 && (data.bonuses || []).length === 0 && (() => {
+              const anyReached = BONUS_MILESTONES.some((m) => {
+                const cur = m.type === "magnets" ? data.total_magnets : data.unique_breeds;
+                return cur >= m.count;
+              });
+              return anyReached ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 items-start">
+                  <span className="text-xl shrink-0">ℹ️</span>
+                  <div>
+                    <p className="font-semibold text-amber-900 text-sm">Бонусы не выдавались</p>
+                    <p className="text-sm text-amber-800 mt-1 leading-relaxed">
+                      До вашей регистрации в коллекции накопленные магниты не давали право на бонус. Теперь, когда вы зарегистрированы, при следующем заказе менеджер выдаст вам заработанные бонусы.
+                    </p>
+                  </div>
+                </div>
+              ) : null;
+            })()}
+
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
