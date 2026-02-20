@@ -63,6 +63,18 @@
       "method": "GET",
       "path": "/",
       "expectedStatus": 400
+    },
+    {
+      "name": "DELETE magnet invalid id",
+      "method": "DELETE",
+      "path": "/?magnet_id=abc",
+      "expectedStatus": 400
+    },
+    {
+      "name": "DELETE magnet not found",
+      "method": "DELETE",
+      "path": "/?magnet_id=999999",
+      "expectedStatus": 404
     }
   ]
 }

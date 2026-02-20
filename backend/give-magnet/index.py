@@ -182,4 +182,23 @@ def handler(event, context):
         finally:
             conn.close()
 
+    if method == 'DELETE':
+        params = event.get('queryStringParameters') or {}
+        magnet_id = params.get('magnet_id')
+        if not magnet_id or not str(magnet_id).isdigit():
+            return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите magnet_id'}, ensure_ascii=False)}
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT id, breed FROM client_magnets WHERE id = %d" % int(magnet_id))
+            row = cur.fetchone()
+            if not row:
+                return {'statusCode': 404, 'headers': cors, 'body': json.dumps({'error': 'Магнит не найден'}, ensure_ascii=False)}
+            cur.execute("UPDATE magnet_inventory SET stock = stock + 1, updated_at = now() WHERE breed = '%s'" % row[1].replace("'", "''"))
+            cur.execute("DELETE FROM client_magnets WHERE id = %d" % int(magnet_id))
+            conn.commit()
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'ok': True, 'breed': row[1]}, ensure_ascii=False)}
+        finally:
+            conn.close()
+
     return {'statusCode': 405, 'headers': cors, 'body': json.dumps({'error': 'Method not allowed'})}

@@ -106,6 +106,19 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
     }
   };
 
+  const handleRemove = async (magnetId: number, breed: string) => {
+    try {
+      const res = await fetch(`${GIVE_MAGNET_URL}?magnet_id=${magnetId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Ошибка");
+      setGiven((prev) => prev.filter((g) => g.id !== magnetId));
+      setInventory((prev) => ({ ...prev, [breed]: (prev[breed] ?? 0) + 1 }));
+      toast.success(`${breed} убран`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Ошибка удаления");
+    }
+  };
+
   const handleSaveComment = async () => {
     if (!comment.trim()) {
       toast.error("Напишите причину невыдачи");
@@ -165,18 +178,21 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
                   reshuffleKey={reshuffleKey}
                   onGiveAll={handleGiveAll}
                   onReshuffle={() => setReshuffleKey((k) => k + 1)}
+                  onRemove={handleRemove}
                 />
 
-                <MagnetBreedDropdown
-                  filtered={filtered}
-                  search={search}
-                  dropdownOpen={dropdownOpen}
-                  giving={giving}
-                  onSearchChange={setSearch}
-                  onToggle={() => setDropdownOpen((v) => !v)}
-                  onClose={() => setDropdownOpen(false)}
-                  onSelect={handleGive}
-                />
+                {!isFirstOrder && (
+                  <MagnetBreedDropdown
+                    filtered={filtered}
+                    search={search}
+                    dropdownOpen={dropdownOpen}
+                    giving={giving}
+                    onSearchChange={setSearch}
+                    onToggle={() => setDropdownOpen((v) => !v)}
+                    onClose={() => setDropdownOpen(false)}
+                    onSelect={handleGive}
+                  />
+                )}
 
                 {validationWarning && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-3">

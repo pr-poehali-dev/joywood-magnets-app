@@ -196,6 +196,18 @@ def _handle_create_order(body, cors):
     try:
         cur = conn.cursor()
 
+        # Глобальная проверка дубля точного номера заказа
+        cur.execute(
+            "SELECT id FROM orders WHERE order_code = '%s' LIMIT 1"
+            % order_number.replace("'", "''")
+        )
+        if cur.fetchone():
+            conn.close()
+            return {
+                'statusCode': 409, 'headers': cors,
+                'body': json.dumps({'error': 'Заказ с таким номером уже существует'}, ensure_ascii=False),
+            }
+
         cur.execute(
             "SELECT id, name, phone, ozon_order_code FROM registrations "
             "WHERE ozon_order_code IS NOT NULL "
@@ -208,6 +220,19 @@ def _handle_create_order(body, cors):
         if row:
             cid = row[0]
             existing_code = row[3] or ''
+
+            # Проверка: точный номер уже есть в заказах этого клиента
+            cur.execute(
+                "SELECT id FROM orders WHERE registration_id = %d AND order_code = '%s' LIMIT 1"
+                % (cid, order_number.replace("'", "''"))
+            )
+            if cur.fetchone():
+                conn.close()
+                return {
+                    'statusCode': 409, 'headers': cors,
+                    'body': json.dumps({'error': 'Заказ с таким номером уже существует'}, ensure_ascii=False),
+                }
+
             if order_number not in existing_code:
                 codes = existing_code + ', ' + order_number if existing_code else order_number
                 cur.execute(

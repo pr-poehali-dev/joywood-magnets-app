@@ -46,7 +46,7 @@
       "expectedStatus": 404
     },
     {
-      "name": "POST create order by number with amount",
+      "name": "POST create order duplicate number fails",
       "method": "POST",
       "path": "/",
       "body": {
@@ -55,13 +55,7 @@
         "channel": "Ozon",
         "amount": 3500
       },
-      "expectedStatus": 200,
-      "expectedBody": {
-        "client_id": "number",
-        "is_new": "boolean",
-        "order_id": "number"
-      },
-      "bodyMatcher": "partial"
+      "expectedStatus": 409
     },
     {
       "name": "POST create order short number fails",

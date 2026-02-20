@@ -15,6 +15,7 @@ interface Props {
   reshuffleKey: number;
   onGiveAll: (picks: Array<PickedBreed | null>) => void;
   onReshuffle: () => void;
+  onRemove: (magnetId: number, breed: string) => void;
 }
 
 const MagnetRecommendations = ({
@@ -29,6 +30,7 @@ const MagnetRecommendations = ({
   reshuffleKey,
   onGiveAll,
   onReshuffle,
+  onRemove,
 }: Props) => {
   const totalBreedsAfter = alreadyOwnedSize + given.length;
   const nextMilestone = BONUS_MILESTONES
@@ -114,15 +116,15 @@ const MagnetRecommendations = ({
         </div>
       )}
 
-      {nextMilestone && breedsToNext !== null && (
+      {nextMilestone && breedsToNext !== null && breedsToNext <= 5 && (
         <div className="bg-violet-50 border border-violet-200 rounded-lg px-3 py-2 flex items-center gap-2">
           <span className="text-lg shrink-0">{nextMilestone.icon}</span>
           <div className="min-w-0">
             <p className="text-xs font-semibold text-violet-800 truncate">{nextMilestone.reward}</p>
             <p className="text-[11px] text-violet-600">
               {breedsToNext === 0
-                ? "Бонус достигнут на этом заказе!"
-                : `До бонуса: ещё ${breedsToNext} ${breedsToNext === 1 ? "порода" : breedsToNext < 5 ? "породы" : "пород"} (сейчас ${totalBreedsAfter} из ${nextMilestone.count})`}
+                ? "Бонус достигнут на этом заказе! 🎉"
+                : `До бонуса ещё ${breedsToNext} ${breedsToNext === 1 ? "порода" : "породы"}`}
             </p>
           </div>
         </div>
@@ -135,9 +137,16 @@ const MagnetRecommendations = ({
             {given.map((m) => (
               <span
                 key={m.id}
-                className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-1 text-xs font-medium ${starBg[m.stars] ?? ""}`}
+                className={`inline-flex items-center gap-1 border rounded-full pl-2.5 pr-1 py-1 text-xs font-medium ${starBg[m.stars] ?? ""}`}
               >
                 {m.breed} {STAR_LABELS[m.stars]}
+                <button
+                  onClick={() => onRemove(m.id, m.breed)}
+                  className="ml-0.5 rounded-full hover:bg-black/10 p-0.5 transition-colors"
+                  title="Убрать"
+                >
+                  <Icon name="X" size={10} />
+                </button>
               </span>
             ))}
           </div>
