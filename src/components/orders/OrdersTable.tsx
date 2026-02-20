@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -22,10 +23,22 @@ interface Props {
 
 const OrdersTable = ({ orders, loading, ozonOnly = false, onNavigateToClient }: Props) => {
   const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
+  const [search, setSearch] = useState("");
 
-  const filteredOrders = ozonOnly
+  const byChannel = ozonOnly
     ? orders.filter((o) => o.channel === "Ozon")
     : orders.filter((o) => o.channel !== "Ozon");
+
+  const filteredOrders = search.trim()
+    ? byChannel.filter((o) => {
+        const q = search.toLowerCase();
+        return (
+          o.client_name?.toLowerCase().includes(q) ||
+          o.client_phone?.toLowerCase().includes(q) ||
+          o.order_code?.toLowerCase().includes(q)
+        );
+      })
+    : byChannel;
 
   const totalSum = filteredOrders.reduce((s, o) => s + o.amount, 0);
 
@@ -37,6 +50,15 @@ const OrdersTable = ({ orders, loading, ozonOnly = false, onNavigateToClient }: 
           {ozonOnly ? "История заказов Ozon" : "История заказов"}
         </h3>
         <div className="flex-1" />
+        <div className="relative">
+          <Icon name="Search" size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Клиент, телефон, номер..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8 h-8 w-52 text-sm"
+          />
+        </div>
         <Badge variant="secondary">{filteredOrders.length} заказов</Badge>
         {totalSum > 0 && (
           <Badge variant="outline" className="text-green-700 border-green-300">
@@ -111,7 +133,7 @@ const OrdersTable = ({ orders, loading, ozonOnly = false, onNavigateToClient }: 
               <TableRow>
                 <TableCell colSpan={ozonOnly ? 5 : 6} className="text-center py-12 text-muted-foreground">
                   <Icon name="ShoppingCart" size={40} className="mx-auto mb-3 opacity-30" />
-                  Заказов пока нет
+                  {search ? "Ничего не найдено" : "Заказов пока нет"}
                 </TableCell>
               </TableRow>
             )}

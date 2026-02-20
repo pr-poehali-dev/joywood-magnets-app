@@ -140,8 +140,7 @@ def _get_recent_registrations(cors):
             "LEFT JOIN orders o ON o.registration_id = r.id "
             "WHERE r.registered = TRUE "
             "GROUP BY r.id "
-            "ORDER BY r.created_at DESC "
-            "LIMIT 50"
+            "ORDER BY r.created_at DESC"
         )
         rows = cur.fetchall()
         items = []
@@ -173,7 +172,7 @@ def _get_orders(params, cors):
             "o.registration_id, r.name, r.phone "
             "FROM orders o "
             "LEFT JOIN registrations r ON r.id = o.registration_id "
-            "ORDER BY o.created_at DESC LIMIT 200"
+            "ORDER BY o.created_at DESC"
         )
         rows = cur.fetchall()
         orders = []
