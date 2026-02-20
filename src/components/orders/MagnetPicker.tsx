@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
-import { WOOD_BREEDS } from "@/lib/store";
+import { WOOD_BREEDS, STAR_LABELS } from "@/lib/store";
 import { GIVE_MAGNET_URL, ADD_CLIENT_URL } from "../clients/types";
 import { GET_REGISTRATIONS_URL } from "./types";
-import { GivenMagnet, PickedBreed, calcRecommendedOptions } from "./magnetPickerLogic";
+import { GivenMagnet, PickedBreed, calcRecommendedOptions, validateGiven } from "./magnetPickerLogic";
 import MagnetRecommendations from "./MagnetRecommendations";
 import MagnetBreedDropdown from "./MagnetBreedDropdown";
 import MagnetNoGiftForm from "./MagnetNoGiftForm";
@@ -31,6 +31,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
   const [comment, setComment] = useState("");
   const [savingComment, setSavingComment] = useState(false);
   const [reshuffleKey, setReshuffleKey] = useState(0);
+  const [validationWarning, setValidationWarning] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`${GIVE_MAGNET_URL}?action=inventory`)
@@ -177,11 +178,46 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
                   onSelect={handleGive}
                 />
 
+                {validationWarning && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-3">
+                    <div className="flex items-start gap-2">
+                      <Icon name="AlertTriangle" size={15} className="text-red-500 mt-0.5 shrink-0" />
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-red-800">Нарушение правил акции</p>
+                        <p className="text-xs text-red-700">{validationWarning}</p>
+                        <p className="text-xs text-muted-foreground">Выданные: {given.map((g) => `${g.breed} ${STAR_LABELS[g.stars]}`).join(", ")}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 text-xs"
+                        onClick={() => setValidationWarning(null)}
+                      >
+                        <Icon name="ArrowLeft" size={13} />
+                        Вернуться
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="flex-1 text-xs bg-red-500 hover:bg-red-600"
+                        onClick={() => { setValidationWarning(null); onDone(); }}
+                      >
+                        <Icon name="Check" size={13} />
+                        Всё равно подтвердить
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2 pt-1">
                   <Button
                     className="w-full bg-orange-500 hover:bg-orange-600 gap-1.5"
                     disabled={given.length === 0 && !isFirstOrder}
-                    onClick={onDone}
+                    onClick={() => {
+                      const warning = validateGiven(given, orderAmount, isFirstOrder, clientTotal, alreadyOwned);
+                      if (warning) { setValidationWarning(warning); } else { onDone(); }
+                    }}
                   >
                     <Icon name="Check" size={15} />
                     {isFirstOrder

@@ -168,3 +168,59 @@ export function calcRecommendedOptions(
     { label: "1 обычный ⭐", slots: [{ stars: 1 }] },
   ];
 }
+
+/**
+ * Проверяет набор выданных менеджером магнитов на соответствие правилам.
+ * Возвращает null если всё ок, или строку с описанием нарушения.
+ */
+export function validateGiven(
+  given: GivenMagnet[],
+  orderAmount: number,
+  isFirstOrder: boolean,
+  clientTotal: number,
+  alreadyOwned: Set<string>,
+): string | null {
+  if (isFirstOrder || given.length === 0) return null;
+
+  const options = calcRecommendedOptions(orderAmount, isFirstOrder, clientTotal, alreadyOwned);
+  if (options.length === 0) return null;
+
+  const givenStars = given.map((g) => g.stars).sort();
+  const givenCount = givenStars.length;
+
+  const canHave3star = clientTotal >= 10000;
+  const has3star = givenStars.includes(3);
+
+  // Проверка: 3⭐ только при общей сумме ≥ 10 000₽
+  if (has3star && !canHave3star) {
+    return `Магнит ⭐⭐⭐ доступен только при общей сумме заказов клиента ≥ 10 000 ₽ (сейчас ${clientTotal.toLocaleString("ru-RU")} ₽).`;
+  }
+
+  // Минимально допустимое количество магнитов — минимум по всем вариантам
+  const minAllowed = Math.min(...options.map((o) => o.slots.length));
+  // Максимально допустимое — максимум по всем вариантам
+  const maxAllowed = Math.max(...options.map((o) => o.slots.length));
+
+  if (givenCount < minAllowed) {
+    return `По правилам акции при этой сумме заказа полагается минимум ${minAllowed} магн., выдано ${givenCount}.`;
+  }
+  if (givenCount > maxAllowed) {
+    return `По правилам акции при этой сумме заказа полагается максимум ${maxAllowed} магн., выдано ${givenCount}.`;
+  }
+
+  // Проверяем, подходит ли набор хотя бы под один из допустимых вариантов по звёздам
+  const matchesAnyOption = options.some((opt) => {
+    const slotStars = opt.slots.map((s) => s.stars).sort();
+    return (
+      slotStars.length === givenStars.length &&
+      slotStars.every((s, i) => s === givenStars[i])
+    );
+  });
+
+  if (!matchesAnyOption) {
+    const allowed = options.map((o) => o.label).join(" / ");
+    return `Набор магнитов не соответствует правилам. Допустимые варианты: ${allowed}.`;
+  }
+
+  return null;
+}
