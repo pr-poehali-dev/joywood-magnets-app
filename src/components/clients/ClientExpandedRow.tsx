@@ -17,6 +17,8 @@ import {
   formatPhone,
   starBg,
 } from "./types";
+import OrderDetailModal from "@/components/orders/OrderDetailModal";
+import { OrderRecord } from "@/components/orders/types";
 
 interface ClientExpandedRowProps {
   client: Registration;
@@ -57,6 +59,7 @@ const ClientExpandedRow = ({
 
   const [clientOrders, setClientOrders] = useState<ClientOrder[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
 
   useEffect(() => {
     setOrdersLoading(true);
@@ -184,6 +187,7 @@ const ClientExpandedRow = ({
   };
 
   return (
+    <>
     <TableRow>
       <TableCell colSpan={6} className="bg-slate-50/80 p-0">
         <div className="p-6 space-y-5">
@@ -265,7 +269,7 @@ const ClientExpandedRow = ({
                   {clientOrders.map((o) => {
                     const linkedMagnet = magnets.find((m) => m.order_id === o.id);
                     return (
-                    <div key={o.id} className="flex items-center gap-2 text-sm bg-white rounded-lg border px-3 py-2">
+                    <div key={o.id} className="flex items-center gap-2 text-sm bg-white rounded-lg border px-3 py-2 cursor-pointer hover:bg-orange-50/50 transition-colors" onClick={(e) => { e.stopPropagation(); setSelectedOrder({ id: o.id, order_code: o.order_code, amount: o.amount, channel: o.channel, status: o.status, created_at: o.created_at, registration_id: client.id, client_name: client.name, client_phone: client.phone }); }}>
                       <span className="font-mono text-muted-foreground text-xs">{o.order_code || "—"}</span>
                       <Badge variant="outline" className="text-xs">{o.channel}</Badge>
                       {linkedMagnet ? (
@@ -405,6 +409,14 @@ const ClientExpandedRow = ({
         </div>
       </TableCell>
     </TableRow>
+
+    <OrderDetailModal
+      order={selectedOrder}
+      open={!!selectedOrder}
+      onClose={() => setSelectedOrder(null)}
+      onNavigateToClient={() => setSelectedOrder(null)}
+    />
+    </>
   );
 };
 
