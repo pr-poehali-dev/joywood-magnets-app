@@ -166,50 +166,52 @@ const MyCollection = () => {
           </div>
         </div>
 
-        <Card className="shadow-lg border-gold-200">
-          <CardContent className="pt-6">
-            <form onSubmit={handleSearch} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Номер телефона</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+7 (___) ___-__-__"
-                  value={phone}
-                  onChange={handlePhoneChange}
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full bg-gold-500 hover:bg-gold-600"
-                disabled={!isValid || loading}
-              >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <Icon name="Loader2" size={18} className="animate-spin" />
-                    Поиск...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <Icon name="Search" size={18} />
-                    Найти мои магниты
-                  </span>
-                )}
-              </Button>
-            </form>
+        {!data && (
+          <Card className="shadow-lg border-gold-200">
+            <CardContent className="pt-6">
+              <form onSubmit={handleSearch} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Номер телефона</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="+7 (___) ___-__-__"
+                    value={phone}
+                    onChange={handlePhoneChange}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-gold-500 hover:bg-gold-600"
+                  disabled={!isValid || loading}
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <Icon name="Loader2" size={18} className="animate-spin" />
+                      Поиск...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Icon name="Search" size={18} />
+                      Найти мои магниты
+                    </span>
+                  )}
+                </Button>
+              </form>
 
-            <div className="mt-4 pt-4 border-t text-center">
-              <p className="text-sm text-muted-foreground mb-2">Ещё не участвуете в акции?</p>
-              <a
-                href="/register"
-                className="inline-flex items-center gap-2 text-sm font-medium text-gold-600 hover:text-gold-700"
-              >
-                <Icon name="UserPlus" size={16} />
-                Зарегистрироваться
-              </a>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="mt-4 pt-4 border-t text-center">
+                <p className="text-sm text-muted-foreground mb-2">Ещё не участвуете в акции?</p>
+                <a
+                  href="/register"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-gold-600 hover:text-gold-700"
+                >
+                  <Icon name="UserPlus" size={16} />
+                  Зарегистрироваться
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {notFound && (
           <Card className="border-gold-200 bg-gold-50">
@@ -251,12 +253,21 @@ const MyCollection = () => {
                   <div className="bg-gold-100 rounded-full p-2">
                     <Icon name="User" size={20} className="text-gold-600" />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <div className="font-semibold text-lg">{data.client_name.replace(/^\d+\s+/, "")}</div>
                     <div className="text-xs text-muted-foreground/50 tracking-widest">
                       {data.phone.replace(/\d(?=\d{4})/g, "•")}
                     </div>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-foreground gap-1.5"
+                    onClick={() => { setData(null); setPhone(""); setNotFound(false); }}
+                  >
+                    <Icon name="LogOut" size={15} />
+                    Выйти
+                  </Button>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 text-center">
