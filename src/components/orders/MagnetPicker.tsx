@@ -10,24 +10,16 @@ import MagnetRecommendations from "./MagnetRecommendations";
 import MagnetBreedDropdown from "./MagnetBreedDropdown";
 import MagnetNoGiftForm from "./MagnetNoGiftForm";
 
-interface PendingBonus {
-  count: number;
-  type: string;
-  reward: string;
-}
-
 interface Props {
   registrationId: number;
   orderId: number;
   clientName: string;
   orderAmount: number;
   isFirstOrder: boolean;
-  isRegistered: boolean;
-  pendingBonuses: PendingBonus[];
   onDone: () => void;
 }
 
-const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirstOrder, isRegistered, pendingBonuses, onDone }: Props) => {
+const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirstOrder, onDone }: Props) => {
   const [inventory, setInventory] = useState<Record<string, number>>({});
   const [alreadyOwned, setAlreadyOwned] = useState<Set<string>>(new Set());
   const [clientTotal, setClientTotal] = useState(0);
@@ -40,9 +32,6 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
   const [savingComment, setSavingComment] = useState(false);
   const [reshuffleKey, setReshuffleKey] = useState(0);
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
-  const [step, setStep] = useState<"magnets" | "bonuses">("magnets");
-  const [givingBonus, setGivingBonus] = useState<string | null>(null);
-  const [bonusesLeft, setBonusesLeft] = useState<PendingBonus[]>(pendingBonuses);
 
   useEffect(() => {
     fetch(`${GIVE_MAGNET_URL}?action=inventory`)
@@ -130,32 +119,6 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
     }
   };
 
-  const handleGiveBonus = async (bonus: PendingBonus) => {
-    const key = `${bonus.count}-${bonus.type}`;
-    setGivingBonus(key);
-    try {
-      const res = await fetch(GIVE_MAGNET_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "give_bonus",
-          registration_id: registrationId,
-          milestone_count: bonus.count,
-          milestone_type: bonus.type,
-          reward: bonus.reward,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Ошибка");
-      setBonusesLeft((prev) => prev.filter((b) => !(b.count === bonus.count && b.type === bonus.type)));
-      toast.success(`Бонус «${bonus.reward}» выдан`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Ошибка выдачи бонуса");
-    } finally {
-      setGivingBonus(null);
-    }
-  };
-
   const handleSaveComment = async () => {
     if (!comment.trim()) {
       toast.error("Напишите причину невыдачи");
@@ -200,65 +163,9 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
             )}
           </div>
 
-          <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
-            {step === "bonuses" ? (
+          <div className="p-5 space-y-4">
+            {mode === "pick" ? (
               <>
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-start gap-2">
-                  <Icon name="Gift" size={16} className="text-orange-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold text-orange-800">Клиент заработал бонус!</p>
-                    <p className="text-xs text-orange-700 mt-0.5">Необходимо выдать все бонусы перед завершением</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {bonusesLeft.map((bonus) => {
-                    const key = `${bonus.count}-${bonus.type}`;
-                    return (
-                      <div key={key} className="flex items-center justify-between gap-3 bg-white border border-orange-200 rounded-lg px-3 py-2.5">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{bonus.reward}</p>
-                          <p className="text-xs text-muted-foreground">
-                            За {bonus.count} {bonus.type === "magnets" ? "магнитов" : "пород"}
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          className="bg-orange-500 hover:bg-orange-600 shrink-0 gap-1"
-                          disabled={givingBonus === key}
-                          onClick={() => handleGiveBonus(bonus)}
-                        >
-                          {givingBonus === key
-                            ? <Icon name="Loader2" size={13} className="animate-spin" />
-                            : <Icon name="Gift" size={13} />}
-                          Выдать
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-                <Button
-                  className="w-full bg-green-600 hover:bg-green-700 gap-1.5"
-                  disabled={bonusesLeft.length > 0}
-                  onClick={onDone}
-                >
-                  <Icon name="Check" size={15} />
-                  {bonusesLeft.length > 0
-                    ? `Выдайте все бонусы (${bonusesLeft.length} осталось)`
-                    : "Готово — все бонусы выданы"}
-                </Button>
-              </>
-            ) : mode === "pick" ? (
-              <>
-                {!isRegistered && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
-                    <Icon name="Info" size={15} className="text-blue-500 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-xs font-semibold text-blue-800">Клиент не зарегистрирован в акции</p>
-                      <p className="text-xs text-blue-700 mt-0.5">Магниты выдаются, но бонусы начисляются только после регистрации</p>
-                    </div>
-                  </div>
-                )}
-
                 <MagnetRecommendations
                   isFirstOrder={isFirstOrder}
                   options={recommendedOptions}
@@ -311,10 +218,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
                       <Button
                         size="sm"
                         className="flex-1 text-xs bg-red-500 hover:bg-red-600"
-                        onClick={() => {
-                          setValidationWarning(null);
-                          if (bonusesLeft.length > 0) { setStep("bonuses"); } else { onDone(); }
-                        }}
+                        onClick={() => { setValidationWarning(null); onDone(); }}
                       >
                         <Icon name="Check" size={13} />
                         Всё равно подтвердить
@@ -329,13 +233,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
                     disabled={given.length === 0 && !isFirstOrder}
                     onClick={() => {
                       const warning = validateGiven(given, orderAmount, isFirstOrder, clientTotal, alreadyOwned);
-                      if (warning) {
-                        setValidationWarning(warning);
-                      } else if (bonusesLeft.length > 0) {
-                        setStep("bonuses");
-                      } else {
-                        onDone();
-                      }
+                      if (warning) { setValidationWarning(warning); } else { onDone(); }
                     }}
                   >
                     <Icon name="Check" size={15} />
