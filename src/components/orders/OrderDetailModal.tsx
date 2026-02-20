@@ -141,7 +141,14 @@ const OrderDetailModal = ({ order, open, onClose, onNavigateToClient }: Props) =
                     Загружаю...
                   </div>
                 ) : magnets.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-1">Магниты не выдавались</p>
+                  <div>
+                    <p className="text-sm text-muted-foreground py-1">Магниты не выдавались</p>
+                    {order.magnet_comment && (
+                      <p className="text-xs text-muted-foreground/70 mt-1 italic">
+                        Причина: {order.magnet_comment}
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {magnets.map((m) => (

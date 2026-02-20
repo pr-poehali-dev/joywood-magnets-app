@@ -20,4 +20,5 @@ export interface OrderRecord {
   registration_id: number;
   client_name: string;
   client_phone: string;
+  magnet_comment?: string;
 }

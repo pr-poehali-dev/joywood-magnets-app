@@ -28,6 +28,7 @@ const starBg: Record<number, string> = {
 
 const MagnetPicker = ({ registrationId, orderId, clientName, onDone }: Props) => {
   const [inventory, setInventory] = useState<Record<string, number>>({});
+  const [alreadyOwned, setAlreadyOwned] = useState<Set<string>>(new Set());
   const [given, setGiven] = useState<GivenMagnet[]>([]);
   const [search, setSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -48,7 +49,15 @@ const MagnetPicker = ({ registrationId, orderId, clientName, onDone }: Props) =>
         setInventory(inv);
       })
       .catch(() => {});
-  }, []);
+
+    fetch(`${GIVE_MAGNET_URL}?registration_id=${registrationId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const breeds = new Set<string>((data.magnets || []).map((m: { breed: string }) => m.breed));
+        setAlreadyOwned(breeds);
+      })
+      .catch(() => {});
+  }, [registrationId]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -61,7 +70,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, onDone }: Props) =>
   const givenBreeds = new Set(given.map((g) => g.breed));
 
   const availableBreeds = WOOD_BREEDS
-    .filter((b) => !givenBreeds.has(b.breed))
+    .filter((b) => !givenBreeds.has(b.breed) && !alreadyOwned.has(b.breed))
     .map((b) => ({ ...b, stock: inventory[b.breed] ?? 0 }))
     .sort((a, b) => b.stock - a.stock);
 
@@ -200,23 +209,21 @@ const MagnetPicker = ({ registrationId, orderId, clientName, onDone }: Props) =>
                   )}
                 </div>
 
-                <div className="flex gap-2 pt-1">
+                <div className="space-y-2 pt-1">
                   <Button
-                    className="flex-1 bg-orange-500 hover:bg-orange-600 gap-1.5"
+                    className="w-full bg-orange-500 hover:bg-orange-600 gap-1.5"
                     disabled={given.length === 0}
                     onClick={onDone}
                   >
                     <Icon name="Check" size={15} />
-                    Готово ({given.length} магн.)
+                    Готово{given.length > 0 ? ` (${given.length} магн.)` : ""}
                   </Button>
-                  <Button
-                    variant="outline"
-                    className="border-red-200 text-red-600 hover:bg-red-50 gap-1.5"
+                  <button
+                    className="w-full text-xs text-muted-foreground hover:text-red-500 transition-colors py-1"
                     onClick={() => setMode("no_magnet")}
                   >
-                    <Icon name="X" size={15} />
-                    Не выдавать
-                  </Button>
+                    Не выдавать магнит (указать причину)
+                  </button>
                 </div>
               </>
             ) : (
