@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,14 +25,27 @@ interface Props {
 const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => {
   const [clientSearch, setClientSearch] = useState("");
   const [selectedClientId, setSelectedClientId] = useState<string>("");
+  const [selectedClientLabel, setSelectedClientLabel] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [regularChannel, setRegularChannel] = useState("");
   const [regularAmount, setRegularAmount] = useState("");
   const [regularCode, setRegularCode] = useState("");
   const [newClientName, setNewClientName] = useState("");
   const [newClientPhone, setNewClientPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isNewClient = selectedClientId === "__new__";
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const filteredClients = clients.filter((c) => {
     if (!clientSearch.trim()) return true;
@@ -43,6 +56,15 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
       c.channel.toLowerCase().includes(q)
     );
   });
+
+  const selectClient = (id: string, label: string) => {
+    setSelectedClientId(id);
+    setSelectedClientLabel(label);
+    setDropdownOpen(false);
+    setClientSearch("");
+    setNewClientName("");
+    setNewClientPhone("");
+  };
 
   const handleSubmit = async () => {
     if (!selectedClientId) {
@@ -101,6 +123,7 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
 
       toast.success(`Заказ оформлен: ${data.client_name}`);
       setSelectedClientId("");
+      setSelectedClientLabel("");
       setClientSearch("");
       setRegularAmount("");
       setRegularCode("");
@@ -133,43 +156,56 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>Клиент</Label>
-          <Select
-            value={selectedClientId}
-            onValueChange={(v) => {
-              setSelectedClientId(v);
-              setNewClientName("");
-              setNewClientPhone("");
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Выберите клиента" />
-            </SelectTrigger>
-            <SelectContent>
-              <div className="px-2 py-1.5">
-                <Input
-                  placeholder="Поиск по имени, телефону..."
-                  value={clientSearch}
-                  onChange={(e) => setClientSearch(e.target.value)}
-                  className="h-8 text-sm"
-                  onClick={(e) => e.stopPropagation()}
-                />
+          <div className="relative" ref={dropdownRef}>
+            <div
+              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:bg-accent/20"
+              onClick={() => setDropdownOpen((v) => !v)}
+            >
+              <span className={selectedClientId ? "text-foreground" : "text-muted-foreground"}>
+                {selectedClientId ? selectedClientLabel : "Выберите клиента"}
+              </span>
+              <Icon name="ChevronsUpDown" size={14} className="text-muted-foreground shrink-0" />
+            </div>
+
+            {dropdownOpen && (
+              <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg">
+                <div className="p-2 border-b">
+                  <Input
+                    autoFocus
+                    placeholder="Поиск по имени, телефону..."
+                    value={clientSearch}
+                    onChange={(e) => setClientSearch(e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="max-h-[220px] overflow-y-auto">
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-orange-50 flex items-center gap-1.5 text-orange-600 font-medium"
+                    onMouseDown={(e) => { e.preventDefault(); selectClient("__new__", "+ Новый клиент"); }}
+                  >
+                    <Icon name="UserPlus" size={14} />
+                    + Новый клиент
+                  </button>
+                  {filteredClients.slice(0, 50).map((c) => (
+                    <button
+                      key={c.id}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        selectClient(String(c.id), `${c.name || "Без имени"}${c.phone ? ` · ${c.phone}` : ""}`);
+                      }}
+                    >
+                      <span className="font-medium">{c.name || "Без имени"}</span>
+                      {c.phone && <span className="text-muted-foreground text-xs ml-1.5">{c.phone}</span>}
+                    </button>
+                  ))}
+                  {filteredClients.length === 0 && (
+                    <div className="text-sm text-muted-foreground text-center py-3">Не найдено</div>
+                  )}
+                </div>
               </div>
-              <SelectItem value="__new__">
-                <span className="flex items-center gap-1.5 text-orange-600 font-medium">
-                  <Icon name="UserPlus" size={14} />
-                  + Новый клиент
-                </span>
-              </SelectItem>
-              {filteredClients.slice(0, 50).map((c) => (
-                <SelectItem key={c.id} value={String(c.id)}>
-                  {c.name || "Без имени"}{c.phone ? ` · ${c.phone}` : ""}
-                </SelectItem>
-              ))}
-              {filteredClients.length === 0 && (
-                <div className="text-sm text-muted-foreground text-center py-2">Не найдено</div>
-              )}
-            </SelectContent>
-          </Select>
+            )}
+          </div>
         </div>
 
         <div className="space-y-1.5">
@@ -243,7 +279,7 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
         {submitting ? (
           <Icon name="Loader2" size={16} className="animate-spin" />
         ) : (
-          <Icon name="Check" size={16} />
+          <Icon name="Plus" size={16} />
         )}
         Оформить заказ
       </Button>
