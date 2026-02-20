@@ -1,6 +1,7 @@
 import json
 import os
 import psycopg2
+# reload env
 
 
 def handler(event, context):
