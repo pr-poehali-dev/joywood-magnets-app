@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,14 +11,18 @@ import {
 } from "@/components/ui/table";
 import Icon from "@/components/ui/icon";
 import { OrderRecord } from "./types";
+import OrderDetailModal from "./OrderDetailModal";
 
 interface Props {
   orders: OrderRecord[];
   loading: boolean;
   ozonOnly?: boolean;
+  onNavigateToClient?: (clientId: number) => void;
 }
 
-const OrdersTable = ({ orders, loading, ozonOnly = false }: Props) => {
+const OrdersTable = ({ orders, loading, ozonOnly = false, onNavigateToClient }: Props) => {
+  const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
+
   const filteredOrders = ozonOnly
     ? orders.filter((o) => o.channel === "Ozon")
     : orders.filter((o) => o.channel !== "Ozon");
@@ -49,12 +54,13 @@ const OrdersTable = ({ orders, loading, ozonOnly = false }: Props) => {
               <TableHead className="text-right">Сумма</TableHead>
               {!ozonOnly && <TableHead>Канал</TableHead>}
               <TableHead>Дата</TableHead>
+              <TableHead className="w-8" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={ozonOnly ? 4 : 5} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={ozonOnly ? 5 : 6} className="text-center py-12 text-muted-foreground">
                   <Icon name="Loader2" size={32} className="mx-auto mb-3 animate-spin opacity-40" />
                   Загрузка...
                 </TableCell>
@@ -62,7 +68,11 @@ const OrdersTable = ({ orders, loading, ozonOnly = false }: Props) => {
             )}
             {!loading &&
               filteredOrders.map((order) => (
-                <TableRow key={order.id} className="hover:bg-orange-50/30">
+                <TableRow
+                  key={order.id}
+                  className="hover:bg-orange-50/50 cursor-pointer transition-colors"
+                  onClick={() => setSelectedOrder(order)}
+                >
                   <TableCell className="font-medium">
                     {order.client_name || "—"}
                     {order.client_phone && (
@@ -92,11 +102,14 @@ const OrdersTable = ({ orders, loading, ozonOnly = false }: Props) => {
                       minute: "2-digit",
                     })}
                   </TableCell>
+                  <TableCell>
+                    <Icon name="ChevronRight" size={16} className="text-muted-foreground/50" />
+                  </TableCell>
                 </TableRow>
               ))}
             {!loading && filteredOrders.length === 0 && (
               <TableRow>
-                <TableCell colSpan={ozonOnly ? 4 : 5} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={ozonOnly ? 5 : 6} className="text-center py-12 text-muted-foreground">
                   <Icon name="ShoppingCart" size={40} className="mx-auto mb-3 opacity-30" />
                   Заказов пока нет
                 </TableCell>
@@ -105,6 +118,16 @@ const OrdersTable = ({ orders, loading, ozonOnly = false }: Props) => {
           </TableBody>
         </Table>
       </Card>
+
+      <OrderDetailModal
+        order={selectedOrder}
+        open={!!selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        onNavigateToClient={(clientId) => {
+          setSelectedOrder(null);
+          onNavigateToClient?.(clientId);
+        }}
+      />
     </div>
   );
 };

@@ -104,10 +104,10 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="ozon">
-          <OrdersTable orders={orders} loading={ordersLoading} ozonOnly={true} />
+          <OrdersTable orders={orders} loading={ordersLoading} ozonOnly={true} onNavigateToClient={onOrderCreated} />
         </TabsContent>
         <TabsContent value="regular">
-          <OrdersTable orders={orders} loading={ordersLoading} ozonOnly={false} />
+          <OrdersTable orders={orders} loading={ordersLoading} ozonOnly={false} onNavigateToClient={onOrderCreated} />
         </TabsContent>
       </Tabs>
     </div>
