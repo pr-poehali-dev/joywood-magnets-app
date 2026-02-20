@@ -92,10 +92,10 @@ def _get_registration_stats(cors):
         cur = conn.cursor()
         cur.execute(
             "SELECT DATE(created_at) as day, "
-            "SUM(CASE WHEN channel = 'ozon' THEN 1 ELSE 0 END) as ozon, "
-            "SUM(CASE WHEN channel != 'ozon' OR channel IS NULL THEN 1 ELSE 0 END) as other "
+            "SUM(CASE WHEN LOWER(channel) = 'ozon' THEN 1 ELSE 0 END) as ozon "
             "FROM registrations "
-            "WHERE registered = TRUE AND created_at >= NOW() - INTERVAL '30 days' "
+            "WHERE registered = TRUE AND LOWER(channel) = 'ozon' "
+            "AND created_at >= NOW() - INTERVAL '30 days' "
             "GROUP BY day ORDER BY day ASC"
         )
         rows = cur.fetchall()
@@ -104,25 +104,21 @@ def _get_registration_stats(cors):
             daily.append({
                 'date': str(row[0]),
                 'ozon': int(row[1]),
-                'other': int(row[2]),
-                'total': int(row[1]) + int(row[2]),
+                'total': int(row[1]),
             })
 
         cur.execute(
-            "SELECT COUNT(*) as total, "
-            "SUM(CASE WHEN channel = 'ozon' THEN 1 ELSE 0 END) as ozon, "
-            "SUM(CASE WHEN channel != 'ozon' OR channel IS NULL THEN 1 ELSE 0 END) as other, "
-            "SUM(CASE WHEN DATE(created_at) = CURRENT_DATE THEN 1 ELSE 0 END) as today, "
-            "SUM(CASE WHEN created_at >= NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END) as this_week "
+            "SELECT "
+            "SUM(CASE WHEN LOWER(channel) = 'ozon' THEN 1 ELSE 0 END) as ozon, "
+            "SUM(CASE WHEN LOWER(channel) = 'ozon' AND DATE(created_at) = CURRENT_DATE THEN 1 ELSE 0 END) as today, "
+            "SUM(CASE WHEN LOWER(channel) = 'ozon' AND created_at >= NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END) as this_week "
             "FROM registrations WHERE registered = TRUE"
         )
         r = cur.fetchone()
         summary = {
-            'total': int(r[0]),
-            'ozon': int(r[1]),
-            'other': int(r[2]),
-            'today': int(r[3]),
-            'this_week': int(r[4]),
+            'ozon': int(r[0] or 0),
+            'today': int(r[1] or 0),
+            'this_week': int(r[2] or 0),
         }
         return {
             'statusCode': 200, 'headers': cors,
