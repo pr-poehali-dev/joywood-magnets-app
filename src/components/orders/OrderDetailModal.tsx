@@ -1,8 +1,25 @@
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { OrderRecord } from "./types";
+import { GIVE_MAGNET_URL } from "../clients/types";
+import { STAR_LABELS } from "@/lib/store";
+
+interface ClientMagnet {
+  id: number;
+  breed: string;
+  stars: number;
+  given_at: string;
+  order_id: number | null;
+}
+
+const starBg: Record<number, string> = {
+  1: "bg-amber-50 border-amber-200 text-amber-800",
+  2: "bg-orange-50 border-orange-300 text-orange-800",
+  3: "bg-red-50 border-red-300 text-red-800",
+};
 
 interface Props {
   order: OrderRecord | null;
@@ -16,6 +33,22 @@ const channelColors: Record<string, string> = {
 };
 
 const OrderDetailModal = ({ order, open, onClose, onNavigateToClient }: Props) => {
+  const [magnets, setMagnets] = useState<ClientMagnet[]>([]);
+  const [magnetsLoading, setMagnetsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open || !order) { setMagnets([]); return; }
+    setMagnetsLoading(true);
+    fetch(`${GIVE_MAGNET_URL}?registration_id=${order.registration_id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const all: ClientMagnet[] = data.magnets || [];
+        setMagnets(all.filter((m) => m.order_id === order.id));
+      })
+      .catch(() => setMagnets([]))
+      .finally(() => setMagnetsLoading(false));
+  }, [open, order?.id, order?.registration_id]);
+
   const channelClass = order
     ? (channelColors[order.channel] ?? "bg-orange-50 text-orange-700 border-orange-200")
     : "";
@@ -95,6 +128,32 @@ const OrderDetailModal = ({ order, open, onClose, onNavigateToClient }: Props) =
                     </Button>
                   )}
                 </div>
+              </div>
+
+              <div className="border rounded-lg p-4 space-y-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium flex items-center gap-1.5">
+                  <Icon name="Gift" size={13} className="text-orange-400" />
+                  Магниты по заказу
+                </p>
+                {magnetsLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-1">
+                    <Icon name="Loader2" size={14} className="animate-spin" />
+                    Загружаю...
+                  </div>
+                ) : magnets.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-1">Магниты не выдавались</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {magnets.map((m) => (
+                      <span
+                        key={m.id}
+                        className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-1 text-xs font-medium ${starBg[m.stars] ?? "bg-slate-50 border-slate-200 text-slate-700"}`}
+                      >
+                        {m.breed} {STAR_LABELS[m.stars]}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </>
