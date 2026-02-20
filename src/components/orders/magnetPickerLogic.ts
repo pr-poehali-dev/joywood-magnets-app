@@ -152,13 +152,8 @@ export function calcRecommendedOptions(
   }
 
   if (orderAmount >= 3000) {
-    if (canHave3star) {
-      return [
-        { label: "1 особенный ⭐⭐", slots: [{ stars: 2 }] },
-        { label: "2 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }] },
-      ];
-    }
     return [
+      { label: "1 особенный ⭐⭐", slots: [{ stars: 2 }] },
       { label: "2 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }] },
     ];
   }
