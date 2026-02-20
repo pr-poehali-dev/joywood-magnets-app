@@ -157,6 +157,27 @@ def _handle_update_client(body, cors):
         conn.close()
 
 
+def _get_pending_bonuses(cur, registration_id, total_magnets, unique_breeds):
+    """Возвращает список бонусов, которые заработаны, но ещё не выданы"""
+    milestones = [
+        {'count': 5, 'type': 'magnets', 'reward': 'Кисть для клея Titebrush TM Titebond'},
+        {'count': 10, 'type': 'breeds', 'reward': 'Клей Titebond III 473 мл'},
+        {'count': 30, 'type': 'breeds', 'reward': 'Клей Titebond III 946 мл'},
+        {'count': 50, 'type': 'breeds', 'reward': 'Клей Titebond III 3,785 л'},
+    ]
+    cur.execute(
+        "SELECT milestone_count, milestone_type FROM bonuses WHERE registration_id = %d"
+        % registration_id
+    )
+    given = set((r[0], r[1]) for r in cur.fetchall())
+    result = []
+    for m in milestones:
+        current = total_magnets if m['type'] == 'magnets' else unique_breeds
+        if current >= m['count'] and (m['count'], m['type']) not in given:
+            result.append(m)
+    return result
+
+
 def _give_paduk(cur, registration_id, phone, order_id):
     """Выдать магнит Падук клиенту и привязать к заказу. Уменьшает остаток на складе если есть."""
     cur.execute(
@@ -209,7 +230,7 @@ def _handle_create_order(body, cors):
             }
 
         cur.execute(
-            "SELECT id, name, phone, ozon_order_code FROM registrations "
+            "SELECT id, name, phone, ozon_order_code, registered FROM registrations "
             "WHERE ozon_order_code IS NOT NULL "
             "AND split_part(ozon_order_code, '-', 1) = '%s' "
             "ORDER BY id LIMIT 1"
@@ -220,6 +241,7 @@ def _handle_create_order(body, cors):
         if row:
             cid = row[0]
             existing_code = row[3] or ''
+            registered = bool(row[4]) if len(row) > 4 else False
 
             # Проверка: точный номер уже есть в заказах этого клиента
             cur.execute(
@@ -248,6 +270,14 @@ def _handle_create_order(body, cors):
             ord_row = cur.fetchone()
             conn.commit()
 
+            pending_bonuses = []
+            if registered:
+                cur.execute("SELECT COUNT(*) FROM client_magnets WHERE registration_id = %d" % cid)
+                total_magnets = cur.fetchone()[0]
+                cur.execute("SELECT COUNT(DISTINCT breed) FROM client_magnets WHERE registration_id = %d" % cid)
+                unique_breeds = cur.fetchone()[0]
+                pending_bonuses = _get_pending_bonuses(cur, cid, total_magnets, unique_breeds)
+
             return {
                 'statusCode': 200,
                 'headers': cors,
@@ -262,6 +292,8 @@ def _handle_create_order(body, cors):
                     'created_at': str(ord_row[1]),
                     'status': ord_row[2] or 'active',
                     'is_new': False,
+                    'registered': registered,
+                    'pending_bonuses': pending_bonuses,
                     'message': 'Заказ добавлен к существующему клиенту',
                 }, ensure_ascii=False),
             }
@@ -304,6 +336,8 @@ def _handle_create_order(body, cors):
                     'created_at': str(ord_row[1]),
                     'status': ord_row[2] or 'active',
                     'is_new': True,
+                    'registered': False,
+                    'pending_bonuses': [],
                     'magnet_given': 'Падук',
                     'message': 'Создан новый клиент',
                 }, ensure_ascii=False),
@@ -316,10 +350,12 @@ def _create_order_for_client(client_id, order_code, channel, amount, cors):
     conn = psycopg2.connect(os.environ['DATABASE_URL'])
     try:
         cur = conn.cursor()
-        cur.execute("SELECT id, name, phone FROM registrations WHERE id = %d" % client_id)
+        cur.execute("SELECT id, name, phone, registered FROM registrations WHERE id = %d" % client_id)
         row = cur.fetchone()
         if not row:
             return {'statusCode': 404, 'headers': cors, 'body': json.dumps({'error': 'Клиент не найден'}, ensure_ascii=False)}
+
+        registered = bool(row[3])
 
         cur.execute("SELECT COUNT(*) FROM orders WHERE registration_id = %d" % client_id)
         existing_orders = cur.fetchone()[0]
@@ -342,8 +378,17 @@ def _create_order_for_client(client_id, order_code, channel, amount, cors):
 
         conn.commit()
 
-        cur.execute("SELECT phone FROM registrations WHERE id = %d" % client_id)
-        phone_row = cur.fetchone()
+        pending_bonuses = []
+        if registered:
+            cur.execute(
+                "SELECT COUNT(*) FROM client_magnets WHERE registration_id = %d" % client_id
+            )
+            total_magnets = cur.fetchone()[0]
+            cur.execute(
+                "SELECT COUNT(DISTINCT breed) FROM client_magnets WHERE registration_id = %d" % client_id
+            )
+            unique_breeds = cur.fetchone()[0]
+            pending_bonuses = _get_pending_bonuses(cur, client_id, total_magnets, unique_breeds)
 
         return {
             'statusCode': 200,
@@ -351,7 +396,7 @@ def _create_order_for_client(client_id, order_code, channel, amount, cors):
             'body': json.dumps({
                 'client_id': client_id,
                 'client_name': row[1],
-                'client_phone': phone_row[0] if phone_row else '',
+                'client_phone': row[2] or '',
                 'order_id': order_id,
                 'order_code': order_code or '',
                 'amount': amount,
@@ -359,7 +404,9 @@ def _create_order_for_client(client_id, order_code, channel, amount, cors):
                 'created_at': str(ord_row[1]),
                 'status': ord_row[2] or 'active',
                 'is_new': False,
+                'registered': registered,
                 'magnet_given': 'Падук' if existing_orders == 0 else None,
+                'pending_bonuses': pending_bonuses,
                 'message': 'Заказ оформлен',
             }, ensure_ascii=False),
         }

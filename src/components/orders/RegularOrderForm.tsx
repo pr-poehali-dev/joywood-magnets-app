@@ -34,7 +34,8 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
   const [newClientName, setNewClientName] = useState("");
   const [newClientPhone, setNewClientPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [pendingClient, setPendingClient] = useState<{ id: number; orderId: number; name: string; amount: number; isFirstOrder: boolean } | null>(null);
+  interface PendingBonus { count: number; type: string; reward: string; }
+  const [pendingClient, setPendingClient] = useState<{ id: number; orderId: number; name: string; amount: number; isFirstOrder: boolean; isRegistered: boolean; pendingBonuses: PendingBonus[] } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isNewClient = selectedClientId === "__new__";
@@ -147,7 +148,7 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
       setRegularCode("");
       setNewClientName("");
       setNewClientPhone("");
-      setPendingClient({ id: data.client_id, orderId: data.order_id, name: data.client_name, amount: data.amount || 0, isFirstOrder: !!data.magnet_given });
+      setPendingClient({ id: data.client_id, orderId: data.order_id, name: data.client_name, amount: data.amount || 0, isFirstOrder: !!data.magnet_given, isRegistered: data.registered !== false, pendingBonuses: data.pending_bonuses || [] });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Ошибка оформления");
     } finally {
@@ -163,6 +164,8 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
         clientName={pendingClient.name}
         orderAmount={pendingClient.amount}
         isFirstOrder={pendingClient.isFirstOrder}
+        isRegistered={pendingClient.isRegistered}
+        pendingBonuses={pendingClient.pendingBonuses}
         onDone={() => setPendingClient(null)}
       />
     );

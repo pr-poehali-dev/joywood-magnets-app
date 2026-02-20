@@ -16,7 +16,8 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [pendingClient, setPendingClient] = useState<{ id: number; orderId: number; name: string; amount: number; isFirstOrder: boolean } | null>(null);
+  interface PendingBonus { count: number; type: string; reward: string; }
+  const [pendingClient, setPendingClient] = useState<{ id: number; orderId: number; name: string; amount: number; isFirstOrder: boolean; isRegistered: boolean; pendingBonuses: PendingBonus[] } | null>(null);
 
   const handleSubmit = async () => {
     if (!orderNumber.trim() || orderNumber.trim().length < 3) {
@@ -63,7 +64,7 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
 
       setOrderNumber("");
       setAmount("");
-      setPendingClient({ id: data.client_id, orderId: data.order_id, name: data.client_name, amount: data.amount || 0, isFirstOrder: data.is_new === true });
+      setPendingClient({ id: data.client_id, orderId: data.order_id, name: data.client_name, amount: data.amount || 0, isFirstOrder: data.is_new === true, isRegistered: data.registered === true, pendingBonuses: data.pending_bonuses || [] });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Ошибка оформления";
       if (msg.includes("уже существует")) {
@@ -84,6 +85,8 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
         clientName={pendingClient.name}
         orderAmount={pendingClient.amount}
         isFirstOrder={pendingClient.isFirstOrder}
+        isRegistered={pendingClient.isRegistered}
+        pendingBonuses={pendingClient.pendingBonuses}
         onDone={() => setPendingClient(null)}
       />
     );
