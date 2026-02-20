@@ -15,6 +15,7 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
   const [orderNumber, setOrderNumber] = useState("");
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [pendingClient, setPendingClient] = useState<{ id: number; orderId: number; name: string; amount: number; isFirstOrder: boolean } | null>(null);
 
   const handleSubmit = async () => {
@@ -23,6 +24,7 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
       return;
     }
 
+    setFormError(null);
     setSubmitting(true);
     try {
       const res = await fetch(ADD_CLIENT_URL, {
@@ -63,7 +65,12 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
       setAmount("");
       setPendingClient({ id: data.client_id, orderId: data.order_id, name: data.client_name, amount: data.amount || 0, isFirstOrder: data.is_new === true });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Ошибка оформления");
+      const msg = e instanceof Error ? e.message : "Ошибка оформления";
+      if (msg.includes("уже существует")) {
+        setFormError(`Заказ ${orderNumber.trim()} уже зарегистрирован в системе.`);
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -90,9 +97,9 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
           <Input
             placeholder="Например: 12345678-0001"
             value={orderNumber}
-            onChange={(e) => setOrderNumber(e.target.value)}
+            onChange={(e) => { setOrderNumber(e.target.value); setFormError(null); }}
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-            className="font-mono"
+            className={`font-mono ${formError ? "border-red-400 focus-visible:ring-red-400" : ""}`}
           />
         </div>
         <div className="space-y-1.5">
@@ -107,6 +114,12 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
           />
         </div>
       </div>
+      {formError && (
+        <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          <Icon name="AlertCircle" size={15} className="shrink-0" />
+          {formError}
+        </div>
+      )}
       <Button
         className="gap-1.5 bg-orange-500 hover:bg-orange-600"
         disabled={submitting || !orderNumber.trim()}

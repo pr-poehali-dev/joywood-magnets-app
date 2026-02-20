@@ -176,6 +176,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
                   giving={giving}
                   alreadyOwnedSize={alreadyOwned.size}
                   reshuffleKey={reshuffleKey}
+                  onGive={(pick) => handleGive(pick.breed, pick.stars, pick.category)}
                   onGiveAll={handleGiveAll}
                   onReshuffle={() => setReshuffleKey((k) => k + 1)}
                   onRemove={handleRemove}

@@ -13,6 +13,7 @@ interface Props {
   giving: boolean;
   alreadyOwnedSize: number;
   reshuffleKey: number;
+  onGive: (pick: PickedBreed) => void;
   onGiveAll: (picks: Array<PickedBreed | null>) => void;
   onReshuffle: () => void;
   onRemove: (magnetId: number, breed: string) => void;
@@ -28,6 +29,7 @@ const MagnetRecommendations = ({
   giving,
   alreadyOwnedSize,
   reshuffleKey,
+  onGive,
   onGiveAll,
   onReshuffle,
   onRemove,
@@ -45,7 +47,7 @@ const MagnetRecommendations = ({
     return options.map((opt) =>
       pickBreedsForOption(opt.slots, alreadyOwned, givenBreeds, inventory)
     );
-  }, [reshuffleKey, options, givenBreeds, inventory]); // reshuffleKey форсирует пересчёт случайных пород
+  }, [reshuffleKey, options, givenBreeds, inventory]);
 
   return (
     <>
@@ -66,42 +68,54 @@ const MagnetRecommendations = ({
               </button>
             )}
           </div>
+
           {options.map((opt, oi) => {
             const picks = allPicks[oi] ?? [];
-            const hasAny = picks.some((p) => p !== null);
+            const notYetGiven = picks.filter(
+              (p) => p !== null && !givenBreeds.has(p.breed)
+            ) as PickedBreed[];
+            const allGiven = notYetGiven.length === 0 && picks.some((p) => p !== null);
+
             return (
-              <div
-                key={oi}
-                className={`border rounded-lg p-3 space-y-2 transition-all ${
-                  hasAny && !giving
-                    ? "bg-amber-50 border-amber-200 hover:border-amber-400 cursor-pointer"
-                    : "bg-slate-50 border-slate-200 opacity-50"
-                }`}
-                onClick={() => hasAny && !giving && onGiveAll(picks)}
-              >
+              <div key={oi} className={`border rounded-lg p-3 space-y-2 ${
+                allGiven ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
+              }`}>
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-medium text-amber-900">{opt.label}</p>
-                  {hasAny && !giving && (
-                    <span className="text-[10px] text-amber-600 shrink-0 flex items-center gap-0.5">
-                      <Icon name="MousePointerClick" size={11} />
-                      выдать всё
-                    </span>
+                  {notYetGiven.length > 1 && !giving && (
+                    <button
+                      onClick={() => onGiveAll(notYetGiven)}
+                      className="text-[10px] text-amber-700 hover:text-amber-900 border border-amber-300 rounded px-1.5 py-0.5 transition-colors shrink-0"
+                    >
+                      выдать все
+                    </button>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {picks.map((pick, pi) =>
-                    pick ? (
-                      <span
+                  {picks.map((pick, pi) => {
+                    if (!pick) {
+                      return (
+                        <span key={pi} className="text-xs text-muted-foreground italic">нет в наличии</span>
+                      );
+                    }
+                    const isGiven = givenBreeds.has(pick.breed);
+                    return (
+                      <button
                         key={pi}
-                        className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-1 text-xs font-medium ${starBg[pick.stars] ?? ""}`}
+                        disabled={isGiven || giving}
+                        onClick={() => !isGiven && !giving && onGive(pick)}
+                        className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-1 text-xs font-medium transition-all ${
+                          isGiven
+                            ? "opacity-60 cursor-default " + (starBg[pick.stars] ?? "")
+                            : (starBg[pick.stars] ?? "") + " hover:ring-2 hover:ring-amber-400 cursor-pointer"
+                        }`}
                       >
+                        {isGiven ? <Icon name="Check" size={10} /> : <Icon name="Plus" size={10} />}
                         {pick.breed} {STAR_LABELS[pick.stars]}
-                        <span className="text-[10px] opacity-50">· {pick.stock} шт</span>
-                      </span>
-                    ) : (
-                      <span key={pi} className="text-xs text-muted-foreground italic">нет в наличии</span>
-                    )
-                  )}
+                        {!isGiven && <span className="text-[10px] opacity-50">· {pick.stock} шт</span>}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -116,7 +130,7 @@ const MagnetRecommendations = ({
         </div>
       )}
 
-      {nextMilestone && breedsToNext !== null && breedsToNext <= 5 && (
+      {nextMilestone && breedsToNext !== null && breedsToNext <= 3 && (
         <div className="bg-violet-50 border border-violet-200 rounded-lg px-3 py-2 flex items-center gap-2">
           <span className="text-lg shrink-0">{nextMilestone.icon}</span>
           <div className="min-w-0">
