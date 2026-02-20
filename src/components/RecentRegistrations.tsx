@@ -76,7 +76,7 @@ const RecentRegistrations = ({ onNavigateToClient, onCountChange }: Props) => {
 
   const loadRegistrations = useCallback(() => {
     setRegsLoading(true);
-    fetch(`${GET_REGISTRATIONS_URL}?action=registrations`)
+    fetch(`${GET_REGISTRATIONS_URL}?action=recent_registrations`)
       .then((r) => r.json())
       .then((data) => setRegistrations(data.registrations || []))
       .catch(() => {})
