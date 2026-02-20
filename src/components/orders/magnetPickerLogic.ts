@@ -69,7 +69,7 @@ export function pickBreedsForOption(
       .filter((b) => b.stars === slot.stars && !alreadyOwned.has(b.breed) && !used.has(b.breed))
       .map((b) => ({ breed: b.breed, stars: b.stars, category: b.category, stock: inventory[b.breed] ?? 0 }))
       .filter((b) => b.stock > 0);
-    const pick = weightedPick(candidates, new Set());
+    const pick = weightedPick(candidates, used);
     if (pick) used.add(pick.breed);
     return pick;
   });
@@ -99,8 +99,9 @@ export function calcRecommendedOptions(
 
   const canHave3star = clientTotal >= 10000;
 
-  // Все 1⭐ и 2⭐ собраны → только элитные
+  // Все 1⭐ и 2⭐ собраны → только элитные (только если доступны по сумме)
   if (collectedAll1 && collectedAll2) {
+    if (!canHave3star) return [];
     return [{ label: "Все обычные и особенные собраны", slots: [{ stars: 3 }] }];
   }
 
