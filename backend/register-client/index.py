@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import psycopg2
 
 
@@ -46,12 +47,15 @@ def handler(event, context):
         existing_id = None
 
         if ozon_order_code:
-            ozon_prefix = ozon_order_code.split('-')[0].strip()
-            if ozon_prefix:
+            # Извлекаем числовой префикс из кода заказа (до первого дефиса)
+            ozon_prefix = re.split(r'[-\s]', ozon_order_code.strip())[0]
+
+            if ozon_prefix and ozon_prefix.isdigit():
+                # Ищем запись где ozon_order_code содержит этот префикс и клиент ещё не зарегистрирован
                 cur.execute(
-                    "SELECT id FROM registrations "
+                    "SELECT id, ozon_order_code FROM registrations "
                     "WHERE ozon_order_code IS NOT NULL "
-                    "AND split_part(ozon_order_code, '-', 1) = '%s' "
+                    "AND ozon_order_code LIKE '%s%%' "
                     "AND registered = FALSE "
                     "ORDER BY id LIMIT 1"
                     % ozon_prefix.replace("'", "''")
@@ -59,15 +63,15 @@ def handler(event, context):
                 row = cur.fetchone()
                 if row:
                     existing_id = row[0]
+                    # Имя храним как "ПРЕФИКС Имя" чтобы помнить источник
                     display_name = ('%s %s' % (ozon_prefix, name)).replace("'", "''")
                     cur.execute(
                         "UPDATE registrations SET name='%s', phone='%s', channel='Ozon', "
-                        "ozon_order_code='%s', registered=TRUE "
+                        "registered=TRUE "
                         "WHERE id=%d"
                         % (
                             display_name,
                             phone.replace("'", "''"),
-                            ozon_order_code.replace("'", "''"),
                             existing_id,
                         )
                     )

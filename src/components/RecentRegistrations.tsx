@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   BarChart,
   Bar,
@@ -9,7 +8,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 import Icon from "@/components/ui/icon";
@@ -19,14 +17,11 @@ const GET_REGISTRATIONS_URL = "https://functions.poehali.dev/bc5f0fde-e8e9-4666-
 interface DayStat {
   date: string;
   ozon: number;
-  other: number;
-  total: number;
 }
 
 interface Summary {
   total: number;
   ozon: number;
-  other: number;
   today: number;
   this_week: number;
 }
@@ -74,9 +69,9 @@ const RecentRegistrations = ({ onCountChange }: Props) => {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Динамика регистраций</h2>
+          <h2 className="text-lg font-semibold">Динамика регистраций с Ozon</h2>
           <p className="text-sm text-muted-foreground">
-            Участие клиентов в акции · обновлено{" "}
+            Клиенты Ozon, которые зарегистрировались в акции · обновлено{" "}
             {lastRefresh.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
           </p>
         </div>
@@ -87,11 +82,11 @@ const RecentRegistrations = ({ onCountChange }: Props) => {
       </div>
 
       {summary && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <Card>
             <CardContent className="pt-4 pb-4">
-              <p className="text-xs text-muted-foreground mb-1">Всего участников</p>
-              <p className="text-2xl font-bold">{summary.total}</p>
+              <p className="text-xs text-muted-foreground mb-1">Всего с Ozon</p>
+              <p className="text-2xl font-bold text-blue-600">{summary.ozon}</p>
             </CardContent>
           </Card>
           <Card>
@@ -106,25 +101,12 @@ const RecentRegistrations = ({ onCountChange }: Props) => {
               <p className="text-2xl font-bold text-orange-600">{summary.this_week}</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-4 pb-4">
-              <p className="text-xs text-muted-foreground mb-1">Ozon / Другие</p>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
-                  Ozon {summary.ozon}
-                </Badge>
-                <Badge variant="secondary" className="bg-orange-50 text-orange-700 border-orange-200">
-                  Др. {summary.other}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       )}
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-medium">Регистрации по дням (последние 30 дней)</CardTitle>
+          <CardTitle className="text-base font-medium">Регистрации с Ozon по дням (последние 30 дней)</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -143,18 +125,10 @@ const RecentRegistrations = ({ onCountChange }: Props) => {
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} />
                 <Tooltip
-                  formatter={(value: number, name: string) => [
-                    value,
-                    name === "ozon" ? "Ozon" : "Другие каналы",
-                  ]}
+                  formatter={(value: number) => [value, "Регистраций с Ozon"]}
                   labelStyle={{ fontWeight: 600 }}
                 />
-                <Legend
-                  formatter={(value) => (value === "ozon" ? "Ozon" : "Другие каналы")}
-                  wrapperStyle={{ fontSize: 12 }}
-                />
-                <Bar dataKey="ozon" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="other" stackId="a" fill="#f97316" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="ozon" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
