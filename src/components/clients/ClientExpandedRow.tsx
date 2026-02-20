@@ -267,14 +267,18 @@ const ClientExpandedRow = ({
               ) : (
                 <div className="space-y-1.5">
                   {clientOrders.map((o) => {
-                    const linkedMagnet = magnets.find((m) => m.order_id === o.id);
+                    const linkedMagnets = magnets.filter((m) => m.order_id === o.id);
                     return (
                     <div key={o.id} className="flex items-center gap-2 text-sm bg-white rounded-lg border px-3 py-2 cursor-pointer hover:bg-orange-50/50 transition-colors" onClick={(e) => { e.stopPropagation(); setSelectedOrder({ id: o.id, order_code: o.order_code, amount: o.amount, channel: o.channel, status: o.status, created_at: o.created_at, registration_id: client.id, client_name: client.name, client_phone: client.phone }); }}>
                       <span className="font-mono text-muted-foreground text-xs">{o.order_code || "—"}</span>
                       <Badge variant="outline" className="text-xs">{o.channel}</Badge>
-                      {linkedMagnet ? (
-                        <span className="flex items-center gap-1 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-1.5 py-0.5">
-                          <Icon name="Magnet" size={10} />{STAR_LABELS[linkedMagnet.stars]} {linkedMagnet.breed}
+                      {linkedMagnets.length > 0 ? (
+                        <span className="flex items-center gap-1 flex-wrap">
+                          {linkedMagnets.map((m) => (
+                            <span key={m.id} className="flex items-center gap-1 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-1.5 py-0.5">
+                              <Icon name="Magnet" size={10} />{STAR_LABELS[m.stars]} {m.breed}
+                            </span>
+                          ))}
                         </span>
                       ) : (
                         <span className="text-xs text-muted-foreground italic">магнит не выдан</span>
