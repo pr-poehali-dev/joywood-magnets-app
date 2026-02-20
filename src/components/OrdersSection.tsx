@@ -8,10 +8,10 @@ import RegularOrderForm from "./orders/RegularOrderForm";
 import OrdersTable from "./orders/OrdersTable";
 
 interface Props {
-  onOrderCreated?: (clientId: number) => void;
+  onNavigateToClient?: (clientId: number) => void;
 }
 
-const OrdersSection = ({ onOrderCreated }: Props) => {
+const OrdersSection = ({ onNavigateToClient }: Props) => {
   const [mode, setMode] = useState("ozon");
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
@@ -34,11 +34,8 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
     loadOrders();
   }, [loadOrders]);
 
-  const handleOrderCreated = (order: OrderRecord, clientId: number) => {
+  const handleOrderCreated = (order: OrderRecord) => {
     setOrders((prev) => [order, ...prev]);
-    if (onOrderCreated && clientId) {
-      onOrderCreated(clientId);
-    }
   };
 
   return (
@@ -104,10 +101,10 @@ const OrdersSection = ({ onOrderCreated }: Props) => {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="ozon">
-          <OrdersTable orders={orders} loading={ordersLoading} ozonOnly={true} onNavigateToClient={onOrderCreated} />
+          <OrdersTable orders={orders} loading={ordersLoading} ozonOnly={true} onNavigateToClient={onNavigateToClient} />
         </TabsContent>
         <TabsContent value="regular">
-          <OrdersTable orders={orders} loading={ordersLoading} ozonOnly={false} onNavigateToClient={onOrderCreated} />
+          <OrdersTable orders={orders} loading={ordersLoading} ozonOnly={false} onNavigateToClient={onNavigateToClient} />
         </TabsContent>
       </Tabs>
     </div>

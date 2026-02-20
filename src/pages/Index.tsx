@@ -88,7 +88,7 @@ const Index = () => {
             <MagnetsSection />
           </TabsContent>
           <TabsContent value="orders">
-            <OrdersSection onOrderCreated={navigateToClient} />
+            <OrdersSection onNavigateToClient={navigateToClient} />
           </TabsContent>
           <TabsContent value="registrations">
             <RecentRegistrations onNavigateToClient={navigateToClient} onCountChange={setNewRegsCount} />
