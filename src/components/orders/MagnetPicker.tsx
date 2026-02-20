@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
-import { WOOD_BREEDS, STAR_LABELS, STAR_NAMES } from "@/lib/store";
+import { WOOD_BREEDS, STAR_LABELS, STAR_NAMES, BONUS_MILESTONES } from "@/lib/store";
 import { GIVE_MAGNET_URL, ADD_CLIENT_URL } from "../clients/types";
 import { GET_REGISTRATIONS_URL } from "./types";
 
@@ -214,6 +214,12 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
   const recommendedPicks = pickBreeds(recommendedSlots, alreadyOwned, givenBreeds, inventory);
   const hasRecommendations = !isFirstOrder && recommendedPicks.some((p) => p !== null);
 
+  const totalBreedsAfter = alreadyOwned.size + given.length;
+  const nextMilestone = BONUS_MILESTONES
+    .filter((m) => m.type === "breeds")
+    .find((m) => totalBreedsAfter < m.count);
+  const breedsToNext = nextMilestone ? nextMilestone.count - totalBreedsAfter : null;
+
   const handleGive = async (breed: string, stars: number, category: string) => {
     setGiving(true);
     try {
@@ -343,6 +349,20 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
                     <Icon name="CheckCircle" size={16} className="text-green-600 shrink-0" />
                     <p className="text-sm text-green-800">Первый заказ — магнит <strong>Падук ⭐⭐</strong> выдан автоматически</p>
+                  </div>
+                )}
+
+                {nextMilestone && breedsToNext !== null && (
+                  <div className="bg-violet-50 border border-violet-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                    <span className="text-lg shrink-0">{nextMilestone.icon}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-violet-800 truncate">{nextMilestone.reward}</p>
+                      <p className="text-[11px] text-violet-600">
+                        {breedsToNext === 0
+                          ? "Бонус достигнут на этом заказе!"
+                          : `До бонуса: ещё ${breedsToNext} ${breedsToNext === 1 ? "порода" : breedsToNext < 5 ? "породы" : "пород"} (сейчас ${totalBreedsAfter} из ${nextMilestone.count})`}
+                      </p>
+                    </div>
                   </div>
                 )}
 
