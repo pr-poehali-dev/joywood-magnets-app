@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
-import { WOOD_BREEDS, STAR_LABELS } from "@/lib/store";
+import { WOOD_BREEDS } from "@/lib/store";
 import { GIVE_MAGNET_URL, ADD_CLIENT_URL } from "../clients/types";
 import { GET_REGISTRATIONS_URL } from "./types";
-import { GivenMagnet, calcRecommendedSlots, pickBreeds } from "./magnetPickerLogic";
+import { GivenMagnet, PickedBreed, calcRecommendedOptions } from "./magnetPickerLogic";
 import MagnetRecommendations from "./MagnetRecommendations";
 import MagnetBreedDropdown from "./MagnetBreedDropdown";
 import MagnetNoGiftForm from "./MagnetNoGiftForm";
@@ -74,9 +74,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
     ? availableBreeds.filter((b) => b.breed.toLowerCase().includes(search.toLowerCase()))
     : availableBreeds;
 
-  const recommendedSlots = calcRecommendedSlots(orderAmount, isFirstOrder, clientTotal, alreadyOwned);
-  const recommendedPicks = pickBreeds(recommendedSlots, alreadyOwned, givenBreeds, inventory);
-  const hasRecommendations = !isFirstOrder && recommendedPicks.some((p) => p !== null);
+  const recommendedOptions = calcRecommendedOptions(orderAmount, isFirstOrder, clientTotal, alreadyOwned);
 
   const handleGive = async (breed: string, stars: number, category: string) => {
     setGiving(true);
@@ -97,6 +95,12 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
       toast.error(e instanceof Error ? e.message : "Ошибка выдачи магнита");
     } finally {
       setGiving(false);
+    }
+  };
+
+  const handleGiveAll = async (picks: Array<PickedBreed | null>) => {
+    for (const pick of picks) {
+      if (pick) await handleGive(pick.breed, pick.stars, pick.category);
     }
   };
 
@@ -149,14 +153,14 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
               <>
                 <MagnetRecommendations
                   isFirstOrder={isFirstOrder}
-                  recommendedSlots={recommendedSlots}
-                  recommendedPicks={recommendedPicks}
-                  hasRecommendations={hasRecommendations}
-                  given={given}
+                  options={recommendedOptions}
+                  alreadyOwned={alreadyOwned}
                   givenBreeds={givenBreeds}
+                  inventory={inventory}
+                  given={given}
                   giving={giving}
                   alreadyOwnedSize={alreadyOwned.size}
-                  onGiveRecommended={(pick) => pick && handleGive(pick.breed, pick.stars, pick.category)}
+                  onGiveAll={handleGiveAll}
                 />
 
                 <MagnetBreedDropdown

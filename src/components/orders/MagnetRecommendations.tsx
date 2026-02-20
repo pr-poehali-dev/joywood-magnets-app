@@ -1,36 +1,29 @@
 import Icon from "@/components/ui/icon";
 import { STAR_LABELS, BONUS_MILESTONES } from "@/lib/store";
-import { starBg, RecommendedSlot, GivenMagnet } from "./magnetPickerLogic";
-
-interface RecommendedPick {
-  breed: string;
-  stars: number;
-  category: string;
-  stock: number;
-}
+import { starBg, GivenMagnet, RecommendedOption, PickedBreed, pickBreedsForOption } from "./magnetPickerLogic";
 
 interface Props {
   isFirstOrder: boolean;
-  recommendedSlots: RecommendedSlot[];
-  recommendedPicks: Array<RecommendedPick | null>;
-  hasRecommendations: boolean;
-  given: GivenMagnet[];
+  options: RecommendedOption[];
+  alreadyOwned: Set<string>;
   givenBreeds: Set<string>;
+  inventory: Record<string, number>;
+  given: GivenMagnet[];
   giving: boolean;
   alreadyOwnedSize: number;
-  onGiveRecommended: (pick: RecommendedPick | null) => void;
+  onGiveAll: (picks: Array<PickedBreed | null>) => void;
 }
 
 const MagnetRecommendations = ({
   isFirstOrder,
-  recommendedSlots,
-  recommendedPicks,
-  hasRecommendations,
-  given,
+  options,
+  alreadyOwned,
   givenBreeds,
+  inventory,
+  given,
   giving,
   alreadyOwnedSize,
-  onGiveRecommended,
+  onGiveAll,
 }: Props) => {
   const totalBreedsAfter = alreadyOwnedSize + given.length;
   const nextMilestone = BONUS_MILESTONES
@@ -38,55 +31,56 @@ const MagnetRecommendations = ({
     .find((m) => totalBreedsAfter < m.count);
   const breedsToNext = nextMilestone ? nextMilestone.count - totalBreedsAfter : null;
 
-  const recommendationLabel = () => {
-    if (isFirstOrder) return "Первый заказ — Падук выдан автоматически";
-    const count = recommendedSlots.length;
-    if (count === 0) return null;
-    const stars = recommendedSlots.map((s) => STAR_LABELS[s.stars]).join(" + ");
-    return `По правилам: ${count} магн. (${stars})`;
-  };
+  const hasOptions = !isFirstOrder && options.length > 0;
 
   return (
     <>
-      {hasRecommendations && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+      {hasOptions && (
+        <div className="space-y-2">
           <div className="flex items-center gap-1.5">
-            <Icon name="Sparkles" size={14} className="text-amber-600 shrink-0" />
-            <p className="text-xs font-semibold text-amber-800">{recommendationLabel()}</p>
+            <Icon name="Sparkles" size={13} className="text-amber-600 shrink-0" />
+            <p className="text-xs font-semibold text-amber-800">Рекомендации по правилам акции</p>
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {recommendedPicks.map((pick, i) => {
-              if (!pick) {
-                return (
-                  <span key={i} className="text-xs text-muted-foreground italic">
-                    нет подходящей породы в наличии
-                  </span>
-                );
-              }
-              const alreadyGiven = givenBreeds.has(pick.breed);
-              return (
-                <button
-                  key={i}
-                  disabled={alreadyGiven || giving}
-                  onClick={() => onGiveRecommended(pick)}
-                  className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-1 text-xs font-medium transition-all ${
-                    alreadyGiven
-                      ? "opacity-50 cursor-default " + (starBg[pick.stars] ?? "")
-                      : (starBg[pick.stars] ?? "") + " hover:ring-2 hover:ring-amber-400 cursor-pointer"
-                  }`}
-                >
-                  {alreadyGiven && <Icon name="Check" size={11} />}
-                  {pick.breed} {STAR_LABELS[pick.stars]}
-                  {!alreadyGiven && (
-                    <span className="text-[10px] opacity-60">· {pick.stock} шт</span>
+          {options.map((opt, oi) => {
+            const picks = pickBreedsForOption(opt.slots, alreadyOwned, givenBreeds, inventory);
+            const hasAny = picks.some((p) => p !== null);
+            return (
+              <div
+                key={oi}
+                className={`border rounded-lg p-3 space-y-2 transition-all ${
+                  hasAny && !giving
+                    ? "bg-amber-50 border-amber-200 hover:border-amber-400 cursor-pointer"
+                    : "bg-slate-50 border-slate-200 opacity-50"
+                }`}
+                onClick={() => hasAny && !giving && onGiveAll(picks)}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-amber-900">{opt.label}</p>
+                  {hasAny && !giving && (
+                    <span className="text-[10px] text-amber-600 shrink-0 flex items-center gap-0.5">
+                      <Icon name="MousePointerClick" size={11} />
+                      выдать всё
+                    </span>
                   )}
-                </button>
-              );
-            })}
-          </div>
-          {recommendedPicks.every((p) => p === null) && (
-            <p className="text-xs text-amber-700">Рекомендованные породы закончились на складе — выберите вручную</p>
-          )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {picks.map((pick, pi) =>
+                    pick ? (
+                      <span
+                        key={pi}
+                        className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-1 text-xs font-medium ${starBg[pick.stars] ?? ""}`}
+                      >
+                        {pick.breed} {STAR_LABELS[pick.stars]}
+                        <span className="text-[10px] opacity-50">· {pick.stock} шт</span>
+                      </span>
+                    ) : (
+                      <span key={pi} className="text-xs text-muted-foreground italic">нет в наличии</span>
+                    )
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

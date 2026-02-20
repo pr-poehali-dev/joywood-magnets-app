@@ -8,7 +8,18 @@ export interface GivenMagnet {
 
 export interface RecommendedSlot {
   stars: number;
+}
+
+export interface RecommendedOption {
   label: string;
+  slots: RecommendedSlot[];
+}
+
+export interface PickedBreed {
+  breed: string;
+  stars: number;
+  category: string;
+  stock: number;
 }
 
 export const starBg: Record<number, string> = {
@@ -17,16 +28,64 @@ export const starBg: Record<number, string> = {
   3: "bg-red-50 border-red-300 text-red-800",
 };
 
-/** Рассчитывает рекомендуемый набор магнитов по правилам акции */
-export function calcRecommendedSlots(
+/**
+ * Weighted random pick: чем больше остаток, тем выше шанс,
+ * но с добавлением шума — так разным клиентам попадаются разные породы.
+ * Из топ-N кандидатов выбирается случайный с вероятностью пропорциональной остатку + шум.
+ */
+function weightedPick(
+  candidates: PickedBreed[],
+  used: Set<string>,
+): PickedBreed | null {
+  const available = candidates.filter((c) => !used.has(c.breed) && c.stock > 0);
+  if (available.length === 0) return null;
+
+  const withNoise = available.map((c) => ({
+    ...c,
+    weight: c.stock + Math.random() * (c.stock * 0.6 + 2),
+  }));
+  withNoise.sort((a, b) => b.weight - a.weight);
+
+  const top = withNoise.slice(0, Math.min(5, withNoise.length));
+  const totalW = top.reduce((s, c) => s + c.weight, 0);
+  let r = Math.random() * totalW;
+  for (const c of top) {
+    r -= c.weight;
+    if (r <= 0) return c;
+  }
+  return top[0];
+}
+
+/** Подбирает конкретные породы для каждого слота с элементом случайности */
+export function pickBreedsForOption(
+  slots: RecommendedSlot[],
+  alreadyOwned: Set<string>,
+  givenBreeds: Set<string>,
+  inventory: Record<string, number>,
+): Array<PickedBreed | null> {
+  const used = new Set<string>(givenBreeds);
+  return slots.map((slot) => {
+    const candidates: PickedBreed[] = WOOD_BREEDS
+      .filter((b) => b.stars === slot.stars && !alreadyOwned.has(b.breed) && !used.has(b.breed))
+      .map((b) => ({ breed: b.breed, stars: b.stars, category: b.category, stock: inventory[b.breed] ?? 0 }))
+      .filter((b) => b.stock > 0);
+    const pick = weightedPick(candidates, new Set());
+    if (pick) used.add(pick.breed);
+    return pick;
+  });
+}
+
+/**
+ * Возвращает все допустимые варианты выдачи магнитов по правилам акции.
+ * Каждый вариант — { label, slots[] }
+ */
+export function calcRecommendedOptions(
   orderAmount: number,
   isFirstOrder: boolean,
   clientTotal: number,
   alreadyOwned: Set<string>,
-): RecommendedSlot[] {
-  if (isFirstOrder) {
-    return [{ stars: 2, label: "Падук уже выдан автоматически" }];
-  }
+): RecommendedOption[] {
+  if (isFirstOrder) return [];
 
   const allStar1 = WOOD_BREEDS.filter((b) => b.stars === 1);
   const allStar2 = WOOD_BREEDS.filter((b) => b.stars === 2);
@@ -40,91 +99,77 @@ export function calcRecommendedSlots(
 
   const canHave3star = clientTotal >= 10000;
 
+  // Все 1⭐ и 2⭐ собраны → только элитные
   if (collectedAll1 && collectedAll2) {
-    return [{ stars: 3, label: "Все обычные и особенные собраны → выдаём элитный" }];
+    return [{ label: "Все обычные и особенные собраны", slots: [{ stars: 3 }] }];
   }
 
+  // Все 1⭐ собраны → переходим на следующую категорию
   if (collectedAll1) {
-    const nextStars = collectedAll2 ? 3 : 2;
+    const next: 2 | 3 = collectedAll2 ? 3 : 2;
     if (orderAmount >= 7000) {
-      if (canHave3star) {
-        return [{ stars: 3, label: "≥7000₽ + сумма ≥10000₽" }];
-      } else {
-        return [
-          { stars: nextStars, label: "≥7000₽, все 1⭐ собраны" },
-          { stars: nextStars, label: "≥7000₽, все 1⭐ собраны" },
-        ];
+      const opts: RecommendedOption[] = [];
+      if (canHave3star && !collectedAll2) {
+        opts.push({ label: "1 элитный ⭐⭐⭐", slots: [{ stars: 3 }] });
       }
+      opts.push({ label: `2 особенных ⭐⭐`, slots: [{ stars: next }, { stars: next }] });
+      return opts;
     }
     if (orderAmount >= 3000) {
-      return [{ stars: nextStars, label: "≥3000₽, все 1⭐ собраны" }];
+      return [{ label: `1 особенный ⭐⭐`, slots: [{ stars: next }] }];
     }
     if (orderAmount >= 1500) {
-      return [
-        { stars: nextStars, label: "≥1500₽, все 1⭐ собраны" },
-        { stars: nextStars, label: "≥1500₽, все 1⭐ собраны" },
-      ];
+      return [{ label: `2 особенных ⭐⭐`, slots: [{ stars: next }, { stars: next }] }];
     }
-    return [{ stars: nextStars, label: "<1500₽, все 1⭐ собраны" }];
+    return [{ label: `1 особенный ⭐⭐`, slots: [{ stars: next }] }];
   }
 
+  // Стандартные случаи (есть обычные 1⭐ для выдачи)
   if (orderAmount >= 10000) {
-    const slots: RecommendedSlot[] = [{ stars: 3, label: "≥10 000₽ → гарантированный 3⭐" }];
+    const opts: RecommendedOption[] = [];
     if (canHave3star) {
-      slots.push({ stars: 1, label: "≥10 000₽ дополнительно" });
-      slots.push({ stars: 1, label: "≥10 000₽ дополнительно" });
+      opts.push({ label: "1 элитный + 2 обычных", slots: [{ stars: 3 }, { stars: 1 }, { stars: 1 }] });
+      opts.push({ label: "1 элитный + 1 особенный", slots: [{ stars: 3 }, { stars: 2 }] });
     } else {
-      slots.push({ stars: 2, label: "≥10 000₽ дополнительно (замена 3⭐)" });
+      opts.push({ label: "2 особенных + 1 обычный (замена 3⭐)", slots: [{ stars: 2 }, { stars: 2 }, { stars: 1 }] });
+      opts.push({ label: "3 обычных (замена 3⭐)", slots: [{ stars: 1 }, { stars: 1 }, { stars: 1 }] });
     }
-    return slots;
+    return opts;
   }
 
   if (orderAmount >= 7000) {
     if (canHave3star) {
-      return [{ stars: 3, label: "≥7000₽ + сумма ≥10000₽" }];
+      return [
+        { label: "1 элитный ⭐⭐⭐", slots: [{ stars: 3 }] },
+        { label: "2 особенных ⭐⭐", slots: [{ stars: 2 }, { stars: 2 }] },
+        { label: "3 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }, { stars: 1 }] },
+      ];
     }
     return [
-      { stars: 2, label: "≥7000₽ (замена 3⭐)" },
-      { stars: 2, label: "≥7000₽ (замена 3⭐)" },
+      { label: "2 особенных ⭐⭐", slots: [{ stars: 2 }, { stars: 2 }] },
+      { label: "3 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }, { stars: 1 }] },
     ];
   }
 
   if (orderAmount >= 3000) {
     if (canHave3star) {
-      return [{ stars: 2, label: "≥3000₽, на выбор: 2⭐ или 2×1⭐" }];
+      return [
+        { label: "1 особенный ⭐⭐", slots: [{ stars: 2 }] },
+        { label: "2 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }] },
+      ];
     }
     return [
-      { stars: 1, label: "≥3000₽" },
-      { stars: 1, label: "≥3000₽" },
+      { label: "2 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }] },
     ];
   }
 
   if (orderAmount >= 1500) {
     return [
-      { stars: 1, label: "1500–3000₽" },
-      { stars: 1, label: "1500–3000₽" },
+      { label: "2 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }] },
     ];
   }
 
-  return [{ stars: 1, label: "<1500₽" }];
-}
-
-/** Подбирает конкретные породы для каждого слота (по остаткам, не выданные) */
-export function pickBreeds(
-  slots: RecommendedSlot[],
-  alreadyOwned: Set<string>,
-  givenBreeds: Set<string>,
-  inventory: Record<string, number>,
-): Array<{ breed: string; stars: number; category: string; stock: number } | null> {
-  const used = new Set<string>(givenBreeds);
-  return slots.map((slot) => {
-    const candidates = WOOD_BREEDS
-      .filter((b) => b.stars === slot.stars && !alreadyOwned.has(b.breed) && !used.has(b.breed))
-      .map((b) => ({ ...b, stock: inventory[b.breed] ?? 0 }))
-      .filter((b) => b.stock > 0)
-      .sort((a, b) => b.stock - a.stock);
-    const pick = candidates[0] ?? null;
-    if (pick) used.add(pick.breed);
-    return pick;
-  });
+  return [
+    { label: "1 обычный ⭐", slots: [{ stars: 1 }] },
+  ];
 }
