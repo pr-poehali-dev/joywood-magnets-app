@@ -4,7 +4,7 @@ import psycopg2
 
 
 def handler(event, context):
-    """POST — выдать магнит / обновить остатки. GET — магниты клиента / остатки всех пород."""
+    """POST — выдать магнит / бонус. GET — магниты клиента / остатки / бонусы. DELETE — удалить магнит."""
     if event.get('httpMethod') == 'OPTIONS':
         return {
             'statusCode': 200,
@@ -34,6 +34,23 @@ def handler(event, context):
                 'statusCode': 200, 'headers': cors,
                 'body': json.dumps({'inventory': inventory}, ensure_ascii=False),
             }
+        finally:
+            conn.close()
+
+    if method == 'GET' and params.get('action') == 'bonuses':
+        reg_id = params.get('registration_id')
+        if not reg_id:
+            return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите registration_id'}, ensure_ascii=False)}
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT id, milestone_count, milestone_type, reward, given_at FROM bonuses "
+                "WHERE registration_id = %d ORDER BY given_at DESC" % int(reg_id)
+            )
+            rows = cur.fetchall()
+            bonuses = [{'id': r[0], 'milestone_count': r[1], 'milestone_type': r[2], 'reward': r[3], 'given_at': str(r[4])} for r in rows]
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'bonuses': bonuses}, ensure_ascii=False)}
         finally:
             conn.close()
 
@@ -104,6 +121,34 @@ def handler(event, context):
 
     if method == 'POST':
         body = json.loads(event.get('body') or '{}')
+
+        # Выдача бонуса
+        if body.get('action') == 'give_bonus':
+            registration_id = body.get('registration_id')
+            milestone_count = body.get('milestone_count')
+            milestone_type = body.get('milestone_type')
+            reward = (body.get('reward') or '').strip()
+            if not registration_id or not milestone_count or not milestone_type or not reward:
+                return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите registration_id, milestone_count, milestone_type, reward'}, ensure_ascii=False)}
+            conn = psycopg2.connect(os.environ['DATABASE_URL'])
+            try:
+                cur = conn.cursor()
+                cur.execute(
+                    "INSERT INTO bonuses (registration_id, milestone_count, milestone_type, reward) "
+                    "VALUES (%d, %d, '%s', '%s') "
+                    "ON CONFLICT ON CONSTRAINT bonuses_unique DO NOTHING "
+                    "RETURNING id, given_at"
+                    % (int(registration_id), int(milestone_count), milestone_type.replace("'", "''"), reward.replace("'", "''"))
+                )
+                row = cur.fetchone()
+                conn.commit()
+                if not row:
+                    return {'statusCode': 409, 'headers': cors, 'body': json.dumps({'error': 'Этот бонус уже был выдан'}, ensure_ascii=False)}
+                return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'id': row[0], 'given_at': str(row[1])}, ensure_ascii=False)}
+            finally:
+                conn.close()
+
+        # Выдача магнита
         registration_id = body.get('registration_id')
         breed = (body.get('breed') or '').strip()
         stars = body.get('stars')

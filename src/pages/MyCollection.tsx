@@ -22,12 +22,21 @@ interface Magnet {
   given_at: string;
 }
 
+interface BonusRecord {
+  id: number;
+  milestone_count: number;
+  milestone_type: string;
+  reward: string;
+  given_at: string;
+}
+
 interface CollectionData {
   client_name: string;
   phone: string;
   magnets: Magnet[];
   total_magnets: number;
   unique_breeds: number;
+  bonuses: BonusRecord[];
 }
 
 const categoryColors: Record<string, string> = {
@@ -287,20 +296,47 @@ const MyCollection = () => {
                   const current = milestone.type === "magnets" ? data.total_magnets : data.unique_breeds;
                   const pct = Math.min((current / milestone.count) * 100, 100);
                   const reached = current >= milestone.count;
+                  const given = (data.bonuses || []).some(
+                    (b) => b.milestone_count === milestone.count && b.milestone_type === milestone.type
+                  );
                   return (
                     <div key={milestone.count + milestone.type} className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className={reached ? "font-medium text-green-700" : "text-muted-foreground"}>
+                      <div className="flex justify-between items-center text-sm gap-2">
+                        <span className={`flex items-center gap-1.5 ${reached ? "font-medium text-green-700" : "text-muted-foreground"}`}>
                           {milestone.icon} {milestone.reward}
+                          {given && (
+                            <Badge className="bg-green-100 text-green-800 border border-green-200 text-[10px] py-0 px-1.5">Получен</Badge>
+                          )}
+                          {reached && !given && (
+                            <Badge className="bg-orange-100 text-orange-800 border border-orange-200 text-[10px] py-0 px-1.5 animate-pulse">Ожидает выдачи</Badge>
+                          )}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground shrink-0">
                           {current}/{milestone.count}
                         </span>
                       </div>
-                      <Progress value={pct} className="h-2" />
+                      <Progress value={pct} className={`h-2 ${reached ? "[&>div]:bg-green-500" : ""}`} />
                     </div>
                   );
                 })}
+
+                {(data.bonuses || []).length > 0 && (
+                  <div className="pt-2 border-t space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">Полученные бонусы:</p>
+                    {(data.bonuses || []).map((b) => (
+                      <div key={b.id} className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                        <Icon name="Gift" size={14} className="text-green-600 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-green-800 truncate">{b.reward}</p>
+                          <p className="text-[11px] text-green-600">
+                            {new Date(b.given_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+                          </p>
+                        </div>
+                        <Icon name="CheckCircle" size={16} className="text-green-500 shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

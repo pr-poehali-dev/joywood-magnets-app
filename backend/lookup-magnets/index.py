@@ -5,7 +5,7 @@ import psycopg2
 
 
 def handler(event, context):
-    """Поиск выданных магнитов клиента по номеру телефона"""
+    """Поиск выданных магнитов и бонусов клиента по номеру телефона"""
     if event.get('httpMethod') == 'OPTIONS':
         return {
             'statusCode': 200,
@@ -42,8 +42,6 @@ def handler(event, context):
     try:
         cur = conn.cursor()
 
-        like_pattern = '%' + '%'.join(digits[-10:]) + '%'
-
         cur.execute(
             "SELECT r.id, r.name, r.phone FROM registrations r "
             "WHERE regexp_replace(r.phone, '\\D', '', 'g') LIKE '%%%s%%' "
@@ -79,6 +77,17 @@ def handler(event, context):
                 'given_at': str(row[4]),
             })
 
+        cur.execute(
+            "SELECT id, milestone_count, milestone_type, reward, given_at FROM bonuses "
+            "WHERE registration_id = %d ORDER BY given_at DESC"
+            % reg[0]
+        )
+        bonus_rows = cur.fetchall()
+        bonuses = [
+            {'id': r[0], 'milestone_count': r[1], 'milestone_type': r[2], 'reward': r[3], 'given_at': str(r[4])}
+            for r in bonus_rows
+        ]
+
         unique_breeds = len(set(m['breed'] for m in magnets))
 
         return {
@@ -90,6 +99,7 @@ def handler(event, context):
                 'magnets': magnets,
                 'total_magnets': len(magnets),
                 'unique_breeds': unique_breeds,
+                'bonuses': bonuses,
             }, ensure_ascii=False),
         }
     finally:
