@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import Icon from "@/components/ui/icon";
 import { STAR_LABELS, BONUS_MILESTONES } from "@/lib/store";
 import { starBg, GivenMagnet, RecommendedOption, PickedBreed, pickBreedsForOption } from "./magnetPickerLogic";
@@ -11,7 +12,9 @@ interface Props {
   given: GivenMagnet[];
   giving: boolean;
   alreadyOwnedSize: number;
+  reshuffleKey: number;
   onGiveAll: (picks: Array<PickedBreed | null>) => void;
+  onReshuffle: () => void;
 }
 
 const MagnetRecommendations = ({
@@ -23,7 +26,9 @@ const MagnetRecommendations = ({
   given,
   giving,
   alreadyOwnedSize,
+  reshuffleKey,
   onGiveAll,
+  onReshuffle,
 }: Props) => {
   const totalBreedsAfter = alreadyOwnedSize + given.length;
   const nextMilestone = BONUS_MILESTONES
@@ -33,16 +38,34 @@ const MagnetRecommendations = ({
 
   const hasOptions = !isFirstOrder && options.length > 0;
 
+   
+  const allPicks = useMemo(() => {
+    return options.map((opt) =>
+      pickBreedsForOption(opt.slots, alreadyOwned, givenBreeds, inventory)
+    );
+  }, [reshuffleKey, options, givenBreeds, inventory]); // reshuffleKey форсирует пересчёт случайных пород
+
   return (
     <>
       {hasOptions && (
         <div className="space-y-2">
-          <div className="flex items-center gap-1.5">
-            <Icon name="Sparkles" size={13} className="text-amber-600 shrink-0" />
-            <p className="text-xs font-semibold text-amber-800">Рекомендации по правилам акции</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Icon name="Sparkles" size={13} className="text-amber-600 shrink-0" />
+              <p className="text-xs font-semibold text-amber-800">Рекомендации по правилам акции</p>
+            </div>
+            {!giving && (
+              <button
+                onClick={onReshuffle}
+                className="flex items-center gap-1 text-[11px] text-amber-600 hover:text-amber-800 transition-colors"
+              >
+                <Icon name="Shuffle" size={12} />
+                Перетасовать
+              </button>
+            )}
           </div>
           {options.map((opt, oi) => {
-            const picks = pickBreedsForOption(opt.slots, alreadyOwned, givenBreeds, inventory);
+            const picks = allPicks[oi] ?? [];
             const hasAny = picks.some((p) => p !== null);
             return (
               <div

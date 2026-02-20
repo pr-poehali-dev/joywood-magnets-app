@@ -30,6 +30,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
   const [mode, setMode] = useState<"pick" | "no_magnet">("pick");
   const [comment, setComment] = useState("");
   const [savingComment, setSavingComment] = useState(false);
+  const [reshuffleKey, setReshuffleKey] = useState(0);
 
   useEffect(() => {
     fetch(`${GIVE_MAGNET_URL}?action=inventory`)
@@ -160,7 +161,9 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
                   given={given}
                   giving={giving}
                   alreadyOwnedSize={alreadyOwned.size}
+                  reshuffleKey={reshuffleKey}
                   onGiveAll={handleGiveAll}
+                  onReshuffle={() => setReshuffleKey((k) => k + 1)}
                 />
 
                 <MagnetBreedDropdown
