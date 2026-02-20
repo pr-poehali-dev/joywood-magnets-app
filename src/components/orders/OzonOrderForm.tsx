@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import { ADD_CLIENT_URL, OrderRecord } from "./types";
+import MagnetPicker from "./MagnetPicker";
 
 interface Props {
   onOrderCreated: (order: OrderRecord, clientId: number) => void;
@@ -14,6 +15,7 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
   const [orderNumber, setOrderNumber] = useState("");
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [pendingClient, setPendingClient] = useState<{ id: number; name: string } | null>(null);
 
   const handleSubmit = async () => {
     if (!orderNumber.trim() || orderNumber.trim().length < 3) {
@@ -42,9 +44,6 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
         toast.success(`Заказ добавлен к клиенту: ${data.client_name}`);
       }
 
-      setOrderNumber("");
-      setAmount("");
-
       onOrderCreated(
         {
           id: data.order_id,
@@ -59,12 +58,26 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
         },
         data.client_id,
       );
+
+      setOrderNumber("");
+      setAmount("");
+      setPendingClient({ id: data.client_id, name: data.client_name });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Ошибка оформления");
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (pendingClient) {
+    return (
+      <MagnetPicker
+        registrationId={pendingClient.id}
+        clientName={pendingClient.name}
+        onDone={() => setPendingClient(null)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4">

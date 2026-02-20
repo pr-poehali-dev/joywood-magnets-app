@@ -13,6 +13,7 @@ import Icon from "@/components/ui/icon";
 import { CHANNELS } from "@/lib/store";
 import { toast } from "sonner";
 import { ADD_CLIENT_URL, ClientOption, OrderRecord } from "./types";
+import MagnetPicker from "./MagnetPicker";
 
 const NON_OZON_CHANNELS = CHANNELS.filter((ch) => ch !== "Ozon");
 
@@ -33,6 +34,7 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
   const [newClientName, setNewClientName] = useState("");
   const [newClientPhone, setNewClientPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [pendingClient, setPendingClient] = useState<{ id: number; name: string } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isNewClient = selectedClientId === "__new__";
@@ -122,13 +124,6 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
       if (!res.ok) throw new Error(data.error || "Ошибка");
 
       toast.success(`Заказ оформлен: ${data.client_name}`);
-      setSelectedClientId("");
-      setSelectedClientLabel("");
-      setClientSearch("");
-      setRegularAmount("");
-      setRegularCode("");
-      setNewClientName("");
-      setNewClientPhone("");
 
       onOrderCreated(
         {
@@ -144,12 +139,31 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
         },
         data.client_id,
       );
+
+      setSelectedClientId("");
+      setSelectedClientLabel("");
+      setClientSearch("");
+      setRegularAmount("");
+      setRegularCode("");
+      setNewClientName("");
+      setNewClientPhone("");
+      setPendingClient({ id: data.client_id, name: data.client_name });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Ошибка оформления");
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (pendingClient) {
+    return (
+      <MagnetPicker
+        registrationId={pendingClient.id}
+        clientName={pendingClient.name}
+        onDone={() => setPendingClient(null)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4">
