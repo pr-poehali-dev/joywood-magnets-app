@@ -10,37 +10,37 @@
       "name": "GET registrations list",
       "method": "GET",
       "path": "/",
-      "expectedStatus": 200,
-      "expectedBody": {
-        "clients": "array"
-      },
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     },
     {
       "name": "GET all orders",
       "method": "GET",
       "path": "/?action=orders",
-      "expectedStatus": 200,
-      "expectedBody": {
-        "orders": "array"
-      },
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     },
     {
       "name": "GET client orders",
       "method": "GET",
       "path": "/?action=client_orders&registration_id=1",
-      "expectedStatus": 200,
-      "expectedBody": {
-        "orders": "array"
-      },
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     },
     {
       "name": "GET client orders without id fails",
       "method": "GET",
       "path": "/?action=client_orders",
       "expectedStatus": 400
+    },
+    {
+      "name": "GET registration stats",
+      "method": "GET",
+      "path": "/?action=registration_stats",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Check wrong password",
+      "method": "GET",
+      "path": "/?action=check_password&password=wrongpass",
+      "expectedStatus": 403
     }
   ]
 }

@@ -4,7 +4,7 @@ import psycopg2
 
 
 def handler(event, context):
-    """Получение клиентов и заказов"""
+    """Получение клиентов, заказов и аналитики регистраций"""
     if event.get('httpMethod') == 'OPTIONS':
         return {
             'statusCode': 200,
@@ -30,6 +30,12 @@ def handler(event, context):
 
     if action == 'recent_registrations':
         return _get_recent_registrations(cors)
+
+    if action == 'registration_stats':
+        return _get_registration_stats(cors)
+
+    if action == 'check_password':
+        return _check_password(params, cors)
 
     return _get_clients(cors)
 
@@ -64,6 +70,62 @@ def _get_clients(cors):
             'statusCode': 200,
             'headers': cors,
             'body': json.dumps({'clients': clients}, ensure_ascii=False),
+        }
+    finally:
+        conn.close()
+
+
+def _check_password(params, cors):
+    """Проверка пароля администратора"""
+    entered = params.get('password', '')
+    expected = os.environ.get('ADMIN_PASSWORD', '')
+    if entered and entered == expected:
+        return {'statusCode': 200, 'headers': cors, 'body': '{"ok": true}'}
+    return {'statusCode': 403, 'headers': cors, 'body': '{"ok": false}'}
+
+
+def _get_registration_stats(cors):
+    """Статистика регистраций по дням за последние 30 дней"""
+    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT DATE(created_at) as day, "
+            "SUM(CASE WHEN channel = 'ozon' THEN 1 ELSE 0 END) as ozon, "
+            "SUM(CASE WHEN channel != 'ozon' OR channel IS NULL THEN 1 ELSE 0 END) as other "
+            "FROM registrations "
+            "WHERE registered = TRUE AND created_at >= NOW() - INTERVAL '30 days' "
+            "GROUP BY day ORDER BY day ASC"
+        )
+        rows = cur.fetchall()
+        daily = []
+        for row in rows:
+            daily.append({
+                'date': str(row[0]),
+                'ozon': int(row[1]),
+                'other': int(row[2]),
+                'total': int(row[1]) + int(row[2]),
+            })
+
+        cur.execute(
+            "SELECT COUNT(*) as total, "
+            "SUM(CASE WHEN channel = 'ozon' THEN 1 ELSE 0 END) as ozon, "
+            "SUM(CASE WHEN channel != 'ozon' OR channel IS NULL THEN 1 ELSE 0 END) as other, "
+            "SUM(CASE WHEN DATE(created_at) = CURRENT_DATE THEN 1 ELSE 0 END) as today, "
+            "SUM(CASE WHEN created_at >= NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END) as this_week "
+            "FROM registrations WHERE registered = TRUE"
+        )
+        r = cur.fetchone()
+        summary = {
+            'total': int(r[0]),
+            'ozon': int(r[1]),
+            'other': int(r[2]),
+            'today': int(r[3]),
+            'this_week': int(r[4]),
+        }
+        return {
+            'statusCode': 200, 'headers': cors,
+            'body': json.dumps({'daily': daily, 'summary': summary}, ensure_ascii=False),
         }
     finally:
         conn.close()

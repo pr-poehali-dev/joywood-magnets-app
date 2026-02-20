@@ -1,28 +1,34 @@
 import { useState, useEffect, useCallback } from "react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 import Icon from "@/components/ui/icon";
 
 const GET_REGISTRATIONS_URL = "https://functions.poehali.dev/bc5f0fde-e8e9-4666-9cdb-b19f49b506fe";
 
-interface RecentReg {
-  id: number;
-  name: string;
-  phone: string;
-  channel: string;
-  registered: boolean;
-  created_at: string;
-  total_amount: number;
-  orders_count: number;
+interface DayStat {
+  date: string;
+  ozon: number;
+  other: number;
+  total: number;
+}
+
+interface Summary {
+  total: number;
+  ozon: number;
+  other: number;
+  today: number;
+  this_week: number;
 }
 
 interface Props {
@@ -30,21 +36,21 @@ interface Props {
   onCountChange?: (count: number) => void;
 }
 
-const RecentRegistrations = ({ onNavigateToClient, onCountChange }: Props) => {
-  const [items, setItems] = useState<RecentReg[]>([]);
+const RecentRegistrations = ({ onCountChange }: Props) => {
+  const [stats, setStats] = useState<DayStat[]>([]);
+  const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
   const load = useCallback(() => {
     setLoading(true);
-    fetch(`${GET_REGISTRATIONS_URL}?action=recent_registrations`)
+    fetch(`${GET_REGISTRATIONS_URL}?action=registration_stats`)
       .then((r) => r.json())
       .then((data) => {
-        const regs: RecentReg[] = data.registrations || [];
-        setItems(regs);
+        setStats(data.daily || []);
+        setSummary(data.summary || null);
         setLastRefresh(new Date());
-        const todayCount = regs.filter((r) => isNew(r.created_at)).length;
-        onCountChange?.(todayCount);
+        onCountChange?.(data.summary?.today || 0);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -54,27 +60,24 @@ const RecentRegistrations = ({ onNavigateToClient, onCountChange }: Props) => {
     load();
   }, [load]);
 
-  const formatDate = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleString("ru-RU", {
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
   };
 
-  const isNew = (iso: string) => {
-    return Date.now() - new Date(iso).getTime() < 24 * 60 * 60 * 1000;
-  };
+  const chartData = stats.map((d) => ({
+    ...d,
+    label: formatDate(d.date),
+  }));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Новые регистрации</h2>
+          <h2 className="text-lg font-semibold">Динамика регистраций</h2>
           <p className="text-sm text-muted-foreground">
-            Клиенты, которые зарегистрировались в акции · обновлено {lastRefresh.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+            Участие клиентов в акции · обновлено{" "}
+            {lastRefresh.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
           </p>
         </div>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={load} disabled={loading}>
@@ -83,78 +86,79 @@ const RecentRegistrations = ({ onNavigateToClient, onCountChange }: Props) => {
         </Button>
       </div>
 
+      {summary && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <p className="text-xs text-muted-foreground mb-1">Всего участников</p>
+              <p className="text-2xl font-bold">{summary.total}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <p className="text-xs text-muted-foreground mb-1">Сегодня</p>
+              <p className="text-2xl font-bold text-green-600">{summary.today}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <p className="text-xs text-muted-foreground mb-1">За 7 дней</p>
+              <p className="text-2xl font-bold text-orange-600">{summary.this_week}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <p className="text-xs text-muted-foreground mb-1">Ozon / Другие</p>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+                  Ozon {summary.ozon}
+                </Badge>
+                <Badge variant="secondary" className="bg-orange-50 text-orange-700 border-orange-200">
+                  Др. {summary.other}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Клиент</TableHead>
-              <TableHead>Телефон</TableHead>
-              <TableHead>Канал</TableHead>
-              <TableHead>Заказов</TableHead>
-              <TableHead>Сумма</TableHead>
-              <TableHead>Дата регистрации</TableHead>
-              <TableHead></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading && (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                  <Icon name="Loader2" size={32} className="mx-auto mb-3 animate-spin opacity-40" />
-                  Загрузка...
-                </TableCell>
-              </TableRow>
-            )}
-            {!loading && items.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                  <Icon name="UserCheck" size={40} className="mx-auto mb-3 opacity-30" />
-                  Пока нет зарегистрированных клиентов
-                </TableCell>
-              </TableRow>
-            )}
-            {!loading && items.map((item) => (
-              <TableRow key={item.id} className="hover:bg-orange-50/30">
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-2">
-                    {isNew(item.created_at) && (
-                      <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" title="Зарегистрировался сегодня" />
-                    )}
-                    {item.name || <span className="text-muted-foreground italic">Не указано</span>}
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-sm">{item.phone || "—"}</TableCell>
-                <TableCell>
-                  {item.channel
-                    ? <Badge variant="outline" className="text-xs">{item.channel}</Badge>
-                    : "—"}
-                </TableCell>
-                <TableCell className="text-center">
-                  <span className="font-medium">{item.orders_count}</span>
-                </TableCell>
-                <TableCell className="font-medium text-sm">
-                  {item.total_amount > 0
-                    ? `${item.total_amount.toLocaleString("ru-RU")} ₽`
-                    : "—"}
-                </TableCell>
-                <TableCell className="text-muted-foreground text-sm">
-                  {formatDate(item.created_at)}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2 text-xs text-orange-600 hover:text-orange-700 hover:bg-orange-50 gap-1"
-                    onClick={() => onNavigateToClient(item.id)}
-                  >
-                    <Icon name="ArrowRight" size={12} />
-                    Открыть
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-medium">Регистрации по дням (последние 30 дней)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center h-48 text-muted-foreground">
+              <Icon name="Loader2" size={32} className="animate-spin opacity-40" />
+            </div>
+          ) : chartData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
+              <Icon name="BarChart3" size={40} className="opacity-20 mb-2" />
+              <p className="text-sm">Нет данных за период</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} />
+                <Tooltip
+                  formatter={(value: number, name: string) => [
+                    value,
+                    name === "ozon" ? "Ozon" : "Другие каналы",
+                  ]}
+                  labelStyle={{ fontWeight: 600 }}
+                />
+                <Legend
+                  formatter={(value) => (value === "ozon" ? "Ozon" : "Другие каналы")}
+                  wrapperStyle={{ fontSize: 12 }}
+                />
+                <Bar dataKey="ozon" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="other" stackId="a" fill="#f97316" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
       </Card>
     </div>
   );

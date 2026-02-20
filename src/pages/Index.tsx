@@ -7,6 +7,7 @@ import OrdersSection from "@/components/OrdersSection";
 import BonusTracker from "@/components/BonusTracker";
 import StatsSection from "@/components/StatsSection";
 import RecentRegistrations from "@/components/RecentRegistrations";
+import AdminGuard from "@/components/AdminGuard";
 
 const tabsList = [
   { value: "orders", label: "Заказы", icon: "ShoppingCart" },
@@ -28,6 +29,7 @@ const Index = () => {
   }, []);
 
   return (
+    <AdminGuard>
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
@@ -100,6 +102,7 @@ const Index = () => {
         </Tabs>
       </main>
     </div>
+    </AdminGuard>
   );
 };
 
