@@ -138,7 +138,7 @@ def _get_recent_registrations(cors):
             "COUNT(o.id) as orders_count "
             "FROM registrations r "
             "LEFT JOIN orders o ON o.registration_id = r.id "
-            "WHERE r.registered = TRUE "
+            "WHERE r.registered = TRUE AND LOWER(r.channel) = 'ozon' "
             "GROUP BY r.id "
             "ORDER BY r.created_at DESC"
         )
