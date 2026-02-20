@@ -82,7 +82,7 @@ export function pickBreedsForOption(
 export function calcRecommendedOptions(
   orderAmount: number,
   isFirstOrder: boolean,
-  clientTotal: number,
+  _clientTotal: number,
   alreadyOwned: Set<string>,
 ): RecommendedOption[] {
   if (isFirstOrder) return [];
@@ -97,77 +97,33 @@ export function calcRecommendedOptions(
 
   if (collectedAll3) return [];
 
-  const canHave3star = clientTotal >= 10000;
-
-  // Все 1⭐ и 2⭐ собраны → только элитные (только если доступны по сумме)
-  if (collectedAll1 && collectedAll2) {
-    if (!canHave3star) return [];
-    return [{ label: "Все обычные и особенные собраны", slots: [{ stars: 3 }] }];
-  }
-
-  // Все 1⭐ собраны → переходим на следующую категорию
-  if (collectedAll1) {
-    const next: 2 | 3 = collectedAll2 ? 3 : 2;
-    if (orderAmount >= 7000) {
-      const opts: RecommendedOption[] = [];
-      if (canHave3star && !collectedAll2) {
-        opts.push({ label: "1 элитный ⭐⭐⭐", slots: [{ stars: 3 }] });
-      }
-      opts.push({ label: `2 особенных ⭐⭐`, slots: [{ stars: next }, { stars: next }] });
-      return opts;
-    }
-    if (orderAmount >= 3000) {
-      return [{ label: `1 особенный ⭐⭐`, slots: [{ stars: next }] }];
-    }
-    if (orderAmount >= 1500) {
-      return [{ label: `2 особенных ⭐⭐`, slots: [{ stars: next }, { stars: next }] }];
-    }
-    return [{ label: `1 особенный ⭐⭐`, slots: [{ stars: next }] }];
-  }
-
-  // Стандартные случаи (есть обычные 1⭐ для выдачи)
+  // ≥10 000₽ — гарантированно 1×3⭐
   if (orderAmount >= 10000) {
+    if (collectedAll3) return [];
+    return [{ label: "1 элитный ⭐⭐⭐", slots: [{ stars: 3 }] }];
+  }
+
+  // ≥7 000₽ — на выбор: 1×3⭐ / 2×2⭐ / 3×1⭐
+  if (orderAmount >= 7000) {
     const opts: RecommendedOption[] = [];
-    if (canHave3star) {
-      opts.push({ label: "1 элитный + 2 обычных", slots: [{ stars: 3 }, { stars: 1 }, { stars: 1 }] });
-      opts.push({ label: "1 элитный + 1 особенный", slots: [{ stars: 3 }, { stars: 2 }] });
-    } else {
-      opts.push({ label: "2 особенных + 1 обычный (замена 3⭐)", slots: [{ stars: 2 }, { stars: 2 }, { stars: 1 }] });
-      opts.push({ label: "3 обычных (замена 3⭐)", slots: [{ stars: 1 }, { stars: 1 }, { stars: 1 }] });
-    }
+    if (!collectedAll3) opts.push({ label: "1 элитный ⭐⭐⭐", slots: [{ stars: 3 }] });
+    if (!collectedAll2) opts.push({ label: "2 особенных ⭐⭐", slots: [{ stars: 2 }, { stars: 2 }] });
+    opts.push({ label: "3 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }, { stars: 1 }] });
     return opts;
   }
 
-  if (orderAmount >= 7000) {
-    if (canHave3star) {
-      return [
-        { label: "1 элитный ⭐⭐⭐", slots: [{ stars: 3 }] },
-        { label: "2 особенных ⭐⭐", slots: [{ stars: 2 }, { stars: 2 }] },
-        { label: "3 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }, { stars: 1 }] },
-      ];
-    }
-    return [
-      { label: "2 особенных ⭐⭐", slots: [{ stars: 2 }, { stars: 2 }] },
-      { label: "3 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }, { stars: 1 }] },
-    ];
-  }
-
   if (orderAmount >= 3000) {
-    return [
-      { label: "1 особенный ⭐⭐", slots: [{ stars: 2 }] },
-      { label: "2 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }] },
-    ];
+    const opts: RecommendedOption[] = [];
+    if (!collectedAll2) opts.push({ label: "1 особенный ⭐⭐", slots: [{ stars: 2 }] });
+    if (!collectedAll1) opts.push({ label: "2 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }] });
+    return opts;
   }
 
   if (orderAmount >= 1500) {
-    return [
-      { label: "2 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }] },
-    ];
+    return [{ label: "2 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }] }];
   }
 
-  return [
-    { label: "1 обычный ⭐", slots: [{ stars: 1 }] },
-  ];
+  return [{ label: "1 обычный ⭐", slots: [{ stars: 1 }] }];
 }
 
 /**
@@ -188,14 +144,6 @@ export function validateGiven(
 
   const givenStars = given.map((g) => g.stars).sort();
   const givenCount = givenStars.length;
-
-  const canHave3star = clientTotal >= 10000;
-  const has3star = givenStars.includes(3);
-
-  // Проверка: 3⭐ только при общей сумме ≥ 10 000₽
-  if (has3star && !canHave3star) {
-    return `Магнит ⭐⭐⭐ доступен только при общей сумме заказов клиента ≥ 10 000 ₽ (сейчас ${clientTotal.toLocaleString("ru-RU")} ₽).`;
-  }
 
   // Минимально допустимое количество магнитов — минимум по всем вариантам
   const minAllowed = Math.min(...options.map((o) => o.slots.length));
