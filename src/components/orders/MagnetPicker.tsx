@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import { WOOD_BREEDS, STAR_LABELS, STAR_NAMES } from "@/lib/store";
-import { GIVE_MAGNET_URL } from "../clients/types";
+import { GIVE_MAGNET_URL, ADD_CLIENT_URL } from "../clients/types";
 
 interface GivenMagnet {
   id: number;
@@ -14,6 +15,7 @@ interface GivenMagnet {
 
 interface Props {
   registrationId: number;
+  orderId: number;
   clientName: string;
   onDone: () => void;
 }
@@ -24,12 +26,15 @@ const starBg: Record<number, string> = {
   3: "bg-red-50 border-red-300 text-red-800",
 };
 
-const MagnetPicker = ({ registrationId, clientName, onDone }: Props) => {
+const MagnetPicker = ({ registrationId, orderId, clientName, onDone }: Props) => {
   const [inventory, setInventory] = useState<Record<string, number>>({});
   const [given, setGiven] = useState<GivenMagnet[]>([]);
   const [search, setSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [giving, setGiving] = useState(false);
+  const [mode, setMode] = useState<"pick" | "no_magnet">("pick");
+  const [comment, setComment] = useState("");
+  const [savingComment, setSavingComment] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -86,83 +91,178 @@ const MagnetPicker = ({ registrationId, clientName, onDone }: Props) => {
     }
   };
 
+  const handleSaveComment = async () => {
+    if (!comment.trim()) {
+      toast.error("Напишите причину невыдачи");
+      return;
+    }
+    setSavingComment(true);
+    try {
+      const res = await fetch(ADD_CLIENT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "save_magnet_comment", order_id: orderId, comment: comment.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Ошибка");
+      toast.success("Комментарий сохранён");
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Ошибка сохранения");
+    } finally {
+      setSavingComment(false);
+    }
+  };
+
   return (
-    <div className="border border-orange-200 rounded-lg bg-orange-50 p-4 space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <p className="font-semibold text-sm flex items-center gap-1.5">
-            <Icon name="Gift" size={16} className="text-orange-500" />
-            Выдача магнитов — {clientName}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">Добавьте магниты к заказу, затем нажмите «Готово»</p>
-        </div>
-        <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={onDone}>
-          <Icon name="Check" size={14} />
-          Готово
-        </Button>
-      </div>
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/50 z-40" />
 
-      {given.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {given.map((m) => (
-            <span
-              key={m.id}
-              className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-1 text-xs font-medium ${starBg[m.stars] ?? ""}`}
-            >
-              {m.breed} {STAR_LABELS[m.stars]}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div className="relative" ref={ref}>
-        <div
-          className="flex h-9 w-full items-center justify-between rounded-md border bg-white px-3 text-sm cursor-pointer hover:bg-slate-50"
-          onClick={() => setDropdownOpen((v) => !v)}
-        >
-          <span className="text-muted-foreground">Выбрать породу для выдачи...</span>
-          <Icon name="ChevronDown" size={14} className="text-muted-foreground shrink-0" />
-        </div>
-
-        {dropdownOpen && (
-          <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg">
-            <div className="p-2 border-b">
-              <Input
-                autoFocus
-                placeholder="Поиск породы..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-8 text-sm"
-              />
+      {/* Modal */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-md border border-orange-200">
+          {/* Header */}
+          <div className="bg-orange-500 rounded-t-xl px-5 py-4 flex items-center gap-3">
+            <div className="bg-white/20 rounded-full p-2">
+              <Icon name="Gift" size={20} className="text-white" />
             </div>
-            <div className="max-h-[220px] overflow-y-auto">
-              {filtered.length === 0 && (
-                <div className="text-sm text-muted-foreground text-center py-3">Не найдено</div>
-              )}
-              {filtered.map((b) => {
-                const hasStock = b.stock > 0;
-                return (
-                  <button
-                    key={b.breed}
-                    disabled={!hasStock || giving}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-between gap-2"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      if (hasStock) handleGive(b.breed, b.stars, b.category);
-                    }}
-                  >
-                    <span>{STAR_LABELS[b.stars]} {b.breed} — {STAR_NAMES[b.stars]}</span>
-                    <span className={`text-xs shrink-0 ${hasStock ? "text-green-600" : "text-red-500"}`}>
-                      {b.stock} шт
-                    </span>
-                  </button>
-                );
-              })}
+            <div>
+              <p className="font-bold text-white text-base">Выдача магнитов</p>
+              <p className="text-orange-100 text-xs">{clientName} — необходимо принять решение</p>
             </div>
           </div>
-        )}
+
+          <div className="p-5 space-y-4">
+            {mode === "pick" ? (
+              <>
+                {given.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-muted-foreground font-medium">Выданные магниты:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {given.map((m) => (
+                        <span
+                          key={m.id}
+                          className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-1 text-xs font-medium ${starBg[m.stars] ?? ""}`}
+                        >
+                          {m.breed} {STAR_LABELS[m.stars]}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="relative" ref={ref}>
+                  <div
+                    className="flex h-10 w-full items-center justify-between rounded-md border bg-slate-50 px-3 text-sm cursor-pointer hover:bg-slate-100"
+                    onClick={() => setDropdownOpen((v) => !v)}
+                  >
+                    <span className="text-muted-foreground">Выбрать породу для выдачи...</span>
+                    <Icon name="ChevronDown" size={14} className="text-muted-foreground shrink-0" />
+                  </div>
+
+                  {dropdownOpen && (
+                    <div className="absolute z-[60] mt-1 w-full bg-white border rounded-md shadow-lg">
+                      <div className="p-2 border-b">
+                        <Input
+                          autoFocus
+                          placeholder="Поиск породы..."
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="max-h-[200px] overflow-y-auto">
+                        {filtered.length === 0 && (
+                          <div className="text-sm text-muted-foreground text-center py-3">Не найдено</div>
+                        )}
+                        {filtered.map((b) => {
+                          const hasStock = b.stock > 0;
+                          return (
+                            <button
+                              key={b.breed}
+                              disabled={!hasStock || giving}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-between gap-2"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                if (hasStock) handleGive(b.breed, b.stars, b.category);
+                              }}
+                            >
+                              <span>{STAR_LABELS[b.stars]} {b.breed} — {STAR_NAMES[b.stars]}</span>
+                              <span className={`text-xs shrink-0 ${hasStock ? "text-green-600" : "text-red-500"}`}>
+                                {b.stock} шт
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    className="flex-1 bg-orange-500 hover:bg-orange-600 gap-1.5"
+                    disabled={given.length === 0}
+                    onClick={onDone}
+                  >
+                    <Icon name="Check" size={15} />
+                    Готово ({given.length} магн.)
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-red-200 text-red-600 hover:bg-red-50 gap-1.5"
+                    onClick={() => setMode("no_magnet")}
+                  >
+                    <Icon name="X" size={15} />
+                    Не выдавать
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+                  <Icon name="AlertTriangle" size={16} className="text-red-500 mt-0.5 shrink-0" />
+                  <p className="text-sm text-red-700">Укажите причину — она сохранится в истории заказа</p>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Причина невыдачи магнита</label>
+                  <Textarea
+                    autoFocus
+                    placeholder="Например: клиент отказался, нет подходящей породы, уточнить позже..."
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    className="resize-none"
+                    rows={3}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={() => setMode("pick")}
+                  >
+                    <Icon name="ArrowLeft" size={14} />
+                    Назад
+                  </Button>
+                  <Button
+                    className="flex-1 bg-red-500 hover:bg-red-600 gap-1.5"
+                    disabled={!comment.trim() || savingComment}
+                    onClick={handleSaveComment}
+                  >
+                    {savingComment
+                      ? <Icon name="Loader2" size={14} className="animate-spin" />
+                      : <Icon name="Save" size={14} />
+                    }
+                    Сохранить и закрыть
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

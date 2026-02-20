@@ -34,7 +34,7 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
   const [newClientName, setNewClientName] = useState("");
   const [newClientPhone, setNewClientPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [pendingClient, setPendingClient] = useState<{ id: number; name: string } | null>(null);
+  const [pendingClient, setPendingClient] = useState<{ id: number; orderId: number; name: string } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isNewClient = selectedClientId === "__new__";
@@ -147,7 +147,7 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
       setRegularCode("");
       setNewClientName("");
       setNewClientPhone("");
-      setPendingClient({ id: data.client_id, name: data.client_name });
+      setPendingClient({ id: data.client_id, orderId: data.order_id, name: data.client_name });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Ошибка оформления");
     } finally {
@@ -159,6 +159,7 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
     return (
       <MagnetPicker
         registrationId={pendingClient.id}
+        orderId={pendingClient.orderId}
         clientName={pendingClient.name}
         onDone={() => setPendingClient(null)}
       />

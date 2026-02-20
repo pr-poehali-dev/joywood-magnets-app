@@ -169,7 +169,7 @@ def _get_orders(params, cors):
         cur = conn.cursor()
         cur.execute(
             "SELECT o.id, o.order_code, o.amount, o.channel, o.status, o.created_at, "
-            "o.registration_id, r.name, r.phone "
+            "o.registration_id, r.name, r.phone, o.magnet_comment "
             "FROM orders o "
             "LEFT JOIN registrations r ON r.id = o.registration_id "
             "ORDER BY o.created_at DESC"
@@ -187,6 +187,7 @@ def _get_orders(params, cors):
                 'registration_id': row[6],
                 'client_name': row[7] or '',
                 'client_phone': row[8] or '',
+                'magnet_comment': row[9] or '',
             })
         return {
             'statusCode': 200,
@@ -206,7 +207,7 @@ def _get_client_orders(params, cors):
     try:
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, order_code, amount, channel, status, created_at "
+            "SELECT id, order_code, amount, channel, status, created_at, magnet_comment "
             "FROM orders WHERE registration_id = %d "
             "ORDER BY created_at DESC"
             % int(reg_id)
@@ -221,6 +222,7 @@ def _get_client_orders(params, cors):
                 'channel': row[3],
                 'status': row[4],
                 'created_at': str(row[5]),
+                'magnet_comment': row[6] or '',
             })
         return {
             'statusCode': 200,

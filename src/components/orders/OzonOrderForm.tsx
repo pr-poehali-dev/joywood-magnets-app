@@ -15,7 +15,7 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
   const [orderNumber, setOrderNumber] = useState("");
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [pendingClient, setPendingClient] = useState<{ id: number; name: string } | null>(null);
+  const [pendingClient, setPendingClient] = useState<{ id: number; orderId: number; name: string } | null>(null);
 
   const handleSubmit = async () => {
     if (!orderNumber.trim() || orderNumber.trim().length < 3) {
@@ -61,7 +61,7 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
 
       setOrderNumber("");
       setAmount("");
-      setPendingClient({ id: data.client_id, name: data.client_name });
+      setPendingClient({ id: data.client_id, orderId: data.order_id, name: data.client_name });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Ошибка оформления");
     } finally {
@@ -73,6 +73,7 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
     return (
       <MagnetPicker
         registrationId={pendingClient.id}
+        orderId={pendingClient.orderId}
         clientName={pendingClient.name}
         onDone={() => setPendingClient(null)}
       />

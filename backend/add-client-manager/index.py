@@ -38,6 +38,9 @@ def handler(event, context):
     if action == 'create_order':
         return _handle_create_order(body, cors)
 
+    if action == 'save_magnet_comment':
+        return _handle_save_magnet_comment(body, cors)
+
     return _handle_add_client(body, cors)
 
 
@@ -335,6 +338,27 @@ def _create_order_for_client(client_id, order_code, channel, amount, cors):
                 'message': 'Заказ оформлен',
             }, ensure_ascii=False),
         }
+    finally:
+        conn.close()
+
+
+def _handle_save_magnet_comment(body, cors):
+    """Сохранить комментарий о причине невыдачи магнита к заказу"""
+    order_id = body.get('order_id')
+    comment = (body.get('comment') or '').strip()
+    if not order_id or not str(order_id).isdigit():
+        return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите order_id'}, ensure_ascii=False)}
+    if not comment:
+        return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите comment'}, ensure_ascii=False)}
+    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE orders SET magnet_comment = '%s' WHERE id = %d"
+            % (comment.replace("'", "''"), int(order_id))
+        )
+        conn.commit()
+        return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'ok': True}, ensure_ascii=False)}
     finally:
         conn.close()
 
