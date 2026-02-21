@@ -148,6 +148,44 @@ const ClientModalMagnets = ({
         </div>
       )}
 
+      {/* Прогресс бонусов */}
+      {!magnetsLoading && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <Icon name="Award" size={13} />
+            Прогресс бонусов
+          </p>
+          <div className="space-y-2">
+            {BONUS_MILESTONES.map((m) => {
+              const current = m.type === "magnets" ? magnets.length : new Set(magnets.map((mg) => mg.breed)).size;
+              const pct = Math.min(100, Math.round((current / m.count) * 100));
+              const reached = current >= m.count;
+              const given = pendingBonuses.every((pb) => !(pb.count === m.count && pb.type === m.type)) && reached;
+              const isPending = pendingBonuses.some((pb) => pb.count === m.count && pb.type === m.type);
+              return (
+                <div key={`${m.count}-${m.type}`} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs gap-2">
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <span>{m.icon}</span>
+                      <span className={reached ? "font-medium text-green-700 truncate" : "truncate text-muted-foreground"}>{m.reward}</span>
+                      {reached && !isPending && <span className="shrink-0 bg-green-100 text-green-700 text-[10px] px-1.5 py-0.5 rounded-full font-medium">Выдан</span>}
+                      {isPending && <span className="shrink-0 bg-orange-100 text-orange-700 text-[10px] px-1.5 py-0.5 rounded-full font-medium animate-pulse">Не выдан</span>}
+                    </span>
+                    <span className="text-muted-foreground shrink-0">{current}/{m.count} {m.type === "magnets" ? "магн." : "пород"}</span>
+                  </div>
+                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${reached ? "bg-green-500" : "bg-orange-300"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Выдать магнит вручную */}
       <div className="space-y-2 border-t pt-4">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Выдать магнит вручную</p>
