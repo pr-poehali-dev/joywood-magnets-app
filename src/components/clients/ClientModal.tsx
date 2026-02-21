@@ -57,6 +57,7 @@ const ClientModal = ({
   const [deleting, setDeleting] = useState(false);
   const [deletingOrderId, setDeletingOrderId] = useState<number | null>(null);
   const [confirmDeleteOrderId, setConfirmDeleteOrderId] = useState<number | null>(null);
+  const [deletingMagnetId, setDeletingMagnetId] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -180,6 +181,20 @@ const ClientModal = ({
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось удалить");
     } finally { setDeleting(false); }
+  };
+
+  const handleDeleteMagnet = async (magnetId: number, breed: string) => {
+    setDeletingMagnetId(magnetId);
+    try {
+      const res = await fetch(`${GIVE_MAGNET_URL}?magnet_id=${magnetId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Ошибка");
+      toast.success(`Магнит «${breed}» удалён из коллекции`);
+      onMagnetsReload(client.id);
+      onInventoryChanged();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось удалить магнит");
+    } finally { setDeletingMagnetId(null); }
   };
 
   const handleDeleteOrder = async (orderId: number) => {
@@ -368,6 +383,16 @@ const ClientModal = ({
                   {magnets.map((m) => (
                     <span key={m.id} className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-1 text-xs font-medium ${starBg[m.stars] ?? ""}`}>
                       {m.breed} {STAR_LABELS[m.stars]}
+                      <button
+                        className="ml-0.5 text-red-400 hover:text-red-600 disabled:opacity-50"
+                        onClick={() => handleDeleteMagnet(m.id, m.breed)}
+                        disabled={deletingMagnetId === m.id}
+                        title="Удалить магнит"
+                      >
+                        {deletingMagnetId === m.id
+                          ? <Icon name="Loader2" size={10} className="animate-spin" />
+                          : <Icon name="X" size={10} />}
+                      </button>
                     </span>
                   ))}
                   {unlinkedMagnets.length > 0 && clientOrders.length > 0 && (
