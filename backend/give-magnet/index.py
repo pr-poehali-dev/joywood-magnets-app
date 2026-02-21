@@ -102,7 +102,7 @@ def handler(event, context):
                     "SELECT stock FROM bonus_stock WHERE reward = '%s'" % reward.replace("'", "''")
                 )
                 stock_row = cur.fetchone()
-                if stock_row is not None and stock_row[0] <= 0:
+                if stock_row is None or stock_row[0] <= 0:
                     return err('Бонус «%s» закончился на складе' % reward)
                 order_id_sql = str(int(order_id)) if order_id else 'NULL'
                 cur.execute(

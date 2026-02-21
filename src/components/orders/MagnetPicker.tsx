@@ -46,6 +46,14 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
   const [step, setStep] = useState<"magnets" | "bonuses">("magnets");
   const [givingBonus, setGivingBonus] = useState<string | null>(null);
   const [bonusesLeft, setBonusesLeft] = useState<PendingBonus[]>(pendingBonuses);
+  const [bonusStock, setBonusStock] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    fetch("https://functions.poehali.dev/5cbee799-0fa3-44e1-8954-66474bf973b0")
+      .then((r) => r.json())
+      .then((data) => setBonusStock(data.stock || {}))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (step !== "bonuses" || bonusesLeft.length === 0) return;
@@ -330,6 +338,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
               <MagnetPickerBonusStep
                 bonusesLeft={bonusesLeft}
                 givingBonus={givingBonus}
+                bonusStock={bonusStock}
                 onGiveBonus={handleGiveBonus}
                 onDone={onDone}
               />
