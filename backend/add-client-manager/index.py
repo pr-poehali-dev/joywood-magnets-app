@@ -137,6 +137,12 @@ def _get_pending_bonuses(cur, registration_id, total_magnets, unique_breeds):
 
 def _give_paduk(cur, registration_id, phone, order_id):
     cur.execute(
+        "SELECT id FROM client_magnets WHERE registration_id = %d AND breed = 'Падук' LIMIT 1"
+        % registration_id
+    )
+    if cur.fetchone():
+        return
+    cur.execute(
         "INSERT INTO client_magnets (registration_id, phone, breed, stars, category, order_id) "
         "VALUES (%d, '%s', 'Падук', 2, 'Особенный', %d)"
         % (registration_id, (phone or '').replace("'", "''"), order_id)
