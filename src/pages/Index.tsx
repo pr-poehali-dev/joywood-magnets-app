@@ -24,11 +24,17 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("orders");
   const [focusClientId, setFocusClientId] = useState<number | null>(null);
   const [newRegsCount, setNewRegsCount] = useState(0);
+  const [clientsReloadKey, setClientsReloadKey] = useState(0);
 
   const navigateToClient = useCallback((clientId: number) => {
     setFocusClientId(clientId);
     setActiveTab("clients");
   }, []);
+
+  const handleTabChange = (tab: string) => {
+    if (tab === "clients") setClientsReloadKey((k) => k + 1);
+    setActiveTab(tab);
+  };
 
   return (
     <AdminGuard>
@@ -61,7 +67,7 @@ const Index = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="bg-white border shadow-sm h-auto flex-wrap p-1">
             {tabsList.map((tab) => (
               <TabsTrigger
@@ -84,6 +90,7 @@ const Index = () => {
             <ClientsSection
               focusClientId={focusClientId}
               onFocusHandled={() => setFocusClientId(null)}
+              reloadKey={clientsReloadKey}
             />
           </TabsContent>
           <TabsContent value="magnets">

@@ -28,9 +28,10 @@ import { useInventory } from "@/hooks/useInventory";
 interface ClientsSectionProps {
   focusClientId?: number | null;
   onFocusHandled?: () => void;
+  reloadKey?: number;
 }
 
-const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) => {
+const ClientsSection = ({ focusClientId, onFocusHandled, reloadKey }: ClientsSectionProps) => {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [clientMagnets, setClientMagnets] = useState<Record<number, ClientMagnet[]>>({});
@@ -63,6 +64,11 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusClientId]);
+
+  useEffect(() => {
+    if (reloadKey && reloadKey > 0) loadClients();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadKey]);
 
   const handleOpen = useCallback((id: number) => {
     setSelectedId(id);
