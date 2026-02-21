@@ -15,6 +15,7 @@ interface Props {
   search: string;
   dropdownOpen: boolean;
   giving: boolean;
+  pendingBreeds: Set<string>;
   onSearchChange: (value: string) => void;
   onToggle: () => void;
   onClose: () => void;
@@ -26,6 +27,7 @@ const MagnetBreedDropdown = ({
   search,
   dropdownOpen,
   giving,
+  pendingBreeds,
   onSearchChange,
   onToggle,
   onClose,
@@ -68,17 +70,21 @@ const MagnetBreedDropdown = ({
             )}
             {filtered.map((b) => {
               const hasStock = b.stock > 0;
+              const isPicked = pendingBreeds.has(b.breed);
               return (
                 <button
                   key={b.breed}
                   disabled={!hasStock || giving}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-between gap-2"
+                  className={`w-full text-left px-3 py-2 text-sm disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-between gap-2 ${isPicked ? "bg-amber-50 hover:bg-amber-100" : "hover:bg-orange-50"}`}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     if (hasStock) onSelect(b.breed, b.stars, b.category);
                   }}
                 >
-                  <span>{STAR_LABELS[b.stars]} {b.breed} — {STAR_NAMES[b.stars]}</span>
+                  <span className="flex items-center gap-1.5">
+                    {isPicked && <Icon name="Check" size={12} className="text-amber-600 shrink-0" />}
+                    {STAR_LABELS[b.stars]} {b.breed} — {STAR_NAMES[b.stars]}
+                  </span>
                   <span className={`text-xs shrink-0 ${hasStock ? "text-green-600" : "text-red-500"}`}>
                     {b.stock} шт
                   </span>
