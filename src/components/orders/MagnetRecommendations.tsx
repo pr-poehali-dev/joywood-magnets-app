@@ -49,8 +49,20 @@ const MagnetRecommendations = ({
     );
   }, [reshuffleKey, options, givenBreeds, inventory]);
 
+  const allCollected = !isFirstOrder && options.length === 0;
+
   return (
     <>
+      {allCollected && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-start gap-2">
+          <Icon name="Trophy" size={16} className="text-green-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-green-800">Клиент собрал все доступные магниты!</p>
+            <p className="text-xs text-green-700 mt-0.5">По правилам акции на этот заказ магниты не выдаются</p>
+          </div>
+        </div>
+      )}
+
       {hasOptions && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">

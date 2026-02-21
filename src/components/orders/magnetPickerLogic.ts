@@ -110,7 +110,7 @@ export function calcRecommendedOptions(
     const opts: RecommendedOption[] = [];
     if (canHave3star && !collectedAll3) opts.push({ label: "1 элитный ⭐⭐⭐", slots: [{ stars: 3 }] });
     if (!collectedAll2) opts.push({ label: "2 особенных ⭐⭐", slots: [{ stars: 2 }, { stars: 2 }] });
-    opts.push({ label: "3 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }, { stars: 1 }] });
+    if (!collectedAll1) opts.push({ label: "3 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }, { stars: 1 }] });
     return opts;
   }
 
@@ -122,9 +122,11 @@ export function calcRecommendedOptions(
   }
 
   if (orderAmount >= 1500) {
+    if (collectedAll1) return [];
     return [{ label: "2 обычных ⭐", slots: [{ stars: 1 }, { stars: 1 }] }];
   }
 
+  if (collectedAll1) return [];
   return [{ label: "1 обычный ⭐", slots: [{ stars: 1 }] }];
 }
 

@@ -316,7 +316,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
                 <div className="space-y-2 pt-1">
                   <Button
                     className="w-full bg-orange-500 hover:bg-orange-600 gap-1.5"
-                    disabled={given.length === 0 && !isFirstOrder}
+                    disabled={given.length === 0 && !isFirstOrder && recommendedOptions.length > 0}
                     onClick={() => {
                       const warning = validateGiven(given, orderAmount, isFirstOrder, clientTotal, alreadyOwned);
                       if (warning) {
