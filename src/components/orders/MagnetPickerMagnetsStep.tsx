@@ -145,7 +145,7 @@ const MagnetPickerMagnetsStep = ({
           onSearchChange={onSearchChange}
           onToggle={onDropdownToggle}
           onClose={onDropdownClose}
-          onSelect={onGive}
+          onSelect={onSelectPick}
         />
       )}
 
