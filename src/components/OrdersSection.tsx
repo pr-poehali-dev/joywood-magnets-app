@@ -38,6 +38,10 @@ const OrdersSection = ({ onNavigateToClient }: Props) => {
     setOrders((prev) => [order, ...prev]);
   };
 
+  const handleOrderUpdated = (updated: OrderRecord) => {
+    setOrders((prev) => prev.map((o) => o.id === updated.id ? { ...o, ...updated } : o));
+  };
+
   return (
     <div className="space-y-6">
       <Card className="border-orange-200">
@@ -101,10 +105,10 @@ const OrdersSection = ({ onNavigateToClient }: Props) => {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="ozon">
-          <OrdersTable orders={orders} loading={ordersLoading} ozonOnly={true} onNavigateToClient={onNavigateToClient} />
+          <OrdersTable orders={orders} loading={ordersLoading} ozonOnly={true} onNavigateToClient={onNavigateToClient} onOrderUpdated={handleOrderUpdated} />
         </TabsContent>
         <TabsContent value="regular">
-          <OrdersTable orders={orders} loading={ordersLoading} ozonOnly={false} onNavigateToClient={onNavigateToClient} />
+          <OrdersTable orders={orders} loading={ordersLoading} ozonOnly={false} onNavigateToClient={onNavigateToClient} onOrderUpdated={handleOrderUpdated} />
         </TabsContent>
       </Tabs>
     </div>

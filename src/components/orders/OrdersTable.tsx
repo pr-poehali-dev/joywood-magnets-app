@@ -19,9 +19,10 @@ interface Props {
   loading: boolean;
   ozonOnly?: boolean;
   onNavigateToClient?: (clientId: number) => void;
+  onOrderUpdated?: (updated: OrderRecord) => void;
 }
 
-const OrdersTable = ({ orders, loading, ozonOnly = false, onNavigateToClient }: Props) => {
+const OrdersTable = ({ orders, loading, ozonOnly = false, onNavigateToClient, onOrderUpdated }: Props) => {
   const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
   const [search, setSearch] = useState("");
 
@@ -155,7 +156,10 @@ const OrdersTable = ({ orders, loading, ozonOnly = false, onNavigateToClient }: 
           setSelectedOrder(null);
           onNavigateToClient?.(clientId);
         }}
-        onOrderUpdated={(updated) => setSelectedOrder(updated)}
+        onOrderUpdated={(updated) => {
+          setSelectedOrder(updated);
+          onOrderUpdated?.(updated);
+        }}
       />
     </div>
   );
