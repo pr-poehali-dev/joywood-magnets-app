@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
-import { WOOD_BREEDS, STAR_LABELS } from "@/lib/store";
+import { WOOD_BREEDS, STAR_LABELS, BONUS_MILESTONES } from "@/lib/store";
 import { GIVE_MAGNET_URL, ADD_CLIENT_URL } from "../clients/types";
 import { GET_REGISTRATIONS_URL } from "./types";
 import { useInventory } from "@/hooks/useInventory";
@@ -92,6 +92,25 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reshuffleKey, recommendedOptions.length]);
 
+  const checkNewBonuses = (newGiven: GivenMagnet[]) => {
+    if (!isRegistered) return;
+    const totalMagnets = alreadyOwned.size + newGiven.length;
+    const uniqueBreeds = new Set([...alreadyOwned, ...newGiven.map((g) => g.breed)]).size;
+    const alreadyInBonuses = new Set(bonusesLeft.map((b) => `${b.count}-${b.type}`));
+    const alreadyInPending = new Set(pendingBonuses.map((b) => `${b.count}-${b.type}`));
+    const newBonuses: PendingBonus[] = [];
+    for (const m of BONUS_MILESTONES) {
+      const key = `${m.count}-${m.type}`;
+      const current = m.type === "magnets" ? totalMagnets : uniqueBreeds;
+      if (current >= m.count && !alreadyInBonuses.has(key) && !alreadyInPending.has(key)) {
+        newBonuses.push({ count: m.count, type: m.type, reward: m.reward });
+      }
+    }
+    if (newBonuses.length > 0) {
+      setBonusesLeft((prev) => [...prev, ...newBonuses]);
+    }
+  };
+
   const handleGive = async (breed: string, stars: number, category: string) => {
     setGiving(true);
     try {
@@ -102,7 +121,9 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка");
-      setGiven((prev) => [...prev, { id: data.id, breed, stars }]);
+      const newGiven = [...given, { id: data.id, breed, stars }];
+      setGiven(newGiven);
+      checkNewBonuses(newGiven);
       decrementStock(breed);
       setSearch("");
       setDropdownOpen(false);
