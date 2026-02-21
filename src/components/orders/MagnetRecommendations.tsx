@@ -57,7 +57,7 @@ const MagnetRecommendations = ({
     prevKeyRef.current = reshuffleKey;
     prevOptionsLenRef.current = options.length;
     allPicksRef.current = options.map((opt) =>
-      pickBreedsForOption(opt.slots, alreadyOwned, new Set(), inventory)
+      pickBreedsForOption(opt.slots, alreadyOwned, alreadyOwned, inventory)
     );
   }
 
