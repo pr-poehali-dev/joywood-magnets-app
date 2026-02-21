@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -20,14 +19,6 @@ import { API_URLS } from "@/lib/api";
 
 const GIVE_MAGNET_URL = "https://functions.poehali.dev/05adfa61-68b9-4eb5-95d0-a48462122ff3";
 const GET_REGISTRATIONS_URL = "https://functions.poehali.dev/bc5f0fde-e8e9-4666-9cdb-b19f49b506fe";
-
-interface BonusClientSummary {
-  id: number;
-  name: string;
-  total_magnets: number;
-  unique_breeds: number;
-  bonuses: Array<{ milestone_count: number; milestone_type: string }>;
-}
 
 interface BonusMilestoneStat {
   count: number;
@@ -51,9 +42,7 @@ const MagnetsSection = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingBreedRef = useRef<string | null>(null);
   const [bonusSummary, setBonusSummary] = useState<BonusMilestoneStat[]>([]);
-  const [bonusClients, setBonusClients] = useState<BonusClientSummary[]>([]);
   const [bonusStatsLoading, setBonusStatsLoading] = useState(false);
-  const [expandedClient, setExpandedClient] = useState<number | null>(null);
 
   const loadBonusStats = useCallback(async () => {
     setBonusStatsLoading(true);
@@ -79,7 +68,6 @@ const MagnetsSection = () => {
           };
         })
       );
-      setBonusClients(summaries);
       setBonusSummary(
         BONUS_MILESTONES.map((m) => ({
           ...m,
@@ -450,58 +438,7 @@ const MagnetsSection = () => {
               ))}
             </div>
           )}
-          {bonusClients.length > 0 && (
-            <div className="divide-y">
-              {bonusClients.map((client) => {
-                const milestones = BONUS_MILESTONES.map((m) => {
-                  const current = m.type === "magnets" ? client.total_magnets : client.unique_breeds;
-                  return {
-                    ...m,
-                    current,
-                    pct: Math.min(100, Math.round((current / m.count) * 100)),
-                    reached: current >= m.count,
-                    given: client.bonuses.some((b) => b.milestone_count === m.count && b.milestone_type === m.type),
-                  };
-                });
-                const isExpanded = expandedClient === client.id;
-                return (
-                  <div key={client.id}>
-                    <button
-                      className="w-full flex items-center justify-between gap-2 py-2 text-left hover:bg-slate-50 transition-colors px-1 rounded"
-                      onClick={() => setExpandedClient(isExpanded ? null : client.id)}
-                    >
-                      <span className="text-sm font-medium truncate">{client.name}</span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs text-muted-foreground">{client.total_magnets} магн. · {client.unique_breeds} пород</span>
-                        <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={13} className="text-muted-foreground" />
-                      </div>
-                    </button>
-                    {isExpanded && (
-                      <div className="pb-2 px-1 space-y-2">
-                        {milestones.map((m) => (
-                          <div key={`${m.count}-${m.type}`} className="space-y-1">
-                            <div className="flex items-center justify-between text-xs gap-2">
-                              <span className="flex items-center gap-1.5 min-w-0">
-                                <span>{m.icon}</span>
-                                <span className={m.reached ? "text-green-700 font-medium truncate" : "truncate"}>{m.reward}</span>
-                                {m.reached && m.given && <Badge className="bg-green-100 text-green-800 border-green-200 text-[10px] shrink-0">Выдан</Badge>}
-                                {m.reached && !m.given && <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-[10px] shrink-0 animate-pulse">Не выдан</Badge>}
-                              </span>
-                              <span className="text-muted-foreground shrink-0">{m.current}/{m.count}</span>
-                            </div>
-                            <Progress value={m.pct} className={`h-1.5 ${m.reached ? "[&>div]:bg-green-500" : ""}`} />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {!bonusStatsLoading && bonusClients.length === 0 && (
-            <p className="text-xs text-muted-foreground text-center py-4">Нет зарегистрированных клиентов</p>
-          )}
+
         </CardContent>
       </Card>
 
