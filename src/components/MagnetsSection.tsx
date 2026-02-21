@@ -38,7 +38,7 @@ const MagnetsSection = () => {
   const [uploadingBreed, setUploadingBreed] = useState<string | null>(null);
   const [deletingBreed, setDeletingBreed] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [pendingBreed, setPendingBreed] = useState<string | null>(null);
+  const pendingBreedRef = useRef<string | null>(null);
 
   const loadPhotos = useCallback(async () => {
     setPhotosLoading(true);
@@ -59,10 +59,11 @@ const MagnetsSection = () => {
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !pendingBreed) return;
+    const breed = pendingBreedRef.current;
+    if (!file || !breed) return;
     e.target.value = "";
 
-    setUploadingBreed(pendingBreed);
+    setUploadingBreed(breed);
     try {
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const img = new Image();
@@ -85,19 +86,19 @@ const MagnetsSection = () => {
       const res = await fetch(API_URLS.BREED_PHOTOS, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ breed: pendingBreed, image: dataUrl }),
+        body: JSON.stringify({ breed, image: dataUrl }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка");
-      setPhotos((prev) => ({ ...prev, [pendingBreed]: data.url + "?t=" + Date.now() }));
-      toast.success(`Фото «${pendingBreed}» загружено`);
+      setPhotos((prev) => ({ ...prev, [breed]: data.url + "?t=" + Date.now() }));
+      toast.success(`Фото «${breed}» загружено`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось загрузить");
     } finally {
       setUploadingBreed(null);
-      setPendingBreed(null);
+      pendingBreedRef.current = null;
     }
-  }, [pendingBreed]);
+  }, []);
 
   const handleDeletePhoto = useCallback(async (breed: string) => {
     setDeletingBreed(breed);
@@ -240,7 +241,7 @@ const MagnetsSection = () => {
                       <button
                         className="mt-1.5 w-full text-xs flex items-center justify-center gap-1 py-1 rounded border border-dashed border-slate-300 hover:border-orange-400 hover:text-orange-600 text-slate-400 transition-colors disabled:opacity-50"
                         disabled={isUploading}
-                        onClick={() => { setPendingBreed(breed.breed); fileInputRef.current?.click(); }}
+                        onClick={() => { pendingBreedRef.current = breed.breed; fileInputRef.current?.click(); }}
                       >
                         {isUploading
                           ? <><Icon name="Loader2" size={12} className="animate-spin" />Загрузка...</>
