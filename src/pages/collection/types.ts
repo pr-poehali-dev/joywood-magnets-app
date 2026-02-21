@@ -54,6 +54,12 @@ export function loadSession(): { phone: string; data: CollectionData; photos: Re
     if (!raw) return null;
     const s = JSON.parse(raw);
     if (Date.now() - s.at > SESSION_TTL) { localStorage.removeItem(SESSION_KEY); return null; }
+    if (s.data?.rating) {
+      if (!Array.isArray(s.data.rating.top_magnets)) s.data.rating.top_magnets = [];
+      if (!Array.isArray(s.data.rating.top_value)) s.data.rating.top_value = [];
+      s.data.rating.top_magnets = s.data.rating.top_magnets.map((e: RatingEntry) => ({ ...e, collection_value: e.collection_value ?? 0 }));
+      s.data.rating.top_value = s.data.rating.top_value.map((e: RatingEntry) => ({ ...e, collection_value: e.collection_value ?? 0 }));
+    }
     return s;
-  } catch { return null; }
+  } catch { localStorage.removeItem(SESSION_KEY); return null; }
 }
