@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { WOOD_BREEDS, STAR_LABELS } from "@/lib/store";
 import { GIVE_MAGNET_URL, ADD_CLIENT_URL } from "../clients/types";
 import { GET_REGISTRATIONS_URL } from "./types";
+import { useInventory } from "@/hooks/useInventory";
 import { GivenMagnet, PickedBreed, calcRecommendedOptions, validateGiven } from "./magnetPickerLogic";
 import MagnetRecommendations from "./MagnetRecommendations";
 import MagnetBreedDropdown from "./MagnetBreedDropdown";
@@ -28,7 +29,7 @@ interface Props {
 }
 
 const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirstOrder, isRegistered, pendingBonuses, onDone }: Props) => {
-  const [inventory, setInventory] = useState<Record<string, number>>({});
+  const { stockMap: inventory, decrementStock, incrementStock } = useInventory();
   const [alreadyOwned, setAlreadyOwned] = useState<Set<string>>(new Set());
   const [clientTotal, setClientTotal] = useState(0);
   const [given, setGiven] = useState<GivenMagnet[]>([]);
@@ -45,17 +46,6 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
   const [bonusesLeft, setBonusesLeft] = useState<PendingBonus[]>(pendingBonuses);
 
   useEffect(() => {
-    fetch(`${GIVE_MAGNET_URL}?action=inventory`)
-      .then((r) => r.json())
-      .then((data) => {
-        const inv: Record<string, number> = {};
-        for (const [breed, info] of Object.entries(data.inventory || {})) {
-          inv[breed] = (info as { stock: number }).stock;
-        }
-        setInventory(inv);
-      })
-      .catch(() => {});
-
     fetch(`${GIVE_MAGNET_URL}?registration_id=${registrationId}`)
       .then((r) => r.json())
       .then((data) => {
@@ -100,7 +90,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка");
       setGiven((prev) => [...prev, { id: data.id, breed, stars }]);
-      setInventory((prev) => ({ ...prev, [breed]: Math.max((prev[breed] ?? 1) - 1, 0) }));
+      decrementStock(breed);
       setSearch("");
       setDropdownOpen(false);
       toast.success(`${breed} ${STAR_LABELS[stars]} выдан`);
@@ -123,7 +113,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка");
       setGiven((prev) => prev.filter((g) => g.id !== magnetId));
-      setInventory((prev) => ({ ...prev, [breed]: (prev[breed] ?? 0) + 1 }));
+      incrementStock(breed);
       toast.success(`${breed} убран`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Ошибка удаления");

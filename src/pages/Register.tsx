@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
+import { formatPhone } from "@/lib/api";
 
 const REGISTER_URL = "https://functions.poehali.dev/40f9e8db-184c-407c-ace9-d0877ed306b9";
 
@@ -21,18 +22,6 @@ const Register = () => {
     name.trim().length >= 2 &&
     phone.trim().length >= 6 &&
     (!showOzon || ozonCode.trim().length >= 3);
-
-  const formatPhone = (value: string) => {
-    const digits = value.replace(/\D/g, "");
-    if (digits.length <= 1) return digits ? "+7" : "";
-    const d = digits.startsWith("7") ? digits : "7" + digits;
-    let result = "+7";
-    if (d.length > 1) result += ` (${d.slice(1, 4)}`;
-    if (d.length > 4) result += `) ${d.slice(4, 7)}`;
-    if (d.length > 7) result += `-${d.slice(7, 9)}`;
-    if (d.length > 9) result += `-${d.slice(9, 11)}`;
-    return result;
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment, useCallback } from "react";
+import { useState, useEffect, Fragment, useCallback, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -11,13 +11,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Icon from "@/components/ui/icon";
-import {
-  Registration,
-  ClientMagnet,
-  GET_REGISTRATIONS_URL,
-  GIVE_MAGNET_URL,
-} from "./clients/types";
+import { ClientMagnet, GIVE_MAGNET_URL } from "./clients/types";
 import ClientExpandedRow from "./clients/ClientExpandedRow";
+import { useClients } from "@/hooks/useClients";
+import { useInventory } from "@/hooks/useInventory";
 
 interface ClientsSectionProps {
   focusClientId?: number | null;
@@ -26,28 +23,12 @@ interface ClientsSectionProps {
 
 const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) => {
   const [search, setSearch] = useState("");
-  const [clients, setClients] = useState<Registration[]>([]);
-  const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-
   const [clientMagnets, setClientMagnets] = useState<Record<number, ClientMagnet[]>>({});
   const [magnetsLoading, setMagnetsLoading] = useState<Record<number, boolean>>({});
-  const [inventory, setInventory] = useState<Record<string, number>>({});
 
-  const loadInventory = useCallback(() => {
-    fetch(`${GIVE_MAGNET_URL}?action=inventory`)
-      .then((r) => r.json())
-      .then((data) => {
-        const inv: Record<string, number> = {};
-        for (const [breed, info] of Object.entries(data.inventory || {})) {
-          inv[breed] = (info as { stock: number }).stock;
-        }
-        setInventory(inv);
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => { loadInventory(); }, [loadInventory]);
+  const { clients, loading, reload: loadClients, updateClient } = useClients();
+  const { stockMap: inventory, reload: loadInventory, setStockForBreed } = useInventory();
 
   useEffect(() => {
     if (focusClientId != null) {
@@ -62,15 +43,6 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusClientId]);
 
-  const loadClients = () => {
-    setLoading(true);
-    fetch(GET_REGISTRATIONS_URL)
-      .then((r) => r.json())
-      .then((data) => setClients(data.clients || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  };
-
   const loadClientMagnets = useCallback((regId: number) => {
     setMagnetsLoading((p) => ({ ...p, [regId]: true }));
     fetch(`${GIVE_MAGNET_URL}?registration_id=${regId}`)
@@ -80,18 +52,21 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
       .finally(() => setMagnetsLoading((p) => ({ ...p, [regId]: false })));
   }, []);
 
-  useEffect(() => { loadClients(); }, []);
-
   useEffect(() => {
     if (expandedId !== null && !clientMagnets[expandedId]) {
       loadClientMagnets(expandedId);
     }
   }, [expandedId, loadClientMagnets, clientMagnets]);
 
-  const filtered = clients.filter((c) => {
+  const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return c.name.toLowerCase().includes(q) || c.phone.includes(q) || c.channel.toLowerCase().includes(q) || (c.ozon_order_code || "").toLowerCase().includes(q);
-  });
+    return clients.filter((c) =>
+      c.name.toLowerCase().includes(q) ||
+      c.phone.includes(q) ||
+      c.channel.toLowerCase().includes(q) ||
+      (c.ozon_order_code || "").toLowerCase().includes(q)
+    );
+  }, [clients, search]);
 
   return (
     <div className="space-y-4">
@@ -164,7 +139,7 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
                       onMagnetGiven={(regId, magnet, breed, stockAfter) => {
                         setClientMagnets((p) => ({ ...p, [regId]: [magnet, ...(p[regId] || [])] }));
                         if (stockAfter !== null && stockAfter !== undefined) {
-                          setInventory((p) => ({ ...p, [breed]: stockAfter }));
+                          setStockForBreed(breed, stockAfter);
                         }
                       }}
                       onMagnetsReload={loadClientMagnets}
@@ -173,15 +148,7 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
                         setExpandedId(null);
                         loadClients();
                       }}
-                      onClientUpdated={(updated) => {
-                        setClients((prev) =>
-                          prev.map((c) =>
-                            c.id === updated.id
-                              ? { ...c, name: updated.name, phone: updated.phone, registered: updated.registered }
-                              : c
-                          )
-                        );
-                      }}
+                      onClientUpdated={updateClient}
                     />
                   )}
                 </Fragment>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,22 +88,22 @@ const RecentRegistrations = ({ onNavigateToClient, onCountChange }: Props) => {
     loadRegistrations();
   }, [loadStats, loadRegistrations]);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     loadStats();
     loadRegistrations();
-  };
+  }, [loadStats, loadRegistrations]);
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = useCallback((dateStr: string) => {
     const d = new Date(dateStr);
     return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-  };
+  }, []);
 
-  const chartData = stats.map((d) => ({
+  const chartData = useMemo(() => stats.map((d) => ({
     ...d,
     label: formatDate(d.date),
-  }));
+  })), [stats, formatDate]);
 
-  const filteredRegs = search.trim()
+  const filteredRegs = useMemo(() => search.trim()
     ? registrations.filter((r) => {
         const q = search.toLowerCase();
         return (
@@ -112,7 +112,7 @@ const RecentRegistrations = ({ onNavigateToClient, onCountChange }: Props) => {
           r.channel?.toLowerCase().includes(q)
         );
       })
-    : registrations;
+    : registrations, [registrations, search]);
 
   return (
     <div className="space-y-5">

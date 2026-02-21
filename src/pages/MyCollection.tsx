@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import Icon from "@/components/ui/icon";
 import { STAR_LABELS, WOOD_BREEDS, BONUS_MILESTONES } from "@/lib/store";
 import { toast } from "sonner";
+import { formatPhone } from "@/lib/api";
 
 const LOOKUP_URL = "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6f26ec4";
 
@@ -47,18 +48,6 @@ const MyCollection = () => {
   const [data, setData] = useState<CollectionData | null>(null);
   const [notFound, setNotFound] = useState(false);
   const autoSearched = useRef(false);
-
-  const formatPhone = (value: string) => {
-    const digits = value.replace(/\D/g, "");
-    if (digits.length <= 1) return digits ? "+7" : "";
-    const d = digits.startsWith("7") ? digits : "7" + digits;
-    let result = "+7";
-    if (d.length > 1) result += ` (${d.slice(1, 4)}`;
-    if (d.length > 4) result += `) ${d.slice(4, 7)}`;
-    if (d.length > 7) result += `-${d.slice(7, 9)}`;
-    if (d.length > 9) result += `-${d.slice(9, 11)}`;
-    return result;
-  };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPhone(formatPhone(e.target.value));

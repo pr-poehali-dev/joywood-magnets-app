@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,8 +19,8 @@ import {
 } from "@/lib/store";
 import type { Client, MagnetRecommendation } from "@/lib/store";
 import { toast } from "sonner";
-
-const GIVE_MAGNET_URL = "https://functions.poehali.dev/05adfa61-68b9-4eb5-95d0-a48462122ff3";
+import { useInventory } from "@/hooks/useInventory";
+import { API_URLS } from "@/lib/api";
 
 const categories = [...new Set(WOOD_BREEDS.map((b) => b.category))];
 
@@ -53,52 +53,36 @@ function makeVirtualClient(totalSpent: number, isNew: boolean): Client {
   };
 }
 
-interface InventoryMap {
-  [breed: string]: { stars: number; category: string; stock: number };
-}
-
 const MagnetsSection = () => {
   const [orderAmount, setOrderAmount] = useState<number>(0);
   const [isFirstOrder, setIsFirstOrder] = useState(false);
   const [totalSpent, setTotalSpent] = useState<number>(0);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [starsFilter, setStarsFilter] = useState<string>("all");
-
-  const [inventory, setInventory] = useState<InventoryMap>({});
   const [editingBreed, setEditingBreed] = useState<string | null>(null);
   const [editStock, setEditStock] = useState<string>("");
   const [saving, setSaving] = useState(false);
-  const [loadingInv, setLoadingInv] = useState(true);
 
-  const loadInventory = useCallback(() => {
-    setLoadingInv(true);
-    fetch(`${GIVE_MAGNET_URL}?action=inventory`)
-      .then((r) => r.json())
-      .then((data) => setInventory(data.inventory || {}))
-      .catch(() => {})
-      .finally(() => setLoadingInv(false));
-  }, []);
+  const { inventory, loading: loadingInv, setStockForBreed } = useInventory();
 
-  useEffect(() => { loadInventory(); }, [loadInventory]);
-
-  const handleSaveStock = async (breed: string, stars: number, category: string) => {
+  const handleSaveStock = useCallback(async (breed: string, stars: number, category: string) => {
     const stock = parseInt(editStock, 10);
     if (isNaN(stock) || stock < 0) { toast.error("Укажите корректное количество"); return; }
     setSaving(true);
     try {
-      const res = await fetch(GIVE_MAGNET_URL, {
+      const res = await fetch(API_URLS.GIVE_MAGNET, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items: [{ breed, stars, category, stock }] }),
       });
       if (!res.ok) throw new Error("Ошибка сохранения");
-      setInventory((prev) => ({ ...prev, [breed]: { stars, category, stock } }));
+      setStockForBreed(breed, stock);
       setEditingBreed(null);
       toast.success(`${breed} — остаток: ${stock}`);
     } catch {
       toast.error("Не удалось сохранить");
     } finally { setSaving(false); }
-  };
+  }, [editStock, setStockForBreed]);
 
   const recommendation: MagnetRecommendation | null = useMemo(() => {
     if (orderAmount <= 0) return null;
@@ -110,21 +94,24 @@ const MagnetsSection = () => {
     });
   }, [orderAmount, isFirstOrder, totalSpent]);
 
-  const filteredBreeds = WOOD_BREEDS.filter((b) => {
+  const filteredBreeds = useMemo(() => WOOD_BREEDS.filter((b) => {
     if (categoryFilter !== "all" && b.category !== categoryFilter) return false;
     if (starsFilter !== "all" && b.stars !== Number(starsFilter)) return false;
     return true;
-  });
+  }), [categoryFilter, starsFilter]);
 
-  const totalStock = Object.values(inventory).reduce((s, v) => s + v.stock, 0);
-  const lowStockCount = WOOD_BREEDS.filter((b) => {
-    const inv = inventory[b.breed];
-    return inv && inv.stock > 0 && inv.stock < 5;
-  }).length;
-  const outOfStockCount = WOOD_BREEDS.filter((b) => {
-    const inv = inventory[b.breed];
-    return !inv || inv.stock === 0;
-  }).length;
+  const { totalStock, lowStockCount, outOfStockCount } = useMemo(() => {
+    const total = Object.values(inventory).reduce((s, v) => s + v.stock, 0);
+    const low = WOOD_BREEDS.filter((b) => {
+      const inv = inventory[b.breed];
+      return inv && inv.stock > 0 && inv.stock < 5;
+    }).length;
+    const out = WOOD_BREEDS.filter((b) => {
+      const inv = inventory[b.breed];
+      return !inv || inv.stock === 0;
+    }).length;
+    return { totalStock: total, lowStockCount: low, outOfStockCount: out };
+  }, [inventory]);
 
   return (
     <div className="space-y-6">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -97,6 +97,16 @@ const BonusTracker = () => {
     }
   };
 
+  const eligibleClients = useMemo(() => clients.filter((c) => {
+    return BONUS_MILESTONES.some((m) => {
+      const current = m.type === "magnets" ? c.total_magnets : c.unique_breeds;
+      const alreadyGiven = c.bonuses.some(
+        (b) => b.milestone_count === m.count && b.milestone_type === m.type
+      );
+      return current >= m.count && !alreadyGiven;
+    });
+  }), [clients]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20 text-muted-foreground gap-2">
@@ -105,16 +115,6 @@ const BonusTracker = () => {
       </div>
     );
   }
-
-  const eligibleClients = clients.filter((c) => {
-    return BONUS_MILESTONES.some((m) => {
-      const current = m.type === "magnets" ? c.total_magnets : c.unique_breeds;
-      const alreadyGiven = c.bonuses.some(
-        (b) => b.milestone_count === m.count && b.milestone_type === m.type
-      );
-      return current >= m.count && !alreadyGiven;
-    });
-  });
 
   return (
     <div className="space-y-6">
