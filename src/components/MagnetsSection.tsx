@@ -64,11 +64,22 @@ const MagnetsSection = () => {
 
     setUploadingBreed(pendingBreed);
     try {
-      const reader = new FileReader();
       const dataUrl = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+        const img = new Image();
+        img.onload = () => {
+          const SIZE = 800;
+          const canvas = document.createElement("canvas");
+          canvas.width = SIZE;
+          canvas.height = SIZE;
+          const ctx = canvas.getContext("2d")!;
+          const s = Math.min(img.width, img.height);
+          const ox = (img.width - s) / 2;
+          const oy = (img.height - s) / 2;
+          ctx.drawImage(img, ox, oy, s, s, 0, 0, SIZE, SIZE);
+          resolve(canvas.toDataURL("image/jpeg", 0.85));
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
       });
 
       const res = await fetch(API_URLS.BREED_PHOTOS, {

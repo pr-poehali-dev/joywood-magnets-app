@@ -49,6 +49,8 @@ def handler(event, context):
         for obj in resp.get('Contents', []):
             key = obj['Key']
             filename = key[len(PREFIX):]
+            if not filename:
+                continue
             breed = filename.rsplit('.', 1)[0]
             photos[breed] = cdn_base + filename
         return ok({'photos': photos})

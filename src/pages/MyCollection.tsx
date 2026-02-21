@@ -59,6 +59,23 @@ interface CollectionData {
 
 type Step = "phone" | "verify" | "collection";
 
+const SESSION_KEY = "jw_collection_session";
+const SESSION_TTL = 60 * 60 * 1000;
+
+function saveSession(phone: string, collectionData: CollectionData, photos: Record<string, string>) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ phone, data: collectionData, photos, at: Date.now() }));
+}
+
+function loadSession(): { phone: string; data: CollectionData; photos: Record<string, string> } | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (Date.now() - s.at > SESSION_TTL) { localStorage.removeItem(SESSION_KEY); return null; }
+    return s;
+  } catch { return null; }
+}
+
 const MyCollection = () => {
   const [searchParams] = useSearchParams();
   const [step, setStep] = useState<Step>("phone");
@@ -71,6 +88,15 @@ const MyCollection = () => {
   const autoSearched = useRef(false);
 
   const phone = usePhoneInput();
+
+  useEffect(() => {
+    const session = loadSession();
+    if (session && step === "phone") {
+      setData(session.data);
+      setBreedPhotos(session.photos);
+      setStep("collection");
+    }
+  }, []);
 
   const doSearch = useCallback(async (searchPhone: string) => {
     setLoading(true);
@@ -86,8 +112,10 @@ const MyCollection = () => {
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Ошибка загрузки");
       const photosData = await photosRes.json();
-      setBreedPhotos(photosData.photos || {});
+      const photos = photosData.photos || {};
+      setBreedPhotos(photos);
       setData(result);
+      saveSession(searchPhone, result, photos);
       setStep("collection");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось загрузить данные");
@@ -137,6 +165,7 @@ const MyCollection = () => {
   };
 
   const handleReset = () => {
+    localStorage.removeItem(SESSION_KEY);
     setData(null);
     setStep("phone");
     setNotFound(false);
