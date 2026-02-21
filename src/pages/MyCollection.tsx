@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import Icon from "@/components/ui/icon";
 import { STAR_LABELS, WOOD_BREEDS, BONUS_MILESTONES } from "@/lib/store";
 import { toast } from "sonner";
-import { formatPhone } from "@/lib/api";
+import { usePhoneInput } from "@/hooks/usePhoneInput";
 
 const LOOKUP_URL = "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6f26ec4";
 
@@ -43,19 +43,12 @@ interface CollectionData {
 
 const MyCollection = () => {
   const [searchParams] = useSearchParams();
-  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CollectionData | null>(null);
   const [notFound, setNotFound] = useState(false);
   const autoSearched = useRef(false);
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPhone(formatPhone(e.target.value));
-    setNotFound(false);
-  };
-
-  const phoneDigits = phone.replace(/\D/g, "");
-  const isValid = phoneDigits.length >= 11;
+  const phone = usePhoneInput();
 
   const doSearch = useCallback(async (searchPhone: string) => {
     setLoading(true);
@@ -79,40 +72,15 @@ const MyCollection = () => {
     const urlPhone = searchParams.get("phone");
     if (urlPhone && !autoSearched.current) {
       autoSearched.current = true;
-      setPhone(urlPhone);
       doSearch(urlPhone);
     }
   }, [searchParams, doSearch]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValid) return;
-
-    setLoading(true);
+    if (!phone.isValid) return;
     setNotFound(false);
-    try {
-      const res = await fetch(LOOKUP_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.trim() }),
-      });
-
-      if (res.status === 404) {
-        setNotFound(true);
-        setData(null);
-        return;
-      }
-
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Ошибка загрузки");
-
-      setData(result);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Не удалось загрузить данные";
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
+    await doSearch(phone.fullPhone);
   };
 
   const collectedBreeds = data ? new Set(data.magnets.map((m) => m.breed)) : new Set<string>();
@@ -153,15 +121,19 @@ const MyCollection = () => {
                   <Input
                     id="phone"
                     type="tel"
-                    placeholder="+7 (___) ___-__-__"
-                    value={phone}
-                    onChange={handlePhoneChange}
+                    inputMode="numeric"
+                    ref={phone.inputRef}
+                    value={phone.display}
+                    onChange={phone.handleChange}
+                    onKeyDown={phone.handleKeyDown}
+                    onFocus={phone.handleFocus}
+                    autoComplete="tel"
                   />
                 </div>
                 <Button
                   type="submit"
                   className="w-full bg-gold-500 hover:bg-gold-600"
-                  disabled={!isValid || loading}
+                  disabled={!phone.isValid || loading}
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">

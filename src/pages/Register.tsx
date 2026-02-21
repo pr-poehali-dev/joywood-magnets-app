@@ -6,21 +6,22 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
-import { formatPhone } from "@/lib/api";
+import { usePhoneInput } from "@/hooks/usePhoneInput";
 
 const REGISTER_URL = "https://functions.poehali.dev/40f9e8db-184c-407c-ace9-d0877ed306b9";
 
 const Register = () => {
   const navigate = useNavigate();
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
   const [ozonCode, setOzonCode] = useState("");
   const [showOzon, setShowOzon] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const phone = usePhoneInput();
+
   const isValid =
     name.trim().length >= 2 &&
-    phone.trim().length >= 6 &&
+    phone.isValid &&
     (!showOzon || ozonCode.trim().length >= 3);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,7 +35,7 @@ const Register = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          phone: phone.trim(),
+          phone: phone.fullPhone,
           ozon_order_code: showOzon && ozonCode.trim() ? ozonCode.trim() : null,
         }),
       });
@@ -42,7 +43,7 @@ const Register = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка регистрации");
 
-      navigate("/my-collection?phone=" + encodeURIComponent(phone.trim()));
+      navigate("/my-collection?phone=" + encodeURIComponent(phone.fullPhone));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось зарегистрироваться");
     } finally {
@@ -83,10 +84,13 @@ const Register = () => {
                 <Input
                   id="phone"
                   type="tel"
-                  placeholder="+7 (___) ___-__-__"
-                  value={phone}
-                  onChange={(e) => setPhone(formatPhone(e.target.value))}
-                  required
+                  inputMode="numeric"
+                  ref={phone.inputRef}
+                  value={phone.display}
+                  onChange={phone.handleChange}
+                  onKeyDown={phone.handleKeyDown}
+                  onFocus={phone.handleFocus}
+                  autoComplete="tel"
                 />
                 <p className="text-xs text-muted-foreground">
                   По номеру телефона вы сможете войти в коллекцию в любое время
