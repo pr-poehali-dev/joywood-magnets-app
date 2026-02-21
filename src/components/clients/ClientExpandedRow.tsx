@@ -343,22 +343,22 @@ const ClientExpandedRow = ({
             {!mLoading && magnets.length > 0 && (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 mb-4">
                 {magnets.map((m) => (
-                  <div key={m.id} className={`relative rounded-lg border p-2 text-center text-xs ${starBg[m.stars] || "bg-white"}`}>
-                    <button
-                      className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-400 hover:bg-red-600 text-white flex items-center justify-center"
-                      onClick={(e) => { e.stopPropagation(); handleDeleteMagnet(m.id, m.breed); }}
-                      disabled={deletingMagnetId === m.id}
-                      title="Удалить магнит"
-                    >
-                      {deletingMagnetId === m.id
-                        ? <Icon name="Loader2" size={10} className="animate-spin" />
-                        : <Icon name="X" size={10} />}
-                    </button>
+                  <div key={m.id} className={`rounded-lg border p-2 text-center text-xs ${starBg[m.stars] || "bg-white"}`}>
                     <div className="text-lg">{STAR_LABELS[m.stars]}</div>
                     <div className="font-medium">{m.breed}</div>
                     <div className="text-[10px] text-muted-foreground mt-0.5">
                       {new Date(m.given_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
                     </div>
+                    <button
+                      className="mt-1 w-full flex items-center justify-center gap-1 text-[10px] text-red-400 hover:text-red-600 transition-colors"
+                      onClick={(e) => { e.stopPropagation(); handleDeleteMagnet(m.id, m.breed); }}
+                      disabled={deletingMagnetId === m.id}
+                    >
+                      {deletingMagnetId === m.id
+                        ? <Icon name="Loader2" size={10} className="animate-spin" />
+                        : <Icon name="Trash2" size={10} />}
+                      Удалить
+                    </button>
                   </div>
                 ))}
               </div>
