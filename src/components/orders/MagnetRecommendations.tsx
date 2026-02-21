@@ -48,7 +48,12 @@ const MagnetRecommendations = ({
   const prevKeyRef = useRef<number | null>(null);
   const prevOptionsLenRef = useRef<number>(0);
 
-  if (prevKeyRef.current !== reshuffleKey || prevOptionsLenRef.current !== options.length) {
+  const inventoryLoaded = Object.keys(inventory).length > 0;
+
+  if (
+    inventoryLoaded &&
+    (prevKeyRef.current !== reshuffleKey || prevOptionsLenRef.current !== options.length)
+  ) {
     prevKeyRef.current = reshuffleKey;
     prevOptionsLenRef.current = options.length;
     allPicksRef.current = options.map((opt) =>
