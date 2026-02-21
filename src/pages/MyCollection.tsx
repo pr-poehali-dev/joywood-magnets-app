@@ -6,26 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import Icon from "@/components/ui/icon";
+import { PhoneVerifyWidget, loadWidgetAssets } from "@/components/ui/phone-verify-widget";
 import { STAR_LABELS, WOOD_BREEDS, BONUS_MILESTONES } from "@/lib/store";
 import { toast } from "sonner";
 import { usePhoneInput } from "@/hooks/usePhoneInput";
 import { PhoneInput } from "@/components/ui/phone-input";
 
-declare global {
-  interface Window {
-    VerifyWidget: {
-      mount: (selector: string, options: object, sendFn: (key: string) => Promise<unknown>, onSuccess: () => void) => void;
-      unmount: (selector: string) => void;
-    };
-  }
-}
-
 const LOOKUP_URL = "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6f26ec4";
-const SEND_VERIFY_URL = "https://functions.poehali.dev/0ddb5905-2b59-42a3-a5a2-ddeaa961caa9";
-const CHECK_VERIFY_URL = "https://functions.poehali.dev/97edf104-eb7b-4e03-bb36-53ef11b85257";
-const WIDGET_ID = "qFvkj4";
-const CAPTCHA_SITEKEY = "9858807e-0328-46a4-914e-1d7e825044e0";
-
 const TOTAL_BREEDS = WOOD_BREEDS.length;
 
 interface Magnet {
@@ -61,99 +48,11 @@ const MyCollection = () => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CollectionData | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [verifiedPhone, setVerifiedPhone] = useState("");
   const notFoundRef = useRef<HTMLDivElement>(null);
   const autoSearched = useRef(false);
-  const verifyKeyRef = useRef<string>("");
-  const widgetLoaded = useRef(false);
-  const pendingPhone = useRef<string>("");
 
   const phone = usePhoneInput();
-
-  const loadWidgetAssets = useCallback(() => {
-    if (widgetLoaded.current) return Promise.resolve();
-    return new Promise<void>((resolve) => {
-      if (!document.querySelector('link[href*="VerifyWidget.css"]')) {
-        const link = document.createElement("link");
-        link.rel = "stylesheet";
-        link.href = "https://cdn.direct.i-dgtl.ru/VerifyWidget.css";
-        document.head.appendChild(link);
-      }
-      if (!document.querySelector('script[src*="VerifyWidget"]')) {
-        const script = document.createElement("script");
-        script.src = "https://cdn.direct.i-dgtl.ru/VerifyWidget.umd.min.js";
-        script.onload = () => { widgetLoaded.current = true; resolve(); };
-        document.head.appendChild(script);
-      } else {
-        widgetLoaded.current = true;
-        resolve();
-      }
-    });
-  }, []);
-
-  const doSearchRef = useRef<(phone: string) => Promise<void>>(async () => {});
-
-  const mountWidget = useCallback((phoneNumber: string) => {
-    if (!window.VerifyWidget) return;
-
-    const sendAuthKeyFunc = async (key: string) => {
-      verifyKeyRef.current = key;
-      const res = await fetch(SEND_VERIFY_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key }),
-      });
-      if (!res.ok) throw new Error("Ошибка отправки кода");
-      return res;
-    };
-
-    const onSuccessFunc = async () => {
-      const res = await fetch(CHECK_VERIFY_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: verifyKeyRef.current }),
-      });
-      const result = await res.json();
-      if (result.status === "CONFIRMED") {
-        window.VerifyWidget.unmount("#verify-widget");
-        doSearchRef.current(phoneNumber);
-      } else {
-        toast.error("Верификация не подтверждена");
-      }
-    };
-
-    window.VerifyWidget.mount(
-      "#verify-widget",
-      { destination: phoneNumber, widgetId: WIDGET_ID, captchaSiteKey: CAPTCHA_SITEKEY },
-      sendAuthKeyFunc,
-      onSuccessFunc,
-    );
-  }, []);
-
-  const checkExists = useCallback(async (searchPhone: string) => {
-    setLoading(true);
-    setNotFound(false);
-    try {
-      const res = await fetch(LOOKUP_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: searchPhone, check_only: true }),
-      });
-      if (res.status === 404) {
-        setNotFound(true);
-        setTimeout(() => notFoundRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
-        return;
-      }
-      if (!res.ok) throw new Error("Ошибка проверки");
-      pendingPhone.current = searchPhone;
-      await loadWidgetAssets();
-      setStep("verify");
-      setTimeout(() => mountWidget(searchPhone), 100);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Не удалось проверить номер");
-    } finally {
-      setLoading(false);
-    }
-  }, [loadWidgetAssets, mountWidget]);
 
   const doSearch = useCallback(async (searchPhone: string) => {
     setLoading(true);
@@ -175,7 +74,30 @@ const MyCollection = () => {
     }
   }, []);
 
-  useEffect(() => { doSearchRef.current = doSearch; }, [doSearch]);
+  const checkExists = useCallback(async (searchPhone: string) => {
+    setLoading(true);
+    setNotFound(false);
+    try {
+      const res = await fetch(LOOKUP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: searchPhone, check_only: true }),
+      });
+      if (res.status === 404) {
+        setNotFound(true);
+        setTimeout(() => notFoundRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+        return;
+      }
+      if (!res.ok) throw new Error("Ошибка проверки");
+      await loadWidgetAssets();
+      setVerifiedPhone(searchPhone);
+      setStep("verify");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось проверить номер");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const urlPhone = searchParams.get("phone");
@@ -240,10 +162,17 @@ const MyCollection = () => {
                   className="w-full bg-gold-500 hover:bg-gold-600"
                   disabled={!phone.isValid || loading}
                 >
-                  <span className="flex items-center gap-2">
-                    <Icon name="Search" size={18} />
-                    Найти мои магниты
-                  </span>
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <Icon name="Loader2" size={18} className="animate-spin" />
+                      Проверка...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Icon name="Search" size={18} />
+                      Найти мои магниты
+                    </span>
+                  )}
                 </Button>
               </form>
 
@@ -263,21 +192,12 @@ const MyCollection = () => {
 
         {step === "verify" && (
           <Card className="shadow-lg border-gold-200">
-            <CardContent className="pt-6 space-y-4">
-              <div className="text-center space-y-1">
-                <p className="font-semibold text-foreground">Подтвердите номер телефона</p>
-                <p className="text-sm text-muted-foreground">Выберите удобный способ получения кода</p>
-              </div>
-              <div id="verify-widget" />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full text-muted-foreground"
-                onClick={() => setStep("phone")}
-              >
-                <Icon name="ArrowLeft" size={16} />
-                Изменить номер
-              </Button>
+            <CardContent className="pt-6">
+              <PhoneVerifyWidget
+                phone={verifiedPhone}
+                onSuccess={() => doSearch(verifiedPhone)}
+                onBack={() => setStep("phone")}
+              />
             </CardContent>
           </Card>
         )}
