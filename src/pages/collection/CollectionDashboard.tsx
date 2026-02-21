@@ -53,7 +53,7 @@ const CollectionDashboard = ({ data, onReset }: Props) => {
                 <span className="text-xs text-muted-foreground shrink-0">
                   {valueKey === "total_magnets"
                     ? `${entry.total_magnets} магн.`
-                    : `${entry.collection_value.toLocaleString("ru-RU")} ₽`}
+                    : `${(entry.collection_value ?? 0).toLocaleString("ru-RU")} ₽`}
                 </span>
               </div>
             );
