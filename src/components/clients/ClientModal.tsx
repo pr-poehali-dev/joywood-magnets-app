@@ -251,9 +251,9 @@ const ClientModal = ({
                     <Icon name="Pencil" size={12} />Редактировать
                   </Button>
                   {client.phone && (
-                    <a href={`https://wa.me/${client.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">
-                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50 gap-1">
-                        <Icon name="MessageCircle" size={12} />WhatsApp
+                    <a href={`https://t.me/+${client.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-blue-500 hover:text-blue-700 hover:bg-blue-50 gap-1">
+                        <Icon name="Send" size={12} />Telegram
                       </Button>
                     </a>
                   )}
