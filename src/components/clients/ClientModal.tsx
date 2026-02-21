@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Icon from "@/components/ui/icon";
-import { WOOD_BREEDS, STAR_LABELS } from "@/lib/store";
+import { WOOD_BREEDS, STAR_LABELS, BONUS_MILESTONES } from "@/lib/store";
 import { toast } from "sonner";
 import {
   Registration,
@@ -17,11 +17,20 @@ import ClientModalInfo from "./ClientModalInfo";
 import ClientModalOrders from "./ClientModalOrders";
 import ClientModalMagnets from "./ClientModalMagnets";
 
+export interface BonusRecord {
+  id: number;
+  milestone_count: number;
+  milestone_type: string;
+  reward: string;
+  given_at: string;
+}
+
 interface Props {
   client: Registration | null;
   open: boolean;
   magnets: ClientMagnet[];
   magnetsLoading: boolean;
+  bonuses: BonusRecord[];
   inventory: Record<string, number>;
   onClose: () => void;
   onMagnetGiven: (regId: number, magnet: ClientMagnet, breed: string, stockAfter: number | null) => void;
@@ -36,6 +45,7 @@ const ClientModal = ({
   open,
   magnets,
   magnetsLoading: mLoading,
+  bonuses,
   inventory,
   onClose,
   onMagnetGiven,
@@ -63,6 +73,7 @@ const ClientModal = ({
   const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [comment, setComment] = useState("");
   const [savingComment, setSavingComment] = useState(false);
+  const [givingBonus, setGivingBonus] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !client) return;
@@ -88,6 +99,17 @@ const ClientModal = ({
   }, [open, client?.id]);
 
   if (!client) return null;
+
+  const totalMagnets = magnets.length;
+  const uniqueBreeds = new Set(magnets.map((m) => m.breed)).size;
+
+  const pendingBonuses = BONUS_MILESTONES.filter((m) => {
+    const current = m.type === "magnets" ? totalMagnets : uniqueBreeds;
+    const alreadyGiven = bonuses.some(
+      (b) => b.milestone_count === m.count && b.milestone_type === m.type
+    );
+    return current >= m.count && !alreadyGiven;
+  });
 
   const handleSaveEdit = async () => {
     if (!editName.trim() && !editPhone.trim()) { toast.error("Укажите хотя бы имя или телефон"); return; }
@@ -194,6 +216,30 @@ const ClientModal = ({
     } finally { setDeletingOrderId(null); }
   };
 
+  const handleGiveBonus = async (milestone: typeof BONUS_MILESTONES[0]) => {
+    const key = `${milestone.count}-${milestone.type}`;
+    setGivingBonus(key);
+    try {
+      const res = await fetch(GIVE_MAGNET_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "give_bonus",
+          registration_id: client.id,
+          milestone_count: milestone.count,
+          milestone_type: milestone.type,
+          reward: milestone.reward,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Ошибка");
+      toast.success(`Бонус «${milestone.reward}» выдан`);
+      onMagnetsReload(client.id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Ошибка выдачи бонуса");
+    } finally { setGivingBonus(null); }
+  };
+
   const openOrder = (order: ClientOrder) => {
     setSelectedOrder({
       id: order.id,
@@ -272,6 +318,8 @@ const ClientModal = ({
               savingComment={savingComment}
               confirmDelete={confirmDelete}
               deleting={deleting}
+              pendingBonuses={pendingBonuses}
+              givingBonus={givingBonus}
               onBreedSelect={setSelectedBreed}
               onBreedSearchChange={setBreedSearch}
               onBreedOpenToggle={() => setBreedOpen((v) => !v)}
@@ -283,6 +331,7 @@ const ClientModal = ({
               onConfirmDelete={() => setConfirmDelete(true)}
               onCancelDelete={() => setConfirmDelete(false)}
               onDelete={handleDelete}
+              onGiveBonus={handleGiveBonus}
             />
           </div>
         </DialogContent>

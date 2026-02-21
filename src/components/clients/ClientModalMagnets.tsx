@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import Icon from "@/components/ui/icon";
-import { WOOD_BREEDS, STAR_LABELS } from "@/lib/store";
+import { WOOD_BREEDS, STAR_LABELS, BONUS_MILESTONES } from "@/lib/store";
 import { ClientMagnet, ClientOrder, starBg } from "./types";
 
 interface Props {
@@ -20,6 +20,8 @@ interface Props {
   savingComment: boolean;
   confirmDelete: boolean;
   deleting: boolean;
+  pendingBonuses: typeof BONUS_MILESTONES;
+  givingBonus: string | null;
   onBreedSelect: (breed: string) => void;
   onBreedSearchChange: (v: string) => void;
   onBreedOpenToggle: () => void;
@@ -31,6 +33,7 @@ interface Props {
   onConfirmDelete: () => void;
   onCancelDelete: () => void;
   onDelete: () => void;
+  onGiveBonus: (milestone: typeof BONUS_MILESTONES[0]) => void;
 }
 
 const ClientModalMagnets = ({
@@ -47,6 +50,8 @@ const ClientModalMagnets = ({
   savingComment,
   confirmDelete,
   deleting,
+  pendingBonuses,
+  givingBonus,
   onBreedSelect,
   onBreedSearchChange,
   onBreedOpenToggle,
@@ -58,6 +63,7 @@ const ClientModalMagnets = ({
   onConfirmDelete,
   onCancelDelete,
   onDelete,
+  onGiveBonus,
 }: Props) => {
   const breedRef = useRef<HTMLDivElement>(null);
   const collectedBreeds = new Set(magnets.map((m) => m.breed));
@@ -109,6 +115,38 @@ const ClientModalMagnets = ({
           </div>
         )}
       </div>
+
+      {/* Пропущенные бонусы */}
+      {pendingBonuses.length > 0 && (
+        <div className="border border-orange-200 bg-orange-50 rounded-lg p-3 space-y-2">
+          <p className="text-xs font-semibold text-orange-800 flex items-center gap-1.5">
+            <Icon name="Bell" size={13} />
+            Не выданные бонусы ({pendingBonuses.length})
+          </p>
+          {pendingBonuses.map((m) => {
+            const key = `${m.count}-${m.type}`;
+            return (
+              <div key={key} className="flex items-center justify-between gap-2 bg-white rounded px-2.5 py-1.5 border border-orange-100">
+                <span className="text-sm flex items-center gap-1.5">
+                  <span>{m.icon}</span>
+                  <span className="font-medium text-orange-800 truncate">{m.reward}</span>
+                </span>
+                <Button
+                  size="sm"
+                  className="h-7 text-xs bg-orange-500 hover:bg-orange-600 shrink-0"
+                  disabled={givingBonus === key}
+                  onClick={() => onGiveBonus(m)}
+                >
+                  {givingBonus === key
+                    ? <Icon name="Loader2" size={12} className="animate-spin" />
+                    : <Icon name="Gift" size={12} />}
+                  Выдать
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Выдать магнит вручную */}
       <div className="space-y-2 border-t pt-4">

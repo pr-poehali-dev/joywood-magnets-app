@@ -107,6 +107,20 @@ const BonusTracker = () => {
     });
   }), [clients]);
 
+  const bonusSummary = useMemo(() => {
+    return BONUS_MILESTONES.map((m) => {
+      const given = clients.reduce((sum, c) => {
+        return sum + (c.bonuses.some((b) => b.milestone_count === m.count && b.milestone_type === m.type) ? 1 : 0);
+      }, 0);
+      const pending = clients.filter((c) => {
+        const current = m.type === "magnets" ? c.total_magnets : c.unique_breeds;
+        const alreadyGiven = c.bonuses.some((b) => b.milestone_count === m.count && b.milestone_type === m.type);
+        return current >= m.count && !alreadyGiven;
+      }).length;
+      return { ...m, given, pending };
+    });
+  }, [clients]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20 text-muted-foreground gap-2">
@@ -119,14 +133,24 @@ const BonusTracker = () => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {BONUS_MILESTONES.map((m, i) => (
-          <Card key={i} className="text-center">
+        {bonusSummary.map((m, i) => (
+          <Card key={i} className={`text-center ${m.pending > 0 ? "border-orange-300 bg-orange-50" : ""}`}>
             <CardContent className="p-4">
               <div className="text-3xl mb-2">{m.icon}</div>
               <div className="text-sm font-semibold mb-1">
                 {m.count} {m.type === "magnets" ? "магнитов" : "пород"}
               </div>
-              <div className="text-xs text-muted-foreground">{m.reward}</div>
+              <div className="text-xs text-muted-foreground mb-2">{m.reward}</div>
+              <div className="flex justify-center gap-2 text-xs">
+                <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">
+                  выдано: {m.given}
+                </span>
+                {m.pending > 0 && (
+                  <span className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full font-medium animate-pulse">
+                    ждут: {m.pending}
+                  </span>
+                )}
+              </div>
             </CardContent>
           </Card>
         ))}

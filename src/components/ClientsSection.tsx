@@ -12,6 +12,15 @@ import {
 } from "@/components/ui/table";
 import Icon from "@/components/ui/icon";
 import { ClientMagnet, GIVE_MAGNET_URL } from "./clients/types";
+import { BONUS_MILESTONES } from "@/lib/store";
+
+interface BonusRecord {
+  id: number;
+  milestone_count: number;
+  milestone_type: string;
+  reward: string;
+  given_at: string;
+}
 import ClientModal from "./clients/ClientModal";
 import { useClients } from "@/hooks/useClients";
 import { useInventory } from "@/hooks/useInventory";
@@ -26,15 +35,21 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [clientMagnets, setClientMagnets] = useState<Record<number, ClientMagnet[]>>({});
   const [magnetsLoading, setMagnetsLoading] = useState<Record<number, boolean>>({});
+  const [clientBonuses, setClientBonuses] = useState<Record<number, BonusRecord[]>>({});
 
   const { clients, loading, reload: loadClients, updateClient, removeClient } = useClients();
   const { stockMap: inventory, reload: loadInventory, setStockForBreed } = useInventory();
 
   const loadClientMagnets = useCallback((regId: number) => {
     setMagnetsLoading((p) => ({ ...p, [regId]: true }));
-    fetch(`${GIVE_MAGNET_URL}?registration_id=${regId}`)
-      .then((r) => r.json())
-      .then((data) => setClientMagnets((p) => ({ ...p, [regId]: data.magnets || [] })))
+    Promise.all([
+      fetch(`${GIVE_MAGNET_URL}?registration_id=${regId}`).then((r) => r.json()),
+      fetch(`${GIVE_MAGNET_URL}?action=bonuses&registration_id=${regId}`).then((r) => r.json()),
+    ])
+      .then(([magnetsData, bonusesData]) => {
+        setClientMagnets((p) => ({ ...p, [regId]: magnetsData.magnets || [] }));
+        setClientBonuses((p) => ({ ...p, [regId]: bonusesData.bonuses || [] }));
+      })
       .catch(() => {})
       .finally(() => setMagnetsLoading((p) => ({ ...p, [regId]: false })));
   }, []);
@@ -149,6 +164,7 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
         open={selectedId !== null}
         magnets={selectedId ? (clientMagnets[selectedId] || []) : []}
         magnetsLoading={selectedId ? !!magnetsLoading[selectedId] : false}
+        bonuses={selectedId ? (clientBonuses[selectedId] || []) : []}
         inventory={inventory}
         onClose={() => setSelectedId(null)}
         onMagnetGiven={(regId, magnet, breed, stockAfter) => {
