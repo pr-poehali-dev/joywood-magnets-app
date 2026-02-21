@@ -36,11 +36,15 @@ const MagnetRecommendations = ({
   onReshuffle,
   onRemove,
 }: Props) => {
-  const totalBreedsAfter = alreadyOwnedSize + given.length;
-  const nextMilestone = BONUS_MILESTONES
-    .filter((m) => m.type === "breeds")
-    .find((m) => totalBreedsAfter < m.count);
-  const breedsToNext = nextMilestone ? nextMilestone.count - totalBreedsAfter : null;
+  const totalBreedsAfter = new Set([...alreadyOwned, ...given.map((g) => g.breed)]).size;
+  const totalMagnetsAfter = alreadyOwnedSize + given.length;
+  const nextMilestone = BONUS_MILESTONES.find((m) => {
+    const current = m.type === "breeds" ? totalBreedsAfter : totalMagnetsAfter;
+    return current < m.count;
+  });
+  const breedsToNext = nextMilestone
+    ? nextMilestone.count - (nextMilestone.type === "breeds" ? totalBreedsAfter : totalMagnetsAfter)
+    : null;
 
   const hasOptions = !isFirstOrder && options.length > 0;
 
