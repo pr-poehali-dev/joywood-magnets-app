@@ -56,9 +56,14 @@ def handler(event, context):
         return ok({'photos': photos})
 
     if method == 'POST':
-        body = json.loads(event.get('body') or '{}')
+        raw_body = event.get('body') or '{}'
+        if event.get('isBase64Encoded'):
+            raw_body = base64.b64decode(raw_body).decode('utf-8')
+        body = json.loads(raw_body)
         breed = (body.get('breed') or '').strip()
         data_url = (body.get('image') or '').strip()
+
+        print(f"POST breed={repr(breed)} image_len={len(data_url)} isBase64={event.get('isBase64Encoded')}")
 
         if not breed or not data_url:
             return err('breed и image обязательны')
@@ -74,12 +79,14 @@ def handler(event, context):
         image_bytes = base64.b64decode(b64)
 
         key = f"{PREFIX}{breed}.{ext}"
+        print(f"Saving to S3 key={repr(key)} size={len(image_bytes)}")
         client = s3()
 
         for obj in client.list_objects_v2(Bucket=BUCKET, Prefix=f"{PREFIX}{breed}.").get('Contents', []):
             client.delete_object(Bucket=BUCKET, Key=obj['Key'])
 
         client.put_object(Bucket=BUCKET, Key=key, Body=image_bytes, ContentType=content_type)
+        print(f"Saved OK key={repr(key)}")
         url = f"https://cdn.poehali.dev/projects/{key_id}/bucket/{key}"
         return ok({'url': url, 'breed': breed})
 
