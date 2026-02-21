@@ -318,92 +318,66 @@ const MagnetsSection = () => {
           <Icon name="Loader2" size={32} className="mx-auto mb-3 animate-spin opacity-40" />
           Загрузка остатков...
         </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {filteredBreeds.map((breed) => {
-            const inv = inventory[breed.breed];
-            const stock = inv ? inv.stock : 0;
-            const isEditing = editingBreed === breed.breed;
-
-            return (
-              <Card
-                key={breed.breed}
-                className={`transition-all hover:shadow-md ${categoryColors[breed.category] || ""}`}
-              >
-                <CardContent className="p-4">
-                  <div className="text-center mb-2">
-                    <div className="text-xl">{STAR_LABELS[breed.stars]}</div>
-                  </div>
-                  <h4 className="font-semibold text-center mb-2">{breed.breed}</h4>
-                  <div className="flex justify-center mb-3">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${categoryBadgeColors[breed.category] || ""}`}
-                    >
-                      {breed.category}
-                    </span>
-                  </div>
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">В наличии:</span>
-                      {isEditing ? (
-                        <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            min="0"
-                            className="h-6 w-16 text-xs text-right px-1"
-                            value={editStock}
-                            onChange={(e) => setEditStock(e.target.value)}
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") handleSaveStock(breed.breed, breed.stars, breed.category);
-                              if (e.key === "Escape") setEditingBreed(null);
-                            }}
-                          />
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-6 w-6"
-                            disabled={saving}
-                            onClick={() => handleSaveStock(breed.breed, breed.stars, breed.category)}
-                          >
-                            {saving ? <Icon name="Loader2" size={12} className="animate-spin" /> : <Icon name="Check" size={12} className="text-green-600" />}
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-6 w-6"
-                            onClick={() => setEditingBreed(null)}
-                          >
-                            <Icon name="X" size={12} className="text-muted-foreground" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <button
-                          className={`font-medium cursor-pointer hover:underline ${stock === 0 ? "text-red-600" : stock < 5 ? "text-yellow-600" : "text-green-700"}`}
-                          onClick={() => { setEditingBreed(breed.breed); setEditStock(String(stock)); }}
-                        >
-                          {stock}
-                          {stock === 0 && (
-                            <Icon name="AlertTriangle" size={12} className="inline ml-1 text-red-500" />
-                          )}
-                          {stock > 0 && stock < 5 && (
-                            <Icon name="AlertTriangle" size={12} className="inline ml-1 text-yellow-500" />
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {!loadingInv && filteredBreeds.length === 0 && (
+      ) : filteredBreeds.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           Породы не найдены по выбранным фильтрам
         </div>
+      ) : (
+        <Card>
+          <div className="divide-y">
+            {filteredBreeds.map((breed) => {
+              const inv = inventory[breed.breed];
+              const stock = inv ? inv.stock : 0;
+              const isEditing = editingBreed === breed.breed;
+
+              return (
+                <div
+                  key={breed.breed}
+                  className={`flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors ${categoryColors[breed.category] ? "" : ""}`}
+                >
+                  <span className="text-base w-7 shrink-0 text-center">{STAR_LABELS[breed.stars]}</span>
+                  <span className="font-medium text-sm flex-1 min-w-0 truncate">{breed.breed}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${categoryBadgeColors[breed.category] || ""}`}>
+                    {breed.category}
+                  </span>
+                  <div className="shrink-0 w-36 flex items-center justify-end gap-1">
+                    {isEditing ? (
+                      <>
+                        <Input
+                          type="number"
+                          min="0"
+                          className="h-7 w-20 text-sm text-right px-2"
+                          value={editStock}
+                          onChange={(e) => setEditStock(e.target.value)}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveStock(breed.breed, breed.stars, breed.category);
+                            if (e.key === "Escape") setEditingBreed(null);
+                          }}
+                        />
+                        <Button size="icon" variant="ghost" className="h-7 w-7" disabled={saving} onClick={() => handleSaveStock(breed.breed, breed.stars, breed.category)}>
+                          {saving ? <Icon name="Loader2" size={13} className="animate-spin" /> : <Icon name="Check" size={13} className="text-green-600" />}
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingBreed(null)}>
+                          <Icon name="X" size={13} className="text-muted-foreground" />
+                        </Button>
+                      </>
+                    ) : (
+                      <button
+                        className={`text-sm font-semibold px-3 py-1 rounded hover:bg-slate-100 transition-colors flex items-center gap-1 ${stock === 0 ? "text-red-600" : stock < 5 ? "text-yellow-600" : "text-green-700"}`}
+                        onClick={() => { setEditingBreed(breed.breed); setEditStock(String(stock)); }}
+                      >
+                        {stock === 0 && <Icon name="AlertTriangle" size={12} />}
+                        {stock > 0 && stock < 5 && <Icon name="AlertTriangle" size={12} />}
+                        {stock} шт
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
       )}
       </>}
     </div>
