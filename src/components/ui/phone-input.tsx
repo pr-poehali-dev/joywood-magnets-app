@@ -21,9 +21,7 @@ export function PhoneInput({ phoneHook, id, autoFocus }: PhoneInputProps) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
-  const currentLabel = countries[countryIdx].label;
-  // Short label for button: just flag + code
-  const shortLabel = currentLabel.split(" ")[0] + " " + countries[countryIdx].code;
+  const shortLabel = countries[countryIdx].label.split(" ")[0];
 
   return (
     <div ref={wrapperRef} className="flex rounded-md border border-input ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 overflow-visible relative">
