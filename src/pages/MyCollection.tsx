@@ -90,6 +90,8 @@ const MyCollection = () => {
     });
   }, []);
 
+  const doSearchRef = useRef<(phone: string) => Promise<void>>(async () => {});
+
   const mountWidget = useCallback((phoneNumber: string) => {
     if (!window.VerifyWidget) return;
 
@@ -113,7 +115,7 @@ const MyCollection = () => {
       const result = await res.json();
       if (result.status === "CONFIRMED") {
         window.VerifyWidget.unmount("#verify-widget");
-        doSearch(phoneNumber);
+        doSearchRef.current(phoneNumber);
       } else {
         toast.error("Верификация не подтверждена");
       }
@@ -127,22 +129,40 @@ const MyCollection = () => {
     );
   }, []);
 
-  const doSearch = useCallback(async (searchPhone: string) => {
+  const checkExists = useCallback(async (searchPhone: string) => {
     setLoading(true);
     setNotFound(false);
     try {
       const res = await fetch(LOOKUP_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: searchPhone }),
+        body: JSON.stringify({ phone: searchPhone, check_only: true }),
       });
       if (res.status === 404) {
         setNotFound(true);
-        setData(null);
-        setStep("phone");
         setTimeout(() => notFoundRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
         return;
       }
+      if (!res.ok) throw new Error("Ошибка проверки");
+      pendingPhone.current = searchPhone;
+      await loadWidgetAssets();
+      setStep("verify");
+      setTimeout(() => mountWidget(searchPhone), 100);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось проверить номер");
+    } finally {
+      setLoading(false);
+    }
+  }, [loadWidgetAssets, mountWidget]);
+
+  const doSearch = useCallback(async (searchPhone: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(LOOKUP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: searchPhone }),
+      });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Ошибка загрузки");
       setData(result);
@@ -155,26 +175,20 @@ const MyCollection = () => {
     }
   }, []);
 
+  useEffect(() => { doSearchRef.current = doSearch; }, [doSearch]);
+
   useEffect(() => {
     const urlPhone = searchParams.get("phone");
     if (urlPhone && !autoSearched.current) {
       autoSearched.current = true;
-      pendingPhone.current = urlPhone;
-      loadWidgetAssets().then(() => {
-        setStep("verify");
-        setTimeout(() => mountWidget(urlPhone), 100);
-      });
+      checkExists(urlPhone);
     }
-  }, [searchParams, loadWidgetAssets, mountWidget]);
+  }, [searchParams, checkExists]);
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone.isValid) return;
-    setNotFound(false);
-    pendingPhone.current = phone.fullPhone;
-    await loadWidgetAssets();
-    setStep("verify");
-    setTimeout(() => mountWidget(phone.fullPhone), 100);
+    await checkExists(phone.fullPhone);
   };
 
   const handleReset = () => {
