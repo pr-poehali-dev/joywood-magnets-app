@@ -5,6 +5,7 @@ export const API_URLS = {
   REGISTER: "https://functions.poehali.dev/40f9e8db-184c-407c-ace9-d0877ed306b9",
   LOOKUP: "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6f26ec4",
   ANALYTICS: "https://functions.poehali.dev/71f57402-757d-4729-b1a9-3fc46683f526",
+  BREED_PHOTOS: "https://functions.poehali.dev/264a19bd-40c8-4203-a8cd-9f3709bedcee",
 };
 
 export const formatPhone = (value: string): string => {

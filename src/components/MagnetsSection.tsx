@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -31,6 +32,76 @@ const categoryBadgeColors: Record<string, string> = {
 };
 
 const MagnetsSection = () => {
+  const [section, setSection] = useState<"stock" | "photos">("stock");
+  const [photos, setPhotos] = useState<Record<string, string>>({});
+  const [photosLoading, setPhotosLoading] = useState(false);
+  const [uploadingBreed, setUploadingBreed] = useState<string | null>(null);
+  const [deletingBreed, setDeletingBreed] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingBreed, setPendingBreed] = useState<string | null>(null);
+
+  const loadPhotos = useCallback(async () => {
+    setPhotosLoading(true);
+    try {
+      const res = await fetch(API_URLS.BREED_PHOTOS);
+      const data = await res.json();
+      setPhotos(data.photos || {});
+    } catch {
+      toast.error("Не удалось загрузить фото");
+    } finally {
+      setPhotosLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (section === "photos") loadPhotos();
+  }, [section, loadPhotos]);
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !pendingBreed) return;
+    e.target.value = "";
+
+    setUploadingBreed(pendingBreed);
+    try {
+      const reader = new FileReader();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch(API_URLS.BREED_PHOTOS, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ breed: pendingBreed, image: dataUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Ошибка");
+      setPhotos((prev) => ({ ...prev, [pendingBreed]: data.url + "?t=" + Date.now() }));
+      toast.success(`Фото «${pendingBreed}» загружено`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось загрузить");
+    } finally {
+      setUploadingBreed(null);
+      setPendingBreed(null);
+    }
+  }, [pendingBreed]);
+
+  const handleDeletePhoto = useCallback(async (breed: string) => {
+    setDeletingBreed(breed);
+    try {
+      const res = await fetch(`${API_URLS.BREED_PHOTOS}?breed=${encodeURIComponent(breed)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Ошибка");
+      setPhotos((prev) => { const n = { ...prev }; delete n[breed]; return n; });
+      toast.success(`Фото «${breed}» удалено`);
+    } catch {
+      toast.error("Не удалось удалить");
+    } finally {
+      setDeletingBreed(null);
+    }
+  }, []);
+
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [starsFilter, setStarsFilter] = useState<string>("all");
   const [editingBreed, setEditingBreed] = useState<string | null>(null);
@@ -77,8 +148,103 @@ const MagnetsSection = () => {
     return { totalStock: total, lowStockCount: low, outOfStockCount: out };
   }, [inventory]);
 
+  const photosUploaded = Object.keys(photos).length;
+
   return (
     <div className="space-y-6">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
+      <div className="flex gap-2">
+        <Button
+          variant={section === "stock" ? "default" : "outline"}
+          size="sm"
+          className="gap-1.5"
+          onClick={() => setSection("stock")}
+        >
+          <Icon name="Package" size={15} />
+          Склад
+        </Button>
+        <Button
+          variant={section === "photos" ? "default" : "outline"}
+          size="sm"
+          className="gap-1.5"
+          onClick={() => setSection("photos")}
+        >
+          <Icon name="Image" size={15} />
+          Фото пород
+          {photosUploaded > 0 && (
+            <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">{photosUploaded}</Badge>
+          )}
+        </Button>
+      </div>
+
+      {section === "photos" && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-muted-foreground">
+              Загрузите квадратное фото для каждой породы. Оно будет показано только на клиентской странице коллекции.
+            </p>
+          </div>
+          {photosLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
+              <Icon name="Loader2" size={18} className="animate-spin" />
+              Загрузка...
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {WOOD_BREEDS.map((breed) => {
+                const photoUrl = photos[breed.breed];
+                const isUploading = uploadingBreed === breed.breed;
+                const isDeleting = deletingBreed === breed.breed;
+                return (
+                  <div key={breed.breed} className="border rounded-lg overflow-hidden bg-white">
+                    <div className="aspect-square relative bg-slate-100">
+                      {photoUrl ? (
+                        <img src={photoUrl} alt={breed.breed} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-300">
+                          <Icon name="ImageOff" size={28} />
+                        </div>
+                      )}
+                      {photoUrl && (
+                        <button
+                          className="absolute top-1 right-1 bg-white/90 rounded-full p-1 hover:bg-red-50 hover:text-red-500 text-slate-400 transition-colors"
+                          onClick={() => handleDeletePhoto(breed.breed)}
+                          disabled={isDeleting}
+                        >
+                          {isDeleting
+                            ? <Icon name="Loader2" size={13} className="animate-spin" />
+                            : <Icon name="X" size={13} />}
+                        </button>
+                      )}
+                    </div>
+                    <div className="p-2">
+                      <p className="text-xs font-medium truncate">{breed.breed}</p>
+                      <button
+                        className="mt-1.5 w-full text-xs flex items-center justify-center gap-1 py-1 rounded border border-dashed border-slate-300 hover:border-orange-400 hover:text-orange-600 text-slate-400 transition-colors disabled:opacity-50"
+                        disabled={isUploading}
+                        onClick={() => { setPendingBreed(breed.breed); fileInputRef.current?.click(); }}
+                      >
+                        {isUploading
+                          ? <><Icon name="Loader2" size={12} className="animate-spin" />Загрузка...</>
+                          : <><Icon name="Upload" size={12} />{photoUrl ? "Заменить" : "Загрузить"}</>}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {section === "stock" && <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="border-orange-200">
           <CardContent className="pt-4 pb-4 text-center">
@@ -227,6 +393,7 @@ const MagnetsSection = () => {
           Породы не найдены по выбранным фильтрам
         </div>
       )}
+      </>}
     </div>
   );
 };

@@ -1,0 +1,25 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET list photos",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"photos": {}},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST missing breed",
+      "method": "POST",
+      "path": "/",
+      "body": {"image": "data:image/jpeg;base64,/9j/4A=="},
+      "expectedStatus": 400
+    }
+  ]
+}
