@@ -48,6 +48,18 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
   const [bonusesLeft, setBonusesLeft] = useState<PendingBonus[]>(pendingBonuses);
 
   useEffect(() => {
+    if (step !== "bonuses" || bonusesLeft.length === 0) return;
+    fetch(`${GIVE_MAGNET_URL}?action=bonuses&registration_id=${registrationId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const givenKeys = new Set((data.bonuses || []).map((b: { milestone_count: number; milestone_type: string }) => `${b.milestone_count}-${b.milestone_type}`));
+        setBonusesLeft((prev) => prev.filter((b) => !givenKeys.has(`${b.count}-${b.type}`)));
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
+  useEffect(() => {
     fetch(`${GIVE_MAGNET_URL}?registration_id=${registrationId}`)
       .then((r) => r.json())
       .then((data) => {
