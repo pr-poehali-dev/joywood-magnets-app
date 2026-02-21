@@ -133,7 +133,7 @@ const CollectionDashboard = ({ data, onReset }: Props) => {
       </div>
 
       {data.rating && (() => {
-        const { rank_magnets, rank_value, total_participants, my_collection_value, top_magnets, top_value } = data.rating;
+        const { rank_magnets, rank_value, total_participants, my_collection_value, top_magnets = [], top_value = [] } = data.rating;
         return (
           <Card>
             <CardHeader className="pb-3">
