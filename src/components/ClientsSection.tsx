@@ -86,11 +86,12 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
               <TableHead>Код Ozon</TableHead>
               <TableHead>Статус</TableHead>
               <TableHead>Дата</TableHead>
+              <TableHead className="w-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading && (
-              <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground"><Icon name="Loader2" size={32} className="mx-auto mb-3 animate-spin opacity-40" />Загрузка...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground"><Icon name="Loader2" size={32} className="mx-auto mb-3 animate-spin opacity-40" />Загрузка...</TableCell></TableRow>
             )}
             {!loading && filtered.map((client) => (
               <TableRow
@@ -127,10 +128,15 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
                 <TableCell className="text-muted-foreground text-sm">
                   {new Date(client.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
                 </TableCell>
+                <TableCell className="text-center">
+                  {client.comment && (
+                    <Icon name="MessageSquare" size={14} className="text-blue-400 mx-auto" title={client.comment} />
+                  )}
+                </TableCell>
               </TableRow>
             ))}
             {!loading && filtered.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground"><Icon name="SearchX" size={40} className="mx-auto mb-3 opacity-30" />Клиенты не найдены</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground"><Icon name="SearchX" size={40} className="mx-auto mb-3 opacity-30" />Клиенты не найдены</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
