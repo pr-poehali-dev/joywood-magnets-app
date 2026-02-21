@@ -1,106 +1,59 @@
 import json
-import os
 import re
-import psycopg2
+from utils import OPTIONS_RESPONSE, ok, err, db
 
 
 def handler(event, context):
     """Поиск выданных магнитов и бонусов клиента по номеру телефона"""
     if event.get('httpMethod') == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, X-User-Id, X-Auth-Token, X-Session-Id',
-                'Access-Control-Max-Age': '86400',
-            },
-            'body': '',
-        }
-
-    cors = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
+        return OPTIONS_RESPONSE
 
     if event.get('httpMethod') != 'POST':
-        return {
-            'statusCode': 405,
-            'headers': cors,
-            'body': json.dumps({'error': 'Method not allowed'}),
-        }
+        return err('Method not allowed', 405)
 
     body = json.loads(event.get('body', '{}'))
     raw_phone = (body.get('phone') or '').strip()
-
     digits = re.sub(r'\D', '', raw_phone)
-    if len(digits) < 10:
-        return {
-            'statusCode': 400,
-            'headers': cors,
-            'body': json.dumps({'error': 'Введите корректный номер телефона'}, ensure_ascii=False),
-        }
 
-    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    if len(digits) < 10:
+        return err('Введите корректный номер телефона')
+
+    conn = db()
     try:
         cur = conn.cursor()
-
         cur.execute(
             "SELECT r.id, r.name, r.phone FROM registrations r "
-            "WHERE regexp_replace(r.phone, '\\D', '', 'g') LIKE '%%%s%%' "
-            "LIMIT 1"
+            "WHERE regexp_replace(r.phone, '\\D', '', 'g') LIKE '%%%s%%' LIMIT 1"
             % digits[-10:]
         )
         reg = cur.fetchone()
 
         if not reg:
-            return {
-                'statusCode': 404,
-                'headers': cors,
-                'body': json.dumps({
-                    'error': 'Участник с таким номером не найден. Сначала зарегистрируйтесь в акции.',
-                }, ensure_ascii=False),
-            }
+            return err('Участник с таким номером не найден. Сначала зарегистрируйтесь в акции.', 404)
 
         cur.execute(
             "SELECT id, breed, stars, category, given_at FROM client_magnets "
-            "WHERE registration_id = %d "
-            "ORDER BY given_at DESC"
-            % reg[0]
+            "WHERE registration_id = %d ORDER BY given_at DESC" % reg[0]
         )
-        rows = cur.fetchall()
-
-        magnets = []
-        for row in rows:
-            magnets.append({
-                'id': row[0],
-                'breed': row[1],
-                'stars': row[2],
-                'category': row[3],
-                'given_at': str(row[4]),
-            })
+        magnets = [
+            {'id': r[0], 'breed': r[1], 'stars': r[2], 'category': r[3], 'given_at': str(r[4])}
+            for r in cur.fetchall()
+        ]
 
         cur.execute(
             "SELECT id, milestone_count, milestone_type, reward, given_at FROM bonuses "
-            "WHERE registration_id = %d ORDER BY given_at DESC"
-            % reg[0]
+            "WHERE registration_id = %d ORDER BY given_at DESC" % reg[0]
         )
-        bonus_rows = cur.fetchall()
         bonuses = [
             {'id': r[0], 'milestone_count': r[1], 'milestone_type': r[2], 'reward': r[3], 'given_at': str(r[4])}
-            for r in bonus_rows
+            for r in cur.fetchall()
         ]
 
-        unique_breeds = len(set(m['breed'] for m in magnets))
-
-        return {
-            'statusCode': 200,
-            'headers': cors,
-            'body': json.dumps({
-                'client_name': reg[1],
-                'phone': reg[2],
-                'magnets': magnets,
-                'total_magnets': len(magnets),
-                'unique_breeds': unique_breeds,
-                'bonuses': bonuses,
-            }, ensure_ascii=False),
-        }
+        return ok({
+            'client_name': reg[1], 'phone': reg[2],
+            'magnets': magnets, 'total_magnets': len(magnets),
+            'unique_breeds': len(set(m['breed'] for m in magnets)),
+            'bonuses': bonuses,
+        })
     finally:
         conn.close()

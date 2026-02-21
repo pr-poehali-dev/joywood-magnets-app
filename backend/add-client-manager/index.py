@@ -1,121 +1,93 @@
 import json
-import os
-import psycopg2
+from utils import OPTIONS_RESPONSE, ok, err, db
 
 
 def handler(event, context):
     """Управление клиентами и заказами: добавление, редактирование, удаление, оформление заказов"""
     if event.get('httpMethod') == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, X-User-Id, X-Auth-Token, X-Session-Id',
-                'Access-Control-Max-Age': '86400',
-            },
-            'body': '',
-        }
-
-    cors = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
+        return OPTIONS_RESPONSE
 
     if event.get('httpMethod') == 'DELETE':
         params = event.get('queryStringParameters') or {}
         if params.get('order_id'):
-            return _handle_delete_order(params, cors)
-        return _handle_delete(event, cors)
+            return _handle_delete_order(params)
+        return _handle_delete(event)
 
     if event.get('httpMethod') == 'PUT':
         body = json.loads(event.get('body') or '{}')
-        return _handle_update_client(body, cors)
+        return _handle_update_client(body)
 
     if event.get('httpMethod') != 'POST':
-        return {'statusCode': 405, 'headers': cors, 'body': json.dumps({'error': 'Method not allowed'})}
+        return err('Method not allowed', 405)
 
     body = json.loads(event.get('body') or '{}')
     action = body.get('action', '')
 
     if action == 'create_order':
-        return _handle_create_order(body, cors)
-
+        return _handle_create_order(body)
     if action == 'save_magnet_comment':
-        return _handle_save_magnet_comment(body, cors)
+        return _handle_save_magnet_comment(body)
 
-    return _handle_add_client(body, cors)
+    return _handle_add_client(body)
 
 
-def _handle_delete_order(params, cors):
+def _handle_delete_order(params):
     order_id = params.get('order_id')
     if not order_id or not str(order_id).isdigit():
-        return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите order_id'}, ensure_ascii=False)}
-    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        return err('Укажите order_id')
+    conn = db()
     try:
         cur = conn.cursor()
         cur.execute("SELECT id FROM orders WHERE id = %d" % int(order_id))
         if not cur.fetchone():
-            return {'statusCode': 404, 'headers': cors, 'body': json.dumps({'error': 'Заказ не найден'}, ensure_ascii=False)}
-
-        cur.execute(
-            "SELECT id, breed FROM client_magnets WHERE order_id = %d" % int(order_id)
-        )
+            return err('Заказ не найден', 404)
+        cur.execute("SELECT id, breed FROM client_magnets WHERE order_id = %d" % int(order_id))
         magnet = cur.fetchone()
-
         if magnet:
             cur.execute("UPDATE magnet_inventory SET stock = stock + 1, updated_at = now() WHERE breed = '%s'" % magnet[1].replace("'", "''"))
             cur.execute("DELETE FROM client_magnets WHERE id = %d" % magnet[0])
-
         cur.execute("DELETE FROM orders WHERE id = %d" % int(order_id))
         conn.commit()
-
-        return {
-            'statusCode': 200, 'headers': cors,
-            'body': json.dumps({
-                'ok': True,
-                'magnet_removed': magnet is not None,
-                'magnet_breed': magnet[1] if magnet else None,
-            }, ensure_ascii=False),
-        }
+        return ok({'ok': True, 'magnet_removed': magnet is not None, 'magnet_breed': magnet[1] if magnet else None})
     finally:
         conn.close()
 
 
-def _handle_delete(event, cors):
+def _handle_delete(event):
     params = event.get('queryStringParameters') or {}
     client_id = params.get('id')
     if not client_id or not client_id.isdigit():
-        return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите id клиента'})}
-    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        return err('Укажите id клиента')
+    conn = db()
     try:
         cur = conn.cursor()
         cur.execute("SELECT id FROM registrations WHERE id = %s" % int(client_id))
         if not cur.fetchone():
-            return {'statusCode': 404, 'headers': cors, 'body': json.dumps({'error': 'Клиент не найден'})}
+            return err('Клиент не найден', 404)
         cur.execute("DELETE FROM client_magnets WHERE registration_id = %s" % int(client_id))
         cur.execute("DELETE FROM orders WHERE registration_id = %s" % int(client_id))
         cur.execute("DELETE FROM registrations WHERE id = %s" % int(client_id))
         conn.commit()
-        return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'ok': True})}
+        return ok({'ok': True})
     finally:
         conn.close()
 
 
-def _handle_update_client(body, cors):
+def _handle_update_client(body):
     client_id = body.get('id')
     if not client_id:
-        return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите id клиента'}, ensure_ascii=False)}
-
+        return err('Укажите id клиента')
     name = (body.get('name') or '').strip()
     phone = (body.get('phone') or '').strip()
-
     if not name and not phone:
-        return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите имя или телефон'}, ensure_ascii=False)}
+        return err('Укажите имя или телефон')
 
-    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    conn = db()
     try:
         cur = conn.cursor()
         cur.execute("SELECT id FROM registrations WHERE id = %s" % int(client_id))
         if not cur.fetchone():
-            return {'statusCode': 404, 'headers': cors, 'body': json.dumps({'error': 'Клиент не найден'}, ensure_ascii=False)}
+            return err('Клиент не найден', 404)
 
         updates = []
         if name:
@@ -123,12 +95,9 @@ def _handle_update_client(body, cors):
         if phone:
             updates.append("phone = '%s'" % phone.replace("'", "''"))
 
-        has_real_data = False
-        if name and len(name) >= 2:
-            has_real_data = True
-        if phone and len(phone.replace(' ', '').replace('(', '').replace(')', '').replace('-', '').replace('+', '')) >= 11:
-            has_real_data = True
-
+        has_real_data = (name and len(name) >= 2) or (
+            phone and len(phone.replace(' ', '').replace('(', '').replace(')', '').replace('-', '').replace('+', '')) >= 11
+        )
         if has_real_data:
             updates.append("registered = TRUE")
 
@@ -137,49 +106,31 @@ def _handle_update_client(body, cors):
 
         cur.execute("SELECT id, name, phone, channel, ozon_order_code, registered FROM registrations WHERE id = %s" % int(client_id))
         row = cur.fetchone()
-
-        return {
-            'statusCode': 200,
-            'headers': cors,
-            'body': json.dumps({
-                'ok': True,
-                'client': {
-                    'id': row[0],
-                    'name': row[1],
-                    'phone': row[2],
-                    'channel': row[3],
-                    'ozon_order_code': row[4],
-                    'registered': row[5],
-                },
-            }, ensure_ascii=False),
-        }
+        return ok({'ok': True, 'client': {
+            'id': row[0], 'name': row[1], 'phone': row[2],
+            'channel': row[3], 'ozon_order_code': row[4], 'registered': row[5],
+        }})
     finally:
         conn.close()
 
 
 def _get_pending_bonuses(cur, registration_id, total_magnets, unique_breeds):
-    """Возвращает список бонусов, которые заработаны, но ещё не выданы"""
     milestones = [
         {'count': 5, 'type': 'magnets', 'reward': 'Кисть для клея Titebrush TM Titebond'},
         {'count': 10, 'type': 'breeds', 'reward': 'Клей Titebond III 473 мл'},
         {'count': 30, 'type': 'breeds', 'reward': 'Клей Titebond III 946 мл'},
         {'count': 50, 'type': 'breeds', 'reward': 'Клей Titebond III 3,785 л'},
     ]
-    cur.execute(
-        "SELECT milestone_count, milestone_type FROM bonuses WHERE registration_id = %d"
-        % registration_id
-    )
+    cur.execute("SELECT milestone_count, milestone_type FROM bonuses WHERE registration_id = %d" % registration_id)
     given = set((r[0], r[1]) for r in cur.fetchall())
-    result = []
-    for m in milestones:
-        current = total_magnets if m['type'] == 'magnets' else unique_breeds
-        if current >= m['count'] and (m['count'], m['type']) not in given:
-            result.append(m)
-    return result
+    return [
+        m for m in milestones
+        if (total_magnets if m['type'] == 'magnets' else unique_breeds) >= m['count']
+        and (m['count'], m['type']) not in given
+    ]
 
 
 def _give_paduk(cur, registration_id, phone, order_id):
-    """Выдать магнит Падук клиенту и привязать к заказу. Уменьшает остаток на складе если есть."""
     cur.execute(
         "INSERT INTO client_magnets (registration_id, phone, breed, stars, category, order_id) "
         "VALUES (%d, '%s', 'Падук', 2, 'Особенный', %d)"
@@ -191,7 +142,7 @@ def _give_paduk(cur, registration_id, phone, order_id):
     )
 
 
-def _handle_create_order(body, cors):
+def _handle_create_order(body):
     order_number = (body.get('order_number') or '').strip()
     channel = (body.get('channel') or '').strip() or 'Ozon'
     amount = body.get('amount', 0)
@@ -203,37 +154,24 @@ def _handle_create_order(body, cors):
         amount = 0
 
     if client_id:
-        return _create_order_for_client(int(client_id), order_number, channel, amount, cors)
+        return _create_order_for_client(int(client_id), order_number, channel, amount)
 
     if not order_number or len(order_number) < 3:
-        return {
-            'statusCode': 400, 'headers': cors,
-            'body': json.dumps({'error': 'Укажите номер заказа (минимум 3 символа)'}, ensure_ascii=False),
-        }
+        return err('Укажите номер заказа (минимум 3 символа)')
 
     prefix = order_number.split('-')[0].strip()
-
-    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    conn = db()
     try:
         cur = conn.cursor()
 
-        # Глобальная проверка дубля точного номера заказа
-        cur.execute(
-            "SELECT id FROM orders WHERE order_code = '%s' LIMIT 1"
-            % order_number.replace("'", "''")
-        )
+        cur.execute("SELECT id FROM orders WHERE order_code = '%s' LIMIT 1" % order_number.replace("'", "''"))
         if cur.fetchone():
-            conn.close()
-            return {
-                'statusCode': 409, 'headers': cors,
-                'body': json.dumps({'error': 'Заказ с таким номером уже существует'}, ensure_ascii=False),
-            }
+            return err('Заказ с таким номером уже существует', 409)
 
         cur.execute(
             "SELECT id, name, phone, ozon_order_code, registered FROM registrations "
             "WHERE ozon_order_code IS NOT NULL "
-            "AND split_part(ozon_order_code, '-', 1) = '%s' "
-            "ORDER BY id LIMIT 1"
+            "AND split_part(ozon_order_code, '-', 1) = '%s' ORDER BY id LIMIT 1"
             % prefix.replace("'", "''")
         )
         row = cur.fetchone()
@@ -241,26 +179,18 @@ def _handle_create_order(body, cors):
         if row:
             cid = row[0]
             existing_code = row[3] or ''
-            registered = bool(row[4]) if len(row) > 4 else False
+            registered = bool(row[4])
 
-            # Проверка: точный номер уже есть в заказах этого клиента
             cur.execute(
                 "SELECT id FROM orders WHERE registration_id = %d AND order_code = '%s' LIMIT 1"
                 % (cid, order_number.replace("'", "''"))
             )
             if cur.fetchone():
-                conn.close()
-                return {
-                    'statusCode': 409, 'headers': cors,
-                    'body': json.dumps({'error': 'Заказ с таким номером уже существует'}, ensure_ascii=False),
-                }
+                return err('Заказ с таким номером уже существует', 409)
 
             if order_number not in existing_code:
                 codes = existing_code + ', ' + order_number if existing_code else order_number
-                cur.execute(
-                    "UPDATE registrations SET ozon_order_code = '%s' WHERE id = %d"
-                    % (codes.replace("'", "''"), cid)
-                )
+                cur.execute("UPDATE registrations SET ozon_order_code = '%s' WHERE id = %d" % (codes.replace("'", "''"), cid))
 
             cur.execute(
                 "INSERT INTO orders (registration_id, order_code, amount, channel) "
@@ -278,38 +208,21 @@ def _handle_create_order(body, cors):
                 unique_breeds = cur.fetchone()[0]
                 pending_bonuses = _get_pending_bonuses(cur, cid, total_magnets, unique_breeds)
 
-            return {
-                'statusCode': 200,
-                'headers': cors,
-                'body': json.dumps({
-                    'client_id': cid,
-                    'client_name': row[1],
-                    'client_phone': row[2] or '',
-                    'order_id': ord_row[0],
-                    'order_code': order_number,
-                    'amount': amount,
-                    'channel': channel,
-                    'created_at': str(ord_row[1]),
-                    'status': ord_row[2] or 'active',
-                    'is_new': False,
-                    'registered': registered,
-                    'pending_bonuses': pending_bonuses,
-                    'message': 'Заказ добавлен к существующему клиенту',
-                }, ensure_ascii=False),
-            }
+            return ok({
+                'client_id': cid, 'client_name': row[1], 'client_phone': row[2] or '',
+                'order_id': ord_row[0], 'order_code': order_number, 'amount': amount,
+                'channel': channel, 'created_at': str(ord_row[1]), 'status': ord_row[2] or 'active',
+                'is_new': False, 'registered': registered, 'pending_bonuses': pending_bonuses,
+                'message': 'Заказ добавлен к существующему клиенту',
+            })
         else:
             client_name = 'Клиент ' + prefix
             cur.execute(
                 "INSERT INTO registrations (name, phone, channel, ozon_order_code, registered) "
                 "VALUES ('%s', '', '%s', '%s', FALSE) RETURNING id"
-                % (
-                    client_name.replace("'", "''"),
-                    channel.replace("'", "''"),
-                    order_number.replace("'", "''"),
-                )
+                % (client_name.replace("'", "''"), channel.replace("'", "''"), order_number.replace("'", "''"))
             )
             new_id = cur.fetchone()[0]
-
             cur.execute(
                 "INSERT INTO orders (registration_id, order_code, amount, channel) "
                 "VALUES (%d, '%s', %s, '%s') RETURNING id, created_at, status"
@@ -317,46 +230,29 @@ def _handle_create_order(body, cors):
             )
             ord_row = cur.fetchone()
             order_id = ord_row[0]
-
             _give_paduk(cur, new_id, '', order_id)
-
             conn.commit()
-
-            return {
-                'statusCode': 200,
-                'headers': cors,
-                'body': json.dumps({
-                    'client_id': new_id,
-                    'client_name': client_name,
-                    'client_phone': '',
-                    'order_id': order_id,
-                    'order_code': order_number,
-                    'amount': amount,
-                    'channel': channel,
-                    'created_at': str(ord_row[1]),
-                    'status': ord_row[2] or 'active',
-                    'is_new': True,
-                    'registered': False,
-                    'pending_bonuses': [],
-                    'magnet_given': 'Падук',
-                    'message': 'Создан новый клиент',
-                }, ensure_ascii=False),
-            }
+            return ok({
+                'client_id': new_id, 'client_name': client_name, 'client_phone': '',
+                'order_id': order_id, 'order_code': order_number, 'amount': amount,
+                'channel': channel, 'created_at': str(ord_row[1]), 'status': ord_row[2] or 'active',
+                'is_new': True, 'registered': False, 'pending_bonuses': [], 'magnet_given': 'Падук',
+                'message': 'Создан новый клиент',
+            })
     finally:
         conn.close()
 
 
-def _create_order_for_client(client_id, order_code, channel, amount, cors):
-    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+def _create_order_for_client(client_id, order_code, channel, amount):
+    conn = db()
     try:
         cur = conn.cursor()
         cur.execute("SELECT id, name, phone, registered FROM registrations WHERE id = %d" % client_id)
         row = cur.fetchone()
         if not row:
-            return {'statusCode': 404, 'headers': cors, 'body': json.dumps({'error': 'Клиент не найден'}, ensure_ascii=False)}
+            return err('Клиент не найден', 404)
 
         registered = bool(row[3])
-
         cur.execute("SELECT COUNT(*) FROM orders WHERE registration_id = %d" % client_id)
         existing_orders = cur.fetchone()[0]
 
@@ -374,68 +270,48 @@ def _create_order_for_client(client_id, order_code, channel, amount, cors):
         order_id = ord_row[0]
 
         if existing_orders == 0:
-            _give_paduk(cur, client_id, row[2] if len(row) > 2 else '', order_id)
+            _give_paduk(cur, client_id, row[2] or '', order_id)
 
         conn.commit()
 
         pending_bonuses = []
         if registered:
-            cur.execute(
-                "SELECT COUNT(*) FROM client_magnets WHERE registration_id = %d" % client_id
-            )
+            cur.execute("SELECT COUNT(*) FROM client_magnets WHERE registration_id = %d" % client_id)
             total_magnets = cur.fetchone()[0]
-            cur.execute(
-                "SELECT COUNT(DISTINCT breed) FROM client_magnets WHERE registration_id = %d" % client_id
-            )
+            cur.execute("SELECT COUNT(DISTINCT breed) FROM client_magnets WHERE registration_id = %d" % client_id)
             unique_breeds = cur.fetchone()[0]
             pending_bonuses = _get_pending_bonuses(cur, client_id, total_magnets, unique_breeds)
 
-        return {
-            'statusCode': 200,
-            'headers': cors,
-            'body': json.dumps({
-                'client_id': client_id,
-                'client_name': row[1],
-                'client_phone': row[2] or '',
-                'order_id': order_id,
-                'order_code': order_code or '',
-                'amount': amount,
-                'channel': channel,
-                'created_at': str(ord_row[1]),
-                'status': ord_row[2] or 'active',
-                'is_new': False,
-                'registered': registered,
-                'magnet_given': 'Падук' if existing_orders == 0 else None,
-                'pending_bonuses': pending_bonuses,
-                'message': 'Заказ оформлен',
-            }, ensure_ascii=False),
-        }
+        return ok({
+            'client_id': client_id, 'client_name': row[1], 'client_phone': row[2] or '',
+            'order_id': order_id, 'order_code': order_code or '', 'amount': amount,
+            'channel': channel, 'created_at': str(ord_row[1]), 'status': ord_row[2] or 'active',
+            'is_new': False, 'registered': registered,
+            'magnet_given': 'Падук' if existing_orders == 0 else None,
+            'pending_bonuses': pending_bonuses, 'message': 'Заказ оформлен',
+        })
     finally:
         conn.close()
 
 
-def _handle_save_magnet_comment(body, cors):
-    """Сохранить комментарий о причине невыдачи магнита к заказу"""
+def _handle_save_magnet_comment(body):
     order_id = body.get('order_id')
     comment = (body.get('comment') or '').strip()
     if not order_id or not str(order_id).isdigit():
-        return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите order_id'}, ensure_ascii=False)}
+        return err('Укажите order_id')
     if not comment:
-        return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите comment'}, ensure_ascii=False)}
-    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        return err('Укажите comment')
+    conn = db()
     try:
         cur = conn.cursor()
-        cur.execute(
-            "UPDATE orders SET magnet_comment = '%s' WHERE id = %d"
-            % (comment.replace("'", "''"), int(order_id))
-        )
+        cur.execute("UPDATE orders SET magnet_comment = '%s' WHERE id = %d" % (comment.replace("'", "''"), int(order_id)))
         conn.commit()
-        return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'ok': True}, ensure_ascii=False)}
+        return ok({'ok': True})
     finally:
         conn.close()
 
 
-def _handle_add_client(body, cors):
+def _handle_add_client(body):
     name = (body.get('name') or '').strip()
     phone = (body.get('phone') or '').strip()
     channel = (body.get('channel') or '').strip()
@@ -445,41 +321,26 @@ def _handle_add_client(body, cors):
     has_ozon_code = ozon_order_code and len(ozon_order_code) >= 3
 
     if not has_full_data and not has_ozon_code:
-        return {
-            'statusCode': 400,
-            'headers': cors,
-            'body': json.dumps({'error': 'Укажите код заказа Ozon или полные данные клиента'}, ensure_ascii=False),
-        }
+        return err('Укажите код заказа Ozon или полные данные клиента')
 
     registered = has_full_data
-
     if not channel and has_ozon_code:
         channel = 'Ozon'
 
-    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    conn = db()
     try:
         cur = conn.cursor()
         cur.execute(
             "INSERT INTO registrations (name, phone, channel, ozon_order_code, registered) "
             "VALUES ('%s', '%s', '%s', %s, %s) RETURNING id, created_at"
             % (
-                name.replace("'", "''"),
-                phone.replace("'", "''"),
-                channel.replace("'", "''"),
+                name.replace("'", "''"), phone.replace("'", "''"), channel.replace("'", "''"),
                 "'" + ozon_order_code.replace("'", "''") + "'" if ozon_order_code else 'NULL',
                 'TRUE' if registered else 'FALSE',
             )
         )
         row = cur.fetchone()
         conn.commit()
-        return {
-            'statusCode': 200,
-            'headers': cors,
-            'body': json.dumps({
-                'id': row[0],
-                'created_at': str(row[1]),
-                'registered': registered,
-            }, ensure_ascii=False),
-        }
+        return ok({'id': row[0], 'created_at': str(row[1]), 'registered': registered})
     finally:
         conn.close()

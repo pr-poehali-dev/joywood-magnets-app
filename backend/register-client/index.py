@@ -1,45 +1,27 @@
-import json
-import os
 import re
-import psycopg2
+from utils import OPTIONS_RESPONSE, ok, err, db
 
 
 def handler(event, context):
     """Регистрация участника акции. Если код Ozon совпадает с уже добавленным менеджером — объединяет записи."""
     if event.get('httpMethod') == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, X-User-Id, X-Auth-Token, X-Session-Id',
-                'Access-Control-Max-Age': '86400',
-            },
-            'body': '',
-        }
-
-    cors = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
+        return OPTIONS_RESPONSE
 
     if event.get('httpMethod') != 'POST':
-        return {'statusCode': 405, 'headers': cors, 'body': json.dumps({'error': 'Method not allowed'})}
+        return err('Method not allowed', 405)
 
+    import json
     body = json.loads(event.get('body', '{}'))
     name = (body.get('name') or '').strip()
     phone = (body.get('phone') or '').strip()
     ozon_order_code = (body.get('ozon_order_code') or '').strip() or None
 
     if len(name) < 2:
-        return {
-            'statusCode': 400, 'headers': cors,
-            'body': json.dumps({'error': 'Укажите имя (минимум 2 символа)'}, ensure_ascii=False),
-        }
+        return err('Укажите имя (минимум 2 символа)')
     if len(phone) < 6:
-        return {
-            'statusCode': 400, 'headers': cors,
-            'body': json.dumps({'error': 'Укажите корректный телефон'}, ensure_ascii=False),
-        }
+        return err('Укажите корректный телефон')
 
-    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    conn = db()
     try:
         cur = conn.cursor()
 
@@ -113,14 +95,6 @@ def handler(event, context):
                 conn.commit()
                 existing_id = row[0]
 
-        return {
-            'statusCode': 200,
-            'headers': cors,
-            'body': json.dumps({
-                'id': existing_id,
-                'merged': merged,
-                'message': 'Регистрация успешна',
-            }, ensure_ascii=False),
-        }
+        return ok({'id': existing_id, 'merged': merged, 'message': 'Регистрация успешна'})
     finally:
         conn.close()

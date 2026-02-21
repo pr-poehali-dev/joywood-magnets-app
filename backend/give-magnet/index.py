@@ -1,89 +1,60 @@
 import json
-import os
-import psycopg2
+from utils import OPTIONS_RESPONSE, ok, err, db
 
 
 def handler(event, context):
     """POST — выдать магнит / бонус. GET — магниты клиента / остатки / бонусы. DELETE — удалить магнит."""
     if event.get('httpMethod') == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, X-User-Id, X-Auth-Token, X-Session-Id',
-                'Access-Control-Max-Age': '86400',
-            },
-            'body': '',
-        }
+        return OPTIONS_RESPONSE
 
-    cors = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
     method = event.get('httpMethod')
     params = event.get('queryStringParameters') or {}
 
     if method == 'GET' and params.get('action') == 'inventory':
-        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        conn = db()
         try:
             cur = conn.cursor()
             cur.execute("SELECT breed, stars, category, stock FROM magnet_inventory ORDER BY stars, breed")
-            rows = cur.fetchall()
-            inventory = {}
-            for row in rows:
-                inventory[row[0]] = {'stars': row[1], 'category': row[2], 'stock': row[3]}
-            return {
-                'statusCode': 200, 'headers': cors,
-                'body': json.dumps({'inventory': inventory}, ensure_ascii=False),
-            }
+            inventory = {r[0]: {'stars': r[1], 'category': r[2], 'stock': r[3]} for r in cur.fetchall()}
+            return ok({'inventory': inventory})
         finally:
             conn.close()
 
     if method == 'GET' and params.get('action') == 'bonuses':
         reg_id = params.get('registration_id')
         if not reg_id:
-            return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите registration_id'}, ensure_ascii=False)}
-        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+            return err('Укажите registration_id')
+        conn = db()
         try:
             cur = conn.cursor()
             cur.execute(
                 "SELECT id, milestone_count, milestone_type, reward, given_at FROM bonuses "
                 "WHERE registration_id = %d ORDER BY given_at DESC" % int(reg_id)
             )
-            rows = cur.fetchall()
-            bonuses = [{'id': r[0], 'milestone_count': r[1], 'milestone_type': r[2], 'reward': r[3], 'given_at': str(r[4])} for r in rows]
-            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'bonuses': bonuses}, ensure_ascii=False)}
+            bonuses = [
+                {'id': r[0], 'milestone_count': r[1], 'milestone_type': r[2], 'reward': r[3], 'given_at': str(r[4])}
+                for r in cur.fetchall()
+            ]
+            return ok({'bonuses': bonuses})
         finally:
             conn.close()
 
     if method == 'GET':
         reg_id = params.get('registration_id')
         if not reg_id:
-            return {
-                'statusCode': 400, 'headers': cors,
-                'body': json.dumps({'error': 'Укажите registration_id'}, ensure_ascii=False),
-            }
-        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+            return err('Укажите registration_id')
+        conn = db()
         try:
             cur = conn.cursor()
             cur.execute(
                 "SELECT id, breed, stars, category, given_at, order_id FROM client_magnets "
-                "WHERE registration_id = %d ORDER BY given_at DESC"
-                % int(reg_id)
+                "WHERE registration_id = %d ORDER BY given_at DESC" % int(reg_id)
             )
-            rows = cur.fetchall()
-            magnets = []
-            for row in rows:
-                magnets.append({
-                    'id': row[0],
-                    'breed': row[1],
-                    'stars': row[2],
-                    'category': row[3],
-                    'given_at': str(row[4]),
-                    'order_id': row[5],
-                })
-            return {
-                'statusCode': 200, 'headers': cors,
-                'body': json.dumps({'magnets': magnets}, ensure_ascii=False),
-            }
+            magnets = [
+                {'id': r[0], 'breed': r[1], 'stars': r[2], 'category': r[3], 'given_at': str(r[4]), 'order_id': r[5]}
+                for r in cur.fetchall()
+            ]
+            return ok({'magnets': magnets})
         finally:
             conn.close()
 
@@ -91,11 +62,8 @@ def handler(event, context):
         body = json.loads(event.get('body') or '{}')
         items = body.get('items')
         if not items or not isinstance(items, list):
-            return {
-                'statusCode': 400, 'headers': cors,
-                'body': json.dumps({'error': 'Укажите items — массив {breed, stars, category, stock}'}, ensure_ascii=False),
-            }
-        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+            return err('Укажите items — массив {breed, stars, category, stock}')
+        conn = db()
         try:
             cur = conn.cursor()
             for item in items:
@@ -112,25 +80,21 @@ def handler(event, context):
                     % (breed.replace("'", "''"), stars, category.replace("'", "''"), stock, stock)
                 )
             conn.commit()
-            return {
-                'statusCode': 200, 'headers': cors,
-                'body': json.dumps({'ok': True, 'updated': len(items)}, ensure_ascii=False),
-            }
+            return ok({'ok': True, 'updated': len(items)})
         finally:
             conn.close()
 
     if method == 'POST':
         body = json.loads(event.get('body') or '{}')
 
-        # Выдача бонуса
         if body.get('action') == 'give_bonus':
             registration_id = body.get('registration_id')
             milestone_count = body.get('milestone_count')
             milestone_type = body.get('milestone_type')
             reward = (body.get('reward') or '').strip()
             if not registration_id or not milestone_count or not milestone_type or not reward:
-                return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите registration_id, milestone_count, milestone_type, reward'}, ensure_ascii=False)}
-            conn = psycopg2.connect(os.environ['DATABASE_URL'])
+                return err('Укажите registration_id, milestone_count, milestone_type, reward')
+            conn = db()
             try:
                 cur = conn.cursor()
                 cur.execute(
@@ -143,45 +107,32 @@ def handler(event, context):
                 row = cur.fetchone()
                 conn.commit()
                 if not row:
-                    return {'statusCode': 409, 'headers': cors, 'body': json.dumps({'error': 'Этот бонус уже был выдан'}, ensure_ascii=False)}
-                return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'id': row[0], 'given_at': str(row[1])}, ensure_ascii=False)}
+                    return err('Этот бонус уже был выдан', 409)
+                return ok({'id': row[0], 'given_at': str(row[1])})
             finally:
                 conn.close()
 
-        # Выдача магнита
         registration_id = body.get('registration_id')
         breed = (body.get('breed') or '').strip()
         stars = body.get('stars')
         category = (body.get('category') or '').strip()
 
         if not registration_id or not breed or not stars or not category:
-            return {
-                'statusCode': 400, 'headers': cors,
-                'body': json.dumps({'error': 'Укажите registration_id, breed, stars и category'}, ensure_ascii=False),
-            }
+            return err('Укажите registration_id, breed, stars и category')
 
-        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        conn = db()
         try:
             cur = conn.cursor()
             cur.execute("SELECT id, phone FROM registrations WHERE id = %d" % int(registration_id))
             reg = cur.fetchone()
             if not reg:
-                return {
-                    'statusCode': 404, 'headers': cors,
-                    'body': json.dumps({'error': 'Клиент не найден'}, ensure_ascii=False),
-                }
+                return err('Клиент не найден', 404)
 
-            cur.execute(
-                "SELECT stock FROM magnet_inventory WHERE breed = '%s'"
-                % breed.replace("'", "''")
-            )
+            cur.execute("SELECT stock FROM magnet_inventory WHERE breed = '%s'" % breed.replace("'", "''"))
             inv_row = cur.fetchone()
             current_stock = inv_row[0] if inv_row else 0
             if inv_row and current_stock <= 0:
-                return {
-                    'statusCode': 400, 'headers': cors,
-                    'body': json.dumps({'error': 'Магнит «%s» закончился на складе (остаток: 0)' % breed}, ensure_ascii=False),
-                }
+                return err('Магнит «%s» закончился на складе (остаток: 0)' % breed)
 
             phone = reg[1] or ''
             cur.execute(
@@ -196,12 +147,9 @@ def handler(event, context):
                 "INSERT INTO client_magnets (registration_id, phone, breed, stars, category, order_id) "
                 "VALUES (%d, '%s', '%s', %d, '%s', %s) RETURNING id, given_at"
                 % (
-                    int(registration_id),
-                    phone.replace("'", "''"),
-                    breed.replace("'", "''"),
-                    int(stars),
-                    category.replace("'", "''"),
-                    order_id_sql,
+                    int(registration_id), phone.replace("'", "''"),
+                    breed.replace("'", "''"), int(stars),
+                    category.replace("'", "''"), order_id_sql,
                 )
             )
             row = cur.fetchone()
@@ -209,41 +157,32 @@ def handler(event, context):
             if inv_row:
                 cur.execute(
                     "UPDATE magnet_inventory SET stock = stock - 1, updated_at = now() "
-                    "WHERE breed = '%s' AND stock > 0"
-                    % breed.replace("'", "''")
+                    "WHERE breed = '%s' AND stock > 0" % breed.replace("'", "''")
                 )
-
             conn.commit()
-            return {
-                'statusCode': 200, 'headers': cors,
-                'body': json.dumps({
-                    'id': row[0],
-                    'given_at': str(row[1]),
-                    'breed': breed,
-                    'stars': int(stars),
-                    'stock_after': max(current_stock - 1, 0) if inv_row else None,
-                }, ensure_ascii=False),
-            }
+            return ok({
+                'id': row[0], 'given_at': str(row[1]), 'breed': breed,
+                'stars': int(stars), 'stock_after': max(current_stock - 1, 0) if inv_row else None,
+            })
         finally:
             conn.close()
 
     if method == 'DELETE':
-        params = event.get('queryStringParameters') or {}
         magnet_id = params.get('magnet_id')
         if not magnet_id or not str(magnet_id).isdigit():
-            return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Укажите magnet_id'}, ensure_ascii=False)}
-        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+            return err('Укажите magnet_id')
+        conn = db()
         try:
             cur = conn.cursor()
             cur.execute("SELECT id, breed FROM client_magnets WHERE id = %d" % int(magnet_id))
             row = cur.fetchone()
             if not row:
-                return {'statusCode': 404, 'headers': cors, 'body': json.dumps({'error': 'Магнит не найден'}, ensure_ascii=False)}
+                return err('Магнит не найден', 404)
             cur.execute("UPDATE magnet_inventory SET stock = stock + 1, updated_at = now() WHERE breed = '%s'" % row[1].replace("'", "''"))
             cur.execute("DELETE FROM client_magnets WHERE id = %d" % int(magnet_id))
             conn.commit()
-            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'ok': True, 'breed': row[1]}, ensure_ascii=False)}
+            return ok({'ok': True, 'breed': row[1]})
         finally:
             conn.close()
 
-    return {'statusCode': 405, 'headers': cors, 'body': json.dumps({'error': 'Method not allowed'})}
+    return err('Method not allowed', 405)
