@@ -76,13 +76,14 @@ const OrdersTable = ({ orders, loading, ozonOnly = false, onNavigateToClient }: 
               <TableHead className="text-right">Сумма</TableHead>
               {!ozonOnly && <TableHead>Канал</TableHead>}
               <TableHead>Дата</TableHead>
-              <TableHead className="w-8" />
+              <TableHead className="w-8"></TableHead>
+              <TableHead className="w-8"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={ozonOnly ? 5 : 6} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={ozonOnly ? 6 : 7} className="text-center py-12 text-muted-foreground">
                   <Icon name="Loader2" size={32} className="mx-auto mb-3 animate-spin opacity-40" />
                   Загрузка...
                 </TableCell>
@@ -124,6 +125,11 @@ const OrdersTable = ({ orders, loading, ozonOnly = false, onNavigateToClient }: 
                       minute: "2-digit",
                     })}
                   </TableCell>
+                  <TableCell className="text-center">
+                    {order.comment && (
+                      <Icon name="MessageSquare" size={14} className="text-blue-400 mx-auto" title={order.comment} />
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Icon name="ChevronRight" size={16} className="text-muted-foreground/50" />
                   </TableCell>
@@ -131,7 +137,7 @@ const OrdersTable = ({ orders, loading, ozonOnly = false, onNavigateToClient }: 
               ))}
             {!loading && filteredOrders.length === 0 && (
               <TableRow>
-                <TableCell colSpan={ozonOnly ? 5 : 6} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={ozonOnly ? 6 : 7} className="text-center py-12 text-muted-foreground">
                   <Icon name="ShoppingCart" size={40} className="mx-auto mb-3 opacity-30" />
                   {search ? "Ничего не найдено" : "Заказов пока нет"}
                 </TableCell>
