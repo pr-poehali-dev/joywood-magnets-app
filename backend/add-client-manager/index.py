@@ -274,12 +274,7 @@ def _create_order_for_client(client_id, order_code, channel, amount):
         ord_row = cur.fetchone()
         order_id = ord_row[0]
 
-        cur.execute(
-            "SELECT id FROM client_magnets WHERE registration_id = %d AND breed = 'Падук' LIMIT 1"
-            % client_id
-        )
-        has_paduk = cur.fetchone() is not None
-        if existing_orders == 0 and not has_paduk:
+        if existing_orders == 0:
             _give_paduk(cur, client_id, row[2] or '', order_id)
 
         conn.commit()
@@ -297,8 +292,8 @@ def _create_order_for_client(client_id, order_code, channel, amount):
             'order_id': order_id, 'order_code': order_code or '', 'amount': amount,
             'channel': channel, 'created_at': str(ord_row[1]), 'status': ord_row[2] or 'active',
             'is_new': False, 'registered': registered,
-            'is_first_order': existing_orders == 0 and not has_paduk,
-            'magnet_given': 'Падук' if (existing_orders == 0 and not has_paduk) else None,
+            'is_first_order': existing_orders == 0,
+            'magnet_given': 'Падук' if existing_orders == 0 else None,
             'pending_bonuses': pending_bonuses, 'message': 'Заказ оформлен',
         })
     finally:
