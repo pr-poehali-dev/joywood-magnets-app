@@ -117,7 +117,7 @@ const ClientModalMagnets = ({
       </div>
 
       {/* Пропущенные бонусы */}
-      {pendingBonuses.length > 0 && (
+      {!magnetsLoading && pendingBonuses.length > 0 && (
         <div className="border border-orange-200 bg-orange-50 rounded-lg p-3 space-y-2">
           <p className="text-xs font-semibold text-orange-800 flex items-center gap-1.5">
             <Icon name="Bell" size={13} />
