@@ -141,11 +141,19 @@ const MagnetsSection = () => {
     } finally { setSaving(false); }
   }, [editStock, setStockForBreed]);
 
-  const filteredBreeds = useMemo(() => WOOD_BREEDS.filter((b) => {
-    if (categoryFilter !== "all" && b.category !== categoryFilter) return false;
-    if (starsFilter !== "all" && b.stars !== Number(starsFilter)) return false;
-    return true;
-  }), [categoryFilter, starsFilter]);
+  const filteredBreeds = useMemo(() => {
+    const filtered = WOOD_BREEDS.filter((b) => {
+      if (categoryFilter !== "all" && b.category !== categoryFilter) return false;
+      if (starsFilter !== "all" && b.stars !== Number(starsFilter)) return false;
+      return true;
+    });
+    return filtered.sort((a, b) => {
+      if (a.stars !== b.stars) return a.stars - b.stars;
+      const stockA = inventory[a.breed]?.stock ?? 0;
+      const stockB = inventory[b.breed]?.stock ?? 0;
+      return stockB - stockA;
+    });
+  }, [categoryFilter, starsFilter, inventory]);
 
   const { totalStock, lowStockCount, outOfStockCount } = useMemo(() => {
     const total = Object.values(inventory).reduce((s, v) => s + v.stock, 0);
@@ -325,28 +333,30 @@ const MagnetsSection = () => {
       ) : (
         <Card>
           <div className="divide-y">
-            {filteredBreeds.map((breed) => {
+            {filteredBreeds.map((breed, idx) => {
               const inv = inventory[breed.breed];
               const stock = inv ? inv.stock : 0;
               const isEditing = editingBreed === breed.breed;
+              const prevBreed = filteredBreeds[idx - 1];
+              const isGroupStart = idx === 0 || prevBreed.stars !== breed.stars;
 
               return (
-                <div
-                  key={breed.breed}
-                  className={`flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors ${categoryColors[breed.category] ? "" : ""}`}
-                >
-                  <span className="text-base w-7 shrink-0 text-center">{STAR_LABELS[breed.stars]}</span>
-                  <span className="font-medium text-sm flex-1 min-w-0 truncate">{breed.breed}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${categoryBadgeColors[breed.category] || ""}`}>
-                    {breed.category}
-                  </span>
-                  <div className="shrink-0 w-36 flex items-center justify-end gap-1">
+                <div key={breed.breed}>
+                  {isGroupStart && (
+                    <div className="px-4 py-1.5 bg-slate-50 border-b flex items-center gap-2">
+                      <span className="text-sm">{STAR_LABELS[breed.stars]}</span>
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{breed.category}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 px-4 py-1.5 hover:bg-slate-50 transition-colors">
+                  <span className="text-sm flex-1 min-w-0 truncate">{breed.breed}</span>
+                  <div className="shrink-0 flex items-center justify-end gap-1">
                     {isEditing ? (
                       <>
                         <Input
                           type="number"
                           min="0"
-                          className="h-7 w-20 text-sm text-right px-2"
+                          className="h-6 w-16 text-xs text-right px-1.5"
                           value={editStock}
                           onChange={(e) => setEditStock(e.target.value)}
                           autoFocus
@@ -355,23 +365,23 @@ const MagnetsSection = () => {
                             if (e.key === "Escape") setEditingBreed(null);
                           }}
                         />
-                        <Button size="icon" variant="ghost" className="h-7 w-7" disabled={saving} onClick={() => handleSaveStock(breed.breed, breed.stars, breed.category)}>
-                          {saving ? <Icon name="Loader2" size={13} className="animate-spin" /> : <Icon name="Check" size={13} className="text-green-600" />}
+                        <Button size="icon" variant="ghost" className="h-6 w-6" disabled={saving} onClick={() => handleSaveStock(breed.breed, breed.stars, breed.category)}>
+                          {saving ? <Icon name="Loader2" size={11} className="animate-spin" /> : <Icon name="Check" size={11} className="text-green-600" />}
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingBreed(null)}>
-                          <Icon name="X" size={13} className="text-muted-foreground" />
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingBreed(null)}>
+                          <Icon name="X" size={11} className="text-muted-foreground" />
                         </Button>
                       </>
                     ) : (
                       <button
-                        className={`text-sm font-semibold px-3 py-1 rounded hover:bg-slate-100 transition-colors flex items-center gap-1 ${stock === 0 ? "text-red-600" : stock < 5 ? "text-yellow-600" : "text-green-700"}`}
+                        className={`text-xs font-semibold px-2 py-0.5 rounded hover:bg-slate-100 transition-colors flex items-center gap-1 ${stock === 0 ? "text-red-600" : stock < 5 ? "text-yellow-600" : "text-green-700"}`}
                         onClick={() => { setEditingBreed(breed.breed); setEditStock(String(stock)); }}
                       >
-                        {stock === 0 && <Icon name="AlertTriangle" size={12} />}
-                        {stock > 0 && stock < 5 && <Icon name="AlertTriangle" size={12} />}
+                        {(stock === 0 || (stock > 0 && stock < 5)) && <Icon name="AlertTriangle" size={10} />}
                         {stock} шт
                       </button>
                     )}
+                  </div>
                   </div>
                 </div>
               );
