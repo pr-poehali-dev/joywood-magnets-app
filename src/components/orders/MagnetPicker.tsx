@@ -53,7 +53,11 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
       .then((r) => r.json())
       .then((data) => {
         const givenKeys = new Set((data.bonuses || []).map((b: { milestone_count: number; milestone_type: string }) => `${b.milestone_count}-${b.milestone_type}`));
-        setBonusesLeft((prev) => prev.filter((b) => !givenKeys.has(`${b.count}-${b.type}`)));
+        setBonusesLeft((prev) => {
+          const remaining = prev.filter((b) => !givenKeys.has(`${b.count}-${b.type}`));
+          if (remaining.length === 0) setTimeout(onDone, 0);
+          return remaining;
+        });
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
