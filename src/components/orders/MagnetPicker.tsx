@@ -265,9 +265,12 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Ошибка");
-      setBonusesLeft((prev) => prev.filter((b) => !(b.count === bonus.count && b.type === bonus.type)));
-      toast.success(`Бонус «${bonus.reward}» выдан`);
+      if (res.status === 409 || res.ok) {
+        setBonusesLeft((prev) => prev.filter((b) => !(b.count === bonus.count && b.type === bonus.type)));
+        toast.success(res.status === 409 ? `Бонус «${bonus.reward}» уже был выдан ранее` : `Бонус «${bonus.reward}» выдан`);
+      } else {
+        throw new Error(data.error || "Ошибка");
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Ошибка выдачи бонуса");
     } finally {
