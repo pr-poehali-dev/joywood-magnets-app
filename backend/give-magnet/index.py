@@ -98,6 +98,12 @@ def handler(event, context):
             try:
                 cur = conn.cursor()
                 cur.execute(
+                    "SELECT stock FROM bonus_stock WHERE reward = '%s'" % reward.replace("'", "''")
+                )
+                stock_row = cur.fetchone()
+                if stock_row is not None and stock_row[0] <= 0:
+                    return err('Бонус «%s» закончился на складе' % reward)
+                cur.execute(
                     "INSERT INTO bonuses (registration_id, milestone_count, milestone_type, reward) "
                     "VALUES (%d, %d, '%s', '%s') "
                     "ON CONFLICT ON CONSTRAINT bonuses_unique DO NOTHING "

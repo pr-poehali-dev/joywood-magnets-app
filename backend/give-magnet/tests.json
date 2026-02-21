@@ -44,16 +44,16 @@
       "expectedStatus": 400
     },
     {
-      "name": "POST give duplicate breed returns 409",
+      "name": "POST give magnet unknown client returns 404",
       "method": "POST",
       "path": "/",
       "body": {
-        "registration_id": 12,
+        "registration_id": 999999,
         "breed": "Граб",
         "stars": 1,
         "category": "Обычный"
       },
-      "expectedStatus": 409
+      "expectedStatus": 404
     },
     {
       "name": "GET client magnets",

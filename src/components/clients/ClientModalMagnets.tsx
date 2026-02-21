@@ -22,6 +22,7 @@ interface Props {
   deleting: boolean;
   pendingBonuses: typeof BONUS_MILESTONES;
   givingBonus: string | null;
+  bonusStock: Record<string, number>;
   onBreedSelect: (breed: string) => void;
   onBreedSearchChange: (v: string) => void;
   onBreedOpenToggle: () => void;
@@ -52,6 +53,7 @@ const ClientModalMagnets = ({
   deleting,
   pendingBonuses,
   givingBonus,
+  bonusStock,
   onBreedSelect,
   onBreedSearchChange,
   onBreedOpenToggle,
@@ -125,16 +127,21 @@ const ClientModalMagnets = ({
           </p>
           {pendingBonuses.map((m) => {
             const key = `${m.count}-${m.type}`;
+            const stock = bonusStock[m.reward];
+            const outOfStock = stock !== undefined && stock <= 0;
             return (
               <div key={key} className="flex items-center justify-between gap-2 bg-white rounded px-2.5 py-1.5 border border-orange-100">
                 <span className="text-sm flex items-center gap-1.5">
                   <span>{m.icon}</span>
                   <span className="font-medium text-orange-800 truncate">{m.reward}</span>
+                  {outOfStock && (
+                    <span className="text-xs text-red-500 font-normal shrink-0">— нет на складе</span>
+                  )}
                 </span>
                 <Button
                   size="sm"
                   className="h-7 text-xs bg-orange-500 hover:bg-orange-600 shrink-0"
-                  disabled={givingBonus === key}
+                  disabled={givingBonus === key || outOfStock}
                   onClick={() => onGiveBonus(m)}
                 >
                   {givingBonus === key

@@ -14,6 +14,8 @@ import Icon from "@/components/ui/icon";
 import { ClientMagnet, GIVE_MAGNET_URL } from "./clients/types";
 import { BONUS_MILESTONES } from "@/lib/store";
 
+const BONUS_STOCK_URL = "https://functions.poehali.dev/5cbee799-0fa3-44e1-8954-66474bf973b0";
+
 interface BonusRecord {
   id: number;
   milestone_count: number;
@@ -37,6 +39,7 @@ const ClientsSection = ({ focusClientId, onFocusHandled, reloadKey }: ClientsSec
   const [clientMagnets, setClientMagnets] = useState<Record<number, ClientMagnet[]>>({});
   const [magnetsLoading, setMagnetsLoading] = useState<Record<number, boolean>>({});
   const [clientBonuses, setClientBonuses] = useState<Record<number, BonusRecord[]>>({});
+  const [bonusStock, setBonusStock] = useState<Record<string, number>>({});
 
   const { clients, loading, reload: loadClients, updateClient, removeClient } = useClients();
   const { stockMap: inventory, reload: loadInventory, setStockForBreed } = useInventory();
@@ -70,10 +73,18 @@ const ClientsSection = ({ focusClientId, onFocusHandled, reloadKey }: ClientsSec
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reloadKey]);
 
+  const loadBonusStock = useCallback(() => {
+    fetch(BONUS_STOCK_URL)
+      .then((r) => r.json())
+      .then((data) => setBonusStock(data.stock || {}))
+      .catch(() => {});
+  }, []);
+
   const handleOpen = useCallback((id: number) => {
     setSelectedId(id);
     if (!clientMagnets[id] || !clientBonuses[id]) loadClientMagnets(id);
-  }, [clientMagnets, clientBonuses, loadClientMagnets]);
+    loadBonusStock();
+  }, [clientMagnets, clientBonuses, loadClientMagnets, loadBonusStock]);
 
   const selectedClient = clients.find((c) => c.id === selectedId) ?? null;
 
@@ -172,6 +183,7 @@ const ClientsSection = ({ focusClientId, onFocusHandled, reloadKey }: ClientsSec
         magnetsLoading={selectedId ? !!magnetsLoading[selectedId] : false}
         bonuses={selectedId ? (clientBonuses[selectedId] || []) : []}
         inventory={inventory}
+        bonusStock={bonusStock}
         onClose={() => setSelectedId(null)}
         onMagnetGiven={(regId, magnet, breed, stockAfter) => {
           setClientMagnets((p) => ({ ...p, [regId]: [magnet, ...(p[regId] || [])] }));

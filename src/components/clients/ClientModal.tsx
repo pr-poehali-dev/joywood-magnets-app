@@ -32,6 +32,7 @@ interface Props {
   magnetsLoading: boolean;
   bonuses: BonusRecord[];
   inventory: Record<string, number>;
+  bonusStock: Record<string, number>;
   onClose: () => void;
   onMagnetGiven: (regId: number, magnet: ClientMagnet, breed: string, stockAfter: number | null) => void;
   onMagnetsReload: (regId: number) => void;
@@ -47,6 +48,7 @@ const ClientModal = ({
   magnetsLoading: mLoading,
   bonuses,
   inventory,
+  bonusStock,
   onClose,
   onMagnetGiven,
   onMagnetsReload,
@@ -324,6 +326,7 @@ const ClientModal = ({
               deleting={deleting}
               pendingBonuses={pendingBonuses}
               givingBonus={givingBonus}
+              bonusStock={bonusStock}
               onBreedSelect={setSelectedBreed}
               onBreedSearchChange={setBreedSearch}
               onBreedOpenToggle={() => setBreedOpen((v) => !v)}
