@@ -7,10 +7,14 @@ export interface CountryCode {
 }
 
 export const COUNTRY_CODES: CountryCode[] = [
-  { code: "+7",   label: "🇷🇺 +7",   digits: 10 },
-  { code: "+375", label: "🇧🇾 +375", digits: 9  },
-  { code: "+380", label: "🇺🇦 +380", digits: 9  },
-  { code: "+7",   label: "🇰🇿 +7",   digits: 10 },
+  { code: "+7",   label: "🇷🇺 Россия +7",       digits: 10 },
+  { code: "+374", label: "🇦🇲 Армения +374",     digits: 8  },
+  { code: "+375", label: "🇧🇾 Беларусь +375",    digits: 9  },
+  { code: "+7",   label: "🇰🇿 Казахстан +7",     digits: 10 },
+  { code: "+996", label: "🇰🇬 Кыргызстан +996",  digits: 9  },
+  { code: "+998", label: "🇺🇿 Узбекистан +998",  digits: 9  },
+  { code: "+995", label: "🇬🇪 Грузия +995",      digits: 9  },
+  { code: "+994", label: "🇦🇿 Азербайджан +994", digits: 9  },
 ];
 
 function applyMask(digits: string, maxDigits: number): string {
