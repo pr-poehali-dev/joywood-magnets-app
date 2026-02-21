@@ -33,6 +33,10 @@ const categoryBadgeColors: Record<string, string> = {
 
 const MagnetsSection = () => {
   const [section, setSection] = useState<"stock" | "photos">("stock");
+  const [bonusStock, setBonusStock] = useState<Record<string, number>>({});
+  const [editingBonus, setEditingBonus] = useState<string | null>(null);
+  const [editBonusStock, setEditBonusStock] = useState("");
+  const [savingBonus, setSavingBonus] = useState(false);
   const [photos, setPhotos] = useState<Record<string, string>>({});
   const [photosLoading, setPhotosLoading] = useState(false);
   const [uploadingBreed, setUploadingBreed] = useState<string | null>(null);
@@ -56,6 +60,34 @@ const MagnetsSection = () => {
   useEffect(() => {
     if (section === "photos") loadPhotos();
   }, [section, loadPhotos]);
+
+  useEffect(() => {
+    if (section === "stock") {
+      fetch(API_URLS.BONUS_STOCK)
+        .then((r) => r.json())
+        .then((d) => setBonusStock(d.stock || {}))
+        .catch(() => {});
+    }
+  }, [section]);
+
+  const handleSaveBonusStock = useCallback(async (reward: string) => {
+    const stock = parseInt(editBonusStock, 10);
+    if (isNaN(stock) || stock < 0) { toast.error("Укажите корректное количество"); return; }
+    setSavingBonus(true);
+    try {
+      const res = await fetch(API_URLS.BONUS_STOCK, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reward, stock }),
+      });
+      if (!res.ok) throw new Error("Ошибка сохранения");
+      setBonusStock((prev) => ({ ...prev, [reward]: stock }));
+      setEditingBonus(null);
+      toast.success(`Остаток «${reward.split(" ")[0]}»: ${stock} шт`);
+    } catch {
+      toast.error("Не удалось сохранить");
+    } finally { setSavingBonus(false); }
+  }, [editBonusStock]);
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -291,6 +323,59 @@ const MagnetsSection = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardContent className="pt-4 pb-3">
+          <p className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Icon name="Gift" size={15} className="text-orange-500" />
+            Остатки призов
+          </p>
+          <div className="divide-y">
+            {BONUS_MILESTONES.map((m) => {
+              const stock = bonusStock[m.reward] ?? 0;
+              const isEditing = editingBonus === m.reward;
+              return (
+                <div key={m.reward} className="flex items-center gap-2 py-1.5">
+                  <span className="text-base shrink-0">{m.icon}</span>
+                  <span className="text-sm flex-1 min-w-0 truncate">{m.reward}</span>
+                  <div className="shrink-0 flex items-center gap-1">
+                    {isEditing ? (
+                      <>
+                        <Input
+                          type="number"
+                          min="0"
+                          className="h-6 w-16 text-xs text-right px-1.5"
+                          value={editBonusStock}
+                          onChange={(e) => setEditBonusStock(e.target.value)}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveBonusStock(m.reward);
+                            if (e.key === "Escape") setEditingBonus(null);
+                          }}
+                        />
+                        <Button size="icon" variant="ghost" className="h-6 w-6" disabled={savingBonus} onClick={() => handleSaveBonusStock(m.reward)}>
+                          {savingBonus ? <Icon name="Loader2" size={11} className="animate-spin" /> : <Icon name="Check" size={11} className="text-green-600" />}
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingBonus(null)}>
+                          <Icon name="X" size={11} className="text-muted-foreground" />
+                        </Button>
+                      </>
+                    ) : (
+                      <button
+                        className={`text-xs font-semibold px-2 py-0.5 rounded hover:bg-slate-100 transition-colors flex items-center gap-1 ${stock === 0 ? "text-red-600" : stock <= 2 ? "text-yellow-600" : "text-green-700"}`}
+                        onClick={() => { setEditingBonus(m.reward); setEditBonusStock(String(stock)); }}
+                      >
+                        {stock === 0 && <Icon name="AlertTriangle" size={10} />}
+                        {stock} шт
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="flex flex-wrap items-center gap-3">
         <h3 className="font-semibold text-lg">Атлас пород</h3>

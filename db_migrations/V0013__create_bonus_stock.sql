@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS bonus_stock (
+  reward TEXT PRIMARY KEY,
+  stock INTEGER NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);

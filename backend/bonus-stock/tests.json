@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "GET bonus stock",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"stock": {}},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
