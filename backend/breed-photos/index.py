@@ -44,16 +44,19 @@ def handler(event, context):
 
     if method == 'GET':
         client = s3()
-        resp = client.list_objects_v2(Bucket=BUCKET, Prefix=PREFIX)
+        resp_all = client.list_objects_v2(Bucket=BUCKET)
+        all_keys = [o['Key'] for o in resp_all.get('Contents', [])]
+        print(f"GET all_keys={all_keys}")
         photos = {}
-        for obj in resp.get('Contents', []):
-            key = obj['Key']
+        for key in all_keys:
+            if not key.startswith(PREFIX):
+                continue
             filename = key[len(PREFIX):]
             if not filename:
                 continue
             breed = filename.rsplit('.', 1)[0]
             photos[breed] = cdn_base + filename
-        return ok({'photos': photos})
+        return ok({'photos': photos, 'all_keys': all_keys})
 
     if method == 'POST':
         raw_body = event.get('body') or '{}'
@@ -87,8 +90,15 @@ def handler(event, context):
 
         client.put_object(Bucket=BUCKET, Key=key, Body=image_bytes, ContentType=content_type)
         print(f"Saved OK key={repr(key)}")
+
+        buckets = [b['Name'] for b in client.list_buckets().get('Buckets', [])]
+        print(f"Available buckets: {buckets}")
+        verify = client.list_objects_v2(Bucket=BUCKET)
+        found_keys = [o['Key'] for o in verify.get('Contents', [])]
+        print(f"Verify after PUT all_keys={found_keys}")
+
         url = f"https://cdn.poehali.dev/projects/{key_id}/bucket/{key}"
-        return ok({'url': url, 'breed': breed})
+        return ok({'url': url, 'breed': breed, 'debug_buckets': buckets, 'debug_found': found_keys})
 
     if method == 'DELETE':
         params = event.get('queryStringParameters') or {}
