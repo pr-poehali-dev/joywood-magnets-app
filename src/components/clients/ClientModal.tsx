@@ -37,7 +37,7 @@ interface Props {
   onMagnetsReload: (regId: number) => void;
   onInventoryChanged: () => void;
   onClientDeleted: () => void;
-  onClientUpdated: (updated: { id: number; name: string; phone: string; registered: boolean }) => void;
+  onClientUpdated: (updated: { id: number; name: string; phone: string; registered: boolean; total_amount?: number }) => void;
 }
 
 const ClientModal = ({
@@ -198,11 +198,15 @@ const ClientModal = ({
   const handleDeleteOrder = async (orderId: number) => {
     setDeletingOrderId(orderId);
     try {
+      const deletedOrder = clientOrders.find((o) => o.id === orderId);
       const res = await fetch(`${ADD_CLIENT_URL}?order_id=${orderId}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка");
       setClientOrders((prev) => prev.filter((o) => o.id !== orderId));
       setConfirmDeleteOrderId(null);
+      if (deletedOrder) {
+        onClientUpdated({ id: client.id, name: client.name, phone: client.phone, registered: client.registered, total_amount: (client.total_amount || 0) - deletedOrder.amount });
+      }
       if (data.magnet_removed) {
         const breeds = (data.magnets_removed as string[] | undefined)?.join(", ") || data.magnet_breed || "";
         toast.success(`Заказ удалён, магниты возвращены на склад: ${breeds}`);

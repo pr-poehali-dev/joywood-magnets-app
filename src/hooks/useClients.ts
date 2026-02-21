@@ -6,7 +6,7 @@ interface UseClientsResult {
   clients: Registration[];
   loading: boolean;
   reload: () => void;
-  updateClient: (updated: Pick<Registration, "id" | "name" | "phone" | "registered">) => void;
+  updateClient: (updated: Pick<Registration, "id" | "name" | "phone" | "registered"> & { total_amount?: number }) => void;
   removeClient: (id: number) => void;
 }
 
@@ -25,11 +25,11 @@ export function useClients(): UseClientsResult {
 
   useEffect(() => { reload(); }, [reload]);
 
-  const updateClient = useCallback((updated: Pick<Registration, "id" | "name" | "phone" | "registered">) => {
+  const updateClient = useCallback((updated: Pick<Registration, "id" | "name" | "phone" | "registered"> & { total_amount?: number }) => {
     setClients((prev) =>
       prev.map((c) =>
         c.id === updated.id
-          ? { ...c, name: updated.name, phone: updated.phone, registered: updated.registered }
+          ? { ...c, name: updated.name, phone: updated.phone, registered: updated.registered, ...(updated.total_amount !== undefined ? { total_amount: updated.total_amount } : {}) }
           : c
       )
     );
