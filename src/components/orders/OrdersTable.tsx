@@ -155,6 +155,7 @@ const OrdersTable = ({ orders, loading, ozonOnly = false, onNavigateToClient }: 
           setSelectedOrder(null);
           onNavigateToClient?.(clientId);
         }}
+        onOrderUpdated={(updated) => setSelectedOrder(updated)}
       />
     </div>
   );
