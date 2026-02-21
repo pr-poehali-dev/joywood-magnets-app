@@ -31,6 +31,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
   const [alreadyOwned, setAlreadyOwned] = useState<Set<string>>(new Set());
   const [alreadyOwnedLoaded, setAlreadyOwnedLoaded] = useState(false);
   const [clientTotal, setClientTotal] = useState(0);
+  const [clientTotalLoaded, setClientTotalLoaded] = useState(false);
   const [given, setGiven] = useState<GivenMagnet[]>([]);
   const [search, setSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -64,8 +65,9 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
           .filter((o) => o.id !== orderId)
           .reduce((sum, o) => sum + (o.amount || 0), 0);
         setClientTotal(total + orderAmount);
+        setClientTotalLoaded(true);
       })
-      .catch(() => setClientTotal(orderAmount));
+      .catch(() => { setClientTotal(orderAmount); setClientTotalLoaded(true); });
   }, [registrationId, orderId, orderAmount]);
 
   const givenBreeds = new Set(given.map((g) => g.breed));
@@ -302,7 +304,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
               <MagnetPickerMagnetsStep
                 isFirstOrder={isFirstOrder}
                 isRegistered={isRegistered}
-                alreadyOwnedLoaded={alreadyOwnedLoaded}
+                alreadyOwnedLoaded={alreadyOwnedLoaded && clientTotalLoaded}
                 mode={mode}
                 giving={giving}
                 given={given}
