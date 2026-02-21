@@ -17,19 +17,6 @@ import { toast } from "sonner";
 import { useInventory } from "@/hooks/useInventory";
 import { API_URLS } from "@/lib/api";
 
-const categories = [...new Set(WOOD_BREEDS.map((b) => b.category))];
-
-const categoryColors: Record<string, string> = {
-  "Обычный": "bg-amber-50 border-amber-200",
-  "Особенный": "bg-orange-50 border-orange-300",
-  "Элитный": "bg-red-50 border-red-200",
-};
-
-const categoryBadgeColors: Record<string, string> = {
-  "Обычный": "bg-amber-100 text-amber-800",
-  "Особенный": "bg-orange-100 text-orange-800",
-  "Элитный": "bg-red-100 text-red-800",
-};
 
 const MagnetsSection = () => {
   const [section, setSection] = useState<"stock" | "photos">("stock");
@@ -146,7 +133,6 @@ const MagnetsSection = () => {
     }
   }, []);
 
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [starsFilter, setStarsFilter] = useState<string>("all");
   const [editingBreed, setEditingBreed] = useState<string | null>(null);
   const [editStock, setEditStock] = useState<string>("");
@@ -175,7 +161,6 @@ const MagnetsSection = () => {
 
   const filteredBreeds = useMemo(() => {
     const filtered = WOOD_BREEDS.filter((b) => {
-      if (categoryFilter !== "all" && b.category !== categoryFilter) return false;
       if (starsFilter !== "all" && b.stars !== Number(starsFilter)) return false;
       return true;
     });
@@ -185,7 +170,7 @@ const MagnetsSection = () => {
       const stockB = inventory[b.breed]?.stock ?? 0;
       return stockB - stockA;
     });
-  }, [categoryFilter, starsFilter, inventory]);
+  }, [starsFilter, inventory]);
 
   const { totalStock, lowStockCount, outOfStockCount } = useMemo(() => {
     const total = Object.values(inventory).reduce((s, v) => s + v.stock, 0);
@@ -380,19 +365,6 @@ const MagnetsSection = () => {
       <div className="flex flex-wrap items-center gap-3">
         <h3 className="font-semibold text-lg">Атлас пород</h3>
         <div className="flex-1" />
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Категория" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Все категории</SelectItem>
-            {categories.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {cat}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         <Select value={starsFilter} onValueChange={setStarsFilter}>
           <SelectTrigger className="w-[140px]">
             <SelectValue placeholder="Звёзды" />
