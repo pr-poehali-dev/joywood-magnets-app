@@ -4,7 +4,6 @@ import Icon from "@/components/ui/icon";
 import ClientsSection from "@/components/ClientsSection";
 import MagnetsSection from "@/components/MagnetsSection";
 import OrdersSection from "@/components/OrdersSection";
-import StatsSection from "@/components/StatsSection";
 import RecentRegistrations from "@/components/RecentRegistrations";
 import AdminGuard from "@/components/AdminGuard";
 import AnalyticsSection from "@/components/AnalyticsSection";
@@ -14,7 +13,6 @@ const tabsList = [
   { value: "clients", label: "Клиенты", icon: "Users" },
   { value: "registrations", label: "Регистрации", icon: "UserCheck" },
   { value: "magnets", label: "Магниты", icon: "Magnet" },
-  { value: "stats", label: "Статистика", icon: "BarChart3" },
   { value: "analytics", label: "Аналитика", icon: "TrendingUp" },
 ];
 
@@ -99,9 +97,6 @@ const Index = () => {
           </TabsContent>
           <TabsContent value="registrations">
             <RecentRegistrations onNavigateToClient={navigateToClient} onCountChange={setNewRegsCount} />
-          </TabsContent>
-          <TabsContent value="stats">
-            <StatsSection />
           </TabsContent>
           <TabsContent value="analytics">
             <AnalyticsSection onNavigateToClient={navigateToClient} />
