@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
-import { WOOD_BREEDS, STAR_LABELS } from "@/lib/store";
+import { WOOD_BREEDS, STAR_LABELS, BONUS_MILESTONES } from "@/lib/store";
 import { toast } from "sonner";
 import { useInventory } from "@/hooks/useInventory";
 import { API_URLS } from "@/lib/api";
