@@ -8,6 +8,7 @@ import BonusTracker from "@/components/BonusTracker";
 import StatsSection from "@/components/StatsSection";
 import RecentRegistrations from "@/components/RecentRegistrations";
 import AdminGuard from "@/components/AdminGuard";
+import AnalyticsSection from "@/components/AnalyticsSection";
 
 const tabsList = [
   { value: "orders", label: "Заказы", icon: "ShoppingCart" },
@@ -16,6 +17,7 @@ const tabsList = [
   { value: "magnets", label: "Магниты", icon: "Magnet" },
   { value: "bonuses", label: "Бонусы", icon: "Award" },
   { value: "stats", label: "Статистика", icon: "BarChart3" },
+  { value: "analytics", label: "Аналитика", icon: "TrendingUp" },
 ];
 
 const Index = () => {
@@ -98,6 +100,9 @@ const Index = () => {
           </TabsContent>
           <TabsContent value="stats">
             <StatsSection />
+          </TabsContent>
+          <TabsContent value="analytics">
+            <AnalyticsSection onNavigateToClient={navigateToClient} />
           </TabsContent>
         </Tabs>
       </main>

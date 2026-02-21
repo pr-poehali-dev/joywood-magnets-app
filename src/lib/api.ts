@@ -4,6 +4,7 @@ export const API_URLS = {
   ADD_CLIENT: "https://functions.poehali.dev/16cf02a4-2bbe-4378-9c28-f8ad3393c028",
   REGISTER: "https://functions.poehali.dev/40f9e8db-184c-407c-ace9-d0877ed306b9",
   LOOKUP: "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6f26ec4",
+  ANALYTICS: "https://functions.poehali.dev/71f57402-757d-4729-b1a9-3fc46683f526",
 };
 
 export const formatPhone = (value: string): string => {
