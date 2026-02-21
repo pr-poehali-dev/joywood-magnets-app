@@ -10,6 +10,7 @@ import Icon from "@/components/ui/icon";
 import { STAR_LABELS, WOOD_BREEDS, BONUS_MILESTONES } from "@/lib/store";
 import { toast } from "sonner";
 import { usePhoneInput } from "@/hooks/usePhoneInput";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 const LOOKUP_URL = "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6f26ec4";
 
@@ -118,17 +119,7 @@ const MyCollection = () => {
               <form onSubmit={handleSearch} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="phone">Номер телефона</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    inputMode="numeric"
-                    ref={phone.inputRef}
-                    value={phone.display}
-                    onChange={phone.handleChange}
-                    onKeyDown={phone.handleKeyDown}
-                    onFocus={phone.handleFocus}
-                    autoComplete="tel"
-                  />
+                  <PhoneInput id="phone" phoneHook={phone} />
                 </div>
                 <Button
                   type="submit"

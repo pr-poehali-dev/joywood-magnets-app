@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import { usePhoneInput } from "@/hooks/usePhoneInput";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 const REGISTER_URL = "https://functions.poehali.dev/40f9e8db-184c-407c-ace9-d0877ed306b9";
 
@@ -81,17 +82,7 @@ const Register = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="phone">Телефон</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  inputMode="numeric"
-                  ref={phone.inputRef}
-                  value={phone.display}
-                  onChange={phone.handleChange}
-                  onKeyDown={phone.handleKeyDown}
-                  onFocus={phone.handleFocus}
-                  autoComplete="tel"
-                />
+                <PhoneInput id="phone" phoneHook={phone} />
                 <p className="text-xs text-muted-foreground">
                   По номеру телефона вы сможете войти в коллекцию в любое время
                 </p>

@@ -1,60 +1,120 @@
 import { useState, useCallback, useRef } from "react";
 
-const PREFIX = "+7 ";
+export interface CountryCode {
+  code: string;
+  label: string;
+  digits: number;
+}
 
-function applyMask(digits: string): string {
-  const d = digits.slice(0, 10);
-  let result = PREFIX;
-  if (d.length > 0) result += `(${d.slice(0, 3)}`;
-  if (d.length >= 3) result += `) `;
-  if (d.length > 3) result += d.slice(3, 6);
-  if (d.length >= 6) result += `-`;
-  if (d.length > 6) result += d.slice(6, 8);
-  if (d.length >= 8) result += `-`;
-  if (d.length > 8) result += d.slice(8, 10);
-  return result;
+export const COUNTRY_CODES: CountryCode[] = [
+  { code: "+7",   label: "🇷🇺 +7",   digits: 10 },
+  { code: "+375", label: "🇧🇾 +375", digits: 9  },
+  { code: "+380", label: "🇺🇦 +380", digits: 9  },
+  { code: "+7",   label: "🇰🇿 +7",   digits: 10 },
+];
+
+function applyMask(digits: string, maxDigits: number): string {
+  const d = digits.slice(0, maxDigits);
+  if (maxDigits === 10) {
+    let r = "";
+    if (d.length > 0) r += `(${d.slice(0, 3)}`;
+    if (d.length >= 3) r += `) `;
+    if (d.length > 3) r += d.slice(3, 6);
+    if (d.length >= 6) r += `-`;
+    if (d.length > 6) r += d.slice(6, 8);
+    if (d.length >= 8) r += `-`;
+    if (d.length > 8) r += d.slice(8, 10);
+    return r;
+  }
+  // generic: groups of 3-3-3 or just raw
+  let r = "";
+  if (d.length > 0) r += d.slice(0, 3);
+  if (d.length >= 3) r += ` `;
+  if (d.length > 3) r += d.slice(3, 6);
+  if (d.length >= 6) r += ` `;
+  if (d.length > 6) r += d.slice(6, maxDigits);
+  return r;
 }
 
 export function usePhoneInput(initial = "") {
-  const getInitialDisplay = () => {
-    const digits = initial.replace(/\D/g, "").replace(/^7/, "").slice(0, 10);
-    return digits.length > 0 ? applyMask(digits) : PREFIX;
-  };
+  const [countryIdx, setCountryIdx] = useState(0);
+  const country = COUNTRY_CODES[countryIdx];
 
-  const [display, setDisplay] = useState<string>(getInitialDisplay);
+  const getInitialDigits = () =>
+    initial.replace(/\D/g, "").replace(/^7/, "").slice(0, country.digits);
+
+  const [digits, setDigits] = useState<string>(getInitialDigits);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const digits = display.replace(/\D/g, "").replace(/^7/, "").slice(0, 10);
-  const fullPhone = display.replace(/\D/g, "").length >= 11 ? `+7${digits}` : "";
-  const isValid = digits.length === 10;
+  const display = country.code + " " + applyMask(digits, country.digits);
+  const prefixLen = country.code.length + 1; // "+7 " or "+375 "
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
+  const isValid = digits.length === country.digits;
+  const fullPhone = isValid ? `${country.code}${digits}` : "";
 
-    if (raw.length < PREFIX.length) {
-      setDisplay(PREFIX);
+  // Given a masked string (without country code prefix), get only digits
+  const extractDigits = (masked: string) =>
+    masked.replace(/\D/g, "").slice(0, country.digits);
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value;
+      const cursorPos = e.target.selectionStart ?? raw.length;
+
+      // Strip prefix if present
+      const withoutPrefix = raw.startsWith(country.code + " ")
+        ? raw.slice(prefixLen)
+        : raw.startsWith(country.code)
+        ? raw.slice(country.code.length)
+        : raw;
+
+      const newDigits = extractDigits(withoutPrefix);
+      setDigits(newDigits);
+
+      // Restore cursor: count digits typed before cursor position in raw
+      const rawBeforeCursor = raw.slice(0, cursorPos);
+      const digitsBeforeCursor = rawBeforeCursor.replace(/\D/g, "").replace(
+        new RegExp(`^${country.code.replace("+", "\\+")}\\d*`),
+        (m) => m.slice(country.code.length)
+      ).replace(/\D/g, "").length;
+
+      // Find position in new masked string after digitsBeforeCursor digits
       setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.setSelectionRange(PREFIX.length, PREFIX.length);
+        if (!inputRef.current) return;
+        const newDisplay = country.code + " " + applyMask(newDigits, country.digits);
+        let digitCount = 0;
+        let newPos = prefixLen;
+        for (let i = prefixLen; i < newDisplay.length; i++) {
+          if (/\d/.test(newDisplay[i])) {
+            if (digitCount >= digitsBeforeCursor) break;
+            digitCount++;
+          }
+          newPos = i + 1;
         }
+        inputRef.current.setSelectionRange(newPos, newPos);
       }, 0);
-      return;
-    }
+    },
+    [country, prefixLen]
+  );
 
-    const afterPrefix = raw.slice(PREFIX.length);
-    const newDigits = afterPrefix.replace(/\D/g, "").slice(0, 10);
-    setDisplay(applyMask(newDigits));
-  }, []);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      const input = inputRef.current;
+      if (!input) return;
+      const pos = input.selectionStart ?? 0;
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    const input = inputRef.current;
-    if (!input) return;
-    const pos = input.selectionStart ?? 0;
-
-    if ((e.key === "Backspace" || e.key === "Delete") && pos <= PREFIX.length) {
-      e.preventDefault();
-    }
-  }, []);
+      // Prevent deleting the country code prefix
+      if (e.key === "Backspace" && pos <= prefixLen) {
+        e.preventDefault();
+        return;
+      }
+      if (e.key === "Delete" && pos < prefixLen) {
+        e.preventDefault();
+        return;
+      }
+    },
+    [prefixLen]
+  );
 
   const handleFocus = useCallback(() => {
     setTimeout(() => {
@@ -65,7 +125,12 @@ export function usePhoneInput(initial = "") {
     }, 0);
   }, []);
 
-  const reset = useCallback(() => setDisplay(PREFIX), []);
+  const selectCountry = useCallback((idx: number) => {
+    setCountryIdx(idx);
+    setDigits("");
+  }, []);
+
+  const reset = useCallback(() => setDigits(""), []);
 
   return {
     display,
@@ -77,5 +142,9 @@ export function usePhoneInput(initial = "") {
     handleKeyDown,
     handleFocus,
     reset,
+    countryIdx,
+    selectCountry,
+    countries: COUNTRY_CODES,
+    country,
   };
 }
