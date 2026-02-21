@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,12 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
-import {
-  WOOD_BREEDS,
-  STAR_LABELS,
-  getMagnetRecommendation,
-} from "@/lib/store";
-import type { Client, MagnetRecommendation } from "@/lib/store";
+import { WOOD_BREEDS, STAR_LABELS } from "@/lib/store";
 import { toast } from "sonner";
 import { useInventory } from "@/hooks/useInventory";
 import { API_URLS } from "@/lib/api";
@@ -36,27 +30,7 @@ const categoryBadgeColors: Record<string, string> = {
   "Элитный": "bg-red-100 text-red-800",
 };
 
-function makeVirtualClient(totalSpent: number, isNew: boolean): Client {
-  return {
-    id: "__calc__",
-    name: "Калькулятор",
-    phone: "",
-    email: "",
-    channels: [],
-    totalSpent,
-    ordersCount: isNew ? 0 : 1,
-    magnetsCollected: [],
-    uniqueBreeds: 0,
-    status: "active",
-    createdAt: "",
-    notes: "",
-  };
-}
-
 const MagnetsSection = () => {
-  const [orderAmount, setOrderAmount] = useState<number>(0);
-  const [isFirstOrder, setIsFirstOrder] = useState(false);
-  const [totalSpent, setTotalSpent] = useState<number>(0);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [starsFilter, setStarsFilter] = useState<string>("all");
   const [editingBreed, setEditingBreed] = useState<string | null>(null);
@@ -83,16 +57,6 @@ const MagnetsSection = () => {
       toast.error("Не удалось сохранить");
     } finally { setSaving(false); }
   }, [editStock, setStockForBreed]);
-
-  const recommendation: MagnetRecommendation | null = useMemo(() => {
-    if (orderAmount <= 0) return null;
-    const virtualClient = makeVirtualClient(totalSpent, isFirstOrder);
-    return getMagnetRecommendation({
-      client: virtualClient,
-      amount: orderAmount,
-      isFirstOrder,
-    });
-  }, [orderAmount, isFirstOrder, totalSpent]);
 
   const filteredBreeds = useMemo(() => WOOD_BREEDS.filter((b) => {
     if (categoryFilter !== "all" && b.category !== categoryFilter) return false;
@@ -141,71 +105,6 @@ const MagnetsSection = () => {
           </CardContent>
         </Card>
       </div>
-
-      <Card className="border-orange-200 bg-orange-50/30">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Icon name="Calculator" size={20} className="text-orange-500" />
-            Калькулятор магнитов
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Сумма заказа</Label>
-              <Input
-                type="number"
-                placeholder="0"
-                value={orderAmount || ""}
-                onChange={(e) => setOrderAmount(Number(e.target.value))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Общая сумма клиента</Label>
-              <Input
-                type="number"
-                placeholder="0"
-                value={totalSpent || ""}
-                onChange={(e) => setTotalSpent(Number(e.target.value))}
-              />
-            </div>
-            <div className="flex items-end pb-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="firstOrder"
-                  checked={isFirstOrder}
-                  onCheckedChange={(v) => setIsFirstOrder(v === true)}
-                />
-                <Label htmlFor="firstOrder" className="text-sm cursor-pointer">
-                  Новый участник (нет магнитов)
-                </Label>
-              </div>
-            </div>
-          </div>
-          {recommendation && (
-            <div className="bg-white rounded-lg border border-orange-200 p-4 flex items-center gap-3">
-              <Icon name="Gift" size={22} className="text-orange-500 shrink-0" />
-              <div>
-                <div className="text-xs text-muted-foreground mb-0.5">
-                  Рекомендация
-                </div>
-                <div className="font-semibold text-sm">{recommendation.message}</div>
-                {recommendation.bonus && (
-                  <div className="text-xs text-orange-600 mt-1">
-                    + Стартовый {recommendation.bonus.breed} {STAR_LABELS[recommendation.bonus.stars]}
-                  </div>
-                )}
-                {recommendation.startStars && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Категория: {STAR_LABELS[recommendation.startStars]}
-                    {recommendation.startStars >= 2 && " (VIP или перелив)"}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       <div className="flex flex-wrap items-center gap-3">
         <h3 className="font-semibold text-lg">Атлас пород</h3>
