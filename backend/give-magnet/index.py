@@ -128,6 +128,13 @@ def handler(event, context):
             if not reg:
                 return err('Клиент не найден', 404)
 
+            cur.execute(
+                "SELECT id FROM client_magnets WHERE registration_id = %d AND breed = '%s' LIMIT 1"
+                % (int(registration_id), breed.replace("'", "''"))
+            )
+            if cur.fetchone():
+                return err('Порода «%s» уже есть в коллекции этого клиента' % breed, 409)
+
             cur.execute("SELECT stock FROM magnet_inventory WHERE breed = '%s'" % breed.replace("'", "''"))
             inv_row = cur.fetchone()
             current_stock = inv_row[0] if inv_row else 0

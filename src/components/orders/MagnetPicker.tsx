@@ -31,6 +31,7 @@ interface Props {
 const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirstOrder, isRegistered, pendingBonuses, onDone }: Props) => {
   const { stockMap: inventory, decrementStock, incrementStock } = useInventory();
   const [alreadyOwned, setAlreadyOwned] = useState<Set<string>>(new Set());
+  const [alreadyOwnedLoaded, setAlreadyOwnedLoaded] = useState(false);
   const [clientTotal, setClientTotal] = useState(0);
   const [given, setGiven] = useState<GivenMagnet[]>([]);
   const [search, setSearch] = useState("");
@@ -52,8 +53,9 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
       .then((data) => {
         const breeds = new Set<string>((data.magnets || []).map((m: { breed: string }) => m.breed));
         setAlreadyOwned(breeds);
+        setAlreadyOwnedLoaded(true);
       })
-      .catch(() => {});
+      .catch(() => { setAlreadyOwnedLoaded(true); });
 
     fetch(`${GET_REGISTRATIONS_URL}?action=client_orders&registration_id=${registrationId}`)
       .then((r) => r.json())
@@ -260,22 +262,29 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
                   </div>
                 )}
 
-                <MagnetRecommendations
-                  isFirstOrder={isFirstOrder}
-                  options={recommendedOptions}
-                  recommendedIndex={recommendedIndex}
-                  alreadyOwned={alreadyOwned}
-                  givenBreeds={givenBreeds}
-                  inventory={inventory}
-                  given={given}
-                  giving={giving}
-                  alreadyOwnedSize={alreadyOwned.size}
-                  reshuffleKey={reshuffleKey}
-                  onGive={(pick) => handleGive(pick.breed, pick.stars, pick.category)}
-                  onGiveAll={handleGiveAll}
-                  onReshuffle={() => setReshuffleKey((k) => k + 1)}
-                  onRemove={handleRemove}
-                />
+                {!alreadyOwnedLoaded ? (
+                  <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                    <Icon name="Loader2" size={16} className="animate-spin" />
+                    Загружаем коллекцию клиента...
+                  </div>
+                ) : (
+                  <MagnetRecommendations
+                    isFirstOrder={isFirstOrder}
+                    options={recommendedOptions}
+                    recommendedIndex={recommendedIndex}
+                    alreadyOwned={alreadyOwned}
+                    givenBreeds={givenBreeds}
+                    inventory={inventory}
+                    given={given}
+                    giving={giving}
+                    alreadyOwnedSize={alreadyOwned.size}
+                    reshuffleKey={reshuffleKey}
+                    onGive={(pick) => handleGive(pick.breed, pick.stars, pick.category)}
+                    onGiveAll={handleGiveAll}
+                    onReshuffle={() => setReshuffleKey((k) => k + 1)}
+                    onRemove={handleRemove}
+                  />
+                )}
 
                 {!isFirstOrder && (
                   <MagnetBreedDropdown
