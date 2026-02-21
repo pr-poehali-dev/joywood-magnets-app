@@ -14,6 +14,7 @@ interface Props {
   giving: boolean;
   alreadyOwnedSize: number;
   reshuffleKey: number;
+  pendingBreeds: Set<string>;
   onGive: (pick: PickedBreed) => void;
   onGiveAll: (picks: Array<PickedBreed | null>) => void;
   onReshuffle: () => void;
@@ -26,6 +27,7 @@ const MagnetRecommendations = ({
   recommendedIndex,
   alreadyOwned,
   givenBreeds,
+  pendingBreeds,
   inventory,
   given,
   giving,
@@ -104,16 +106,16 @@ const MagnetRecommendations = ({
           {options.map((opt, oi) => {
             const isRecommended = oi === safeRecommendedIndex;
             const picks = allPicks[oi] ?? [];
-            const notYetGiven = picks.filter(
-              (p) => p !== null && !givenBreeds.has(p.breed)
+            const notYetSelected = picks.filter(
+              (p) => p !== null && !givenBreeds.has(p.breed) && !pendingBreeds.has(p.breed)
             ) as PickedBreed[];
-            const allGiven = notYetGiven.length === 0 && picks.some((p) => p !== null);
+            const allSelected = notYetSelected.length === 0 && picks.some((p) => p !== null);
 
             return (
               <div
                 key={oi}
                 className={`border rounded-lg p-3 space-y-2 transition-all ${
-                  allGiven
+                  allSelected
                     ? "bg-green-50 border-green-200"
                     : isRecommended
                       ? "bg-amber-50 border-amber-400 ring-2 ring-amber-300"
@@ -122,26 +124,26 @@ const MagnetRecommendations = ({
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <p className={`text-xs font-medium truncate ${isRecommended && !allGiven ? "text-amber-900" : "text-muted-foreground"}`}>
+                    <p className={`text-xs font-medium truncate ${isRecommended && !allSelected ? "text-amber-900" : "text-muted-foreground"}`}>
                       {opt.label}
                     </p>
-                    {isRecommended && !allGiven && (
+                    {isRecommended && !allSelected && (
                       <span className="inline-flex items-center gap-0.5 bg-amber-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0">
                         <Icon name="Wand2" size={9} />
                         Рекомендовано
                       </span>
                     )}
                   </div>
-                  {notYetGiven.length > 0 && !giving && (
+                  {notYetSelected.length > 0 && (
                     <button
-                      onClick={() => onGiveAll(notYetGiven)}
+                      onClick={() => onGiveAll(notYetSelected)}
                       className={`text-[10px] border rounded px-1.5 py-0.5 transition-colors shrink-0 ${
-                        isRecommended && !allGiven
+                        isRecommended && !allSelected
                           ? "text-amber-700 hover:text-amber-900 border-amber-300"
                           : "text-slate-500 hover:text-slate-700 border-slate-300"
                       }`}
                     >
-                      выдать все
+                      выбрать все
                     </button>
                   )}
                 </div>
@@ -153,20 +155,21 @@ const MagnetRecommendations = ({
                       );
                     }
                     const isGiven = givenBreeds.has(pick.breed);
+                    const isPending = pendingBreeds.has(pick.breed);
                     return (
                       <button
                         key={pi}
-                        disabled={isGiven || giving}
-                        onClick={() => !isGiven && !giving && onGive(pick)}
+                        disabled={isGiven || isPending}
+                        onClick={() => !isGiven && !isPending && onGive(pick)}
                         className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-1 text-xs font-medium transition-all ${
-                          isGiven
-                            ? "opacity-60 cursor-default " + (starBg[pick.stars] ?? "")
+                          isGiven || isPending
+                            ? "opacity-80 cursor-default " + (starBg[pick.stars] ?? "")
                             : (starBg[pick.stars] ?? "") + " hover:ring-2 hover:ring-amber-400 cursor-pointer"
                         }`}
                       >
-                        {isGiven ? <Icon name="Check" size={10} /> : <Icon name="Plus" size={10} />}
+                        {isGiven || isPending ? <Icon name="Check" size={10} /> : <Icon name="Plus" size={10} />}
                         {pick.breed} {STAR_LABELS[pick.stars]}
-                        {!isGiven && <span className="text-[10px] opacity-50">· {pick.stock} шт</span>}
+                        {!isGiven && !isPending && <span className="text-[10px] opacity-50">· {pick.stock} шт</span>}
                       </button>
                     );
                   })}

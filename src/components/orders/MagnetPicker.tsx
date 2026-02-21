@@ -37,6 +37,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
   const [search, setSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [giving, setGiving] = useState(false);
+  const [pendingPicks, setPendingPicks] = useState<Array<{ breed: string; stars: number; category: string }>>([]);
   const [mode, setMode] = useState<"pick" | "no_magnet">("pick");
   const [comment, setComment] = useState("");
   const [savingComment, setSavingComment] = useState(false);
@@ -135,9 +136,93 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
     }
   };
 
+  const handleSelectPick = (breed: string, stars: number, category: string) => {
+    setPendingPicks((prev) => {
+      if (prev.some((p) => p.breed === breed)) return prev;
+      return [...prev, { breed, stars, category }];
+    });
+  };
+
+  const handleSelectAll = (picks: Array<PickedBreed | null>) => {
+    setPendingPicks((prev) => {
+      const next = [...prev];
+      for (const p of picks) {
+        if (p && !next.some((x) => x.breed === p.breed)) {
+          next.push({ breed: p.breed, stars: p.stars, category: p.category });
+        }
+      }
+      return next;
+    });
+  };
+
+  const handleRemovePending = (breed: string) => {
+    setPendingPicks((prev) => prev.filter((p) => p.breed !== breed));
+  };
+
   const handleGiveAll = async (picks: Array<PickedBreed | null>) => {
-    for (const pick of picks) {
-      if (pick) await handleGive(pick.breed, pick.stars, pick.category);
+    setGiving(true);
+    try {
+      for (const pick of picks) {
+        if (!pick) continue;
+        const res = await fetch(GIVE_MAGNET_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ registration_id: registrationId, breed: pick.breed, stars: pick.stars, category: pick.category }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Ошибка");
+        setGiven((prev) => {
+          const next = [...prev, { id: data.id, breed: pick.breed, stars: pick.stars }];
+          checkNewBonuses(next);
+          return next;
+        });
+        decrementStock(pick.breed);
+        toast.success(`${pick.breed} ${STAR_LABELS[pick.stars]} выдан`);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Ошибка выдачи");
+    } finally {
+      setGiving(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    const allToGive = [...given, ...pendingPicks.map((p, i) => ({ id: i, breed: p.breed, stars: p.stars }))];
+    const warning = validateGiven(allToGive, orderAmount, isFirstOrder, clientTotal, alreadyOwned);
+    if (warning) {
+      setValidationWarning(warning);
+      return;
+    }
+    if (pendingPicks.length > 0) {
+      setGiving(true);
+      const confirmed: GivenMagnet[] = [...given];
+      try {
+        for (const pick of pendingPicks) {
+          const res = await fetch(GIVE_MAGNET_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ registration_id: registrationId, breed: pick.breed, stars: pick.stars, category: pick.category }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Ошибка");
+          confirmed.push({ id: data.id, breed: pick.breed, stars: pick.stars });
+          decrementStock(pick.breed);
+          toast.success(`${pick.breed} ${STAR_LABELS[pick.stars]} выдан`);
+        }
+        setGiven(confirmed);
+        checkNewBonuses(confirmed);
+        setPendingPicks([]);
+        setGiving(false);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Ошибка выдачи");
+        setGiving(false);
+        return;
+      }
+    }
+    if (bonusesLeft.length > 0) {
+      setStep("bonuses");
+    } else {
+      onDone();
     }
   };
 
@@ -295,13 +380,14 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
                     recommendedIndex={recommendedIndex}
                     alreadyOwned={alreadyOwned}
                     givenBreeds={givenBreeds}
+                    pendingBreeds={new Set(pendingPicks.map((p) => p.breed))}
                     inventory={inventory}
                     given={given}
                     giving={giving}
                     alreadyOwnedSize={alreadyOwned.size}
                     reshuffleKey={reshuffleKey}
-                    onGive={(pick) => handleGive(pick.breed, pick.stars, pick.category)}
-                    onGiveAll={handleGiveAll}
+                    onGive={(pick) => handleSelectPick(pick.breed, pick.stars, pick.category)}
+                    onGiveAll={(picks) => handleSelectAll(picks)}
                     onReshuffle={() => setReshuffleKey((k) => k + 1)}
                     onRemove={handleRemove}
                   />
@@ -343,8 +429,25 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
                       <Button
                         size="sm"
                         className="flex-1 text-xs bg-red-500 hover:bg-red-600"
-                        onClick={() => {
+                        onClick={async () => {
                           setValidationWarning(null);
+                          if (pendingPicks.length > 0) {
+                            setGiving(true);
+                            const confirmed: GivenMagnet[] = [...given];
+                            try {
+                              for (const pick of pendingPicks) {
+                                const res = await fetch(GIVE_MAGNET_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ registration_id: registrationId, breed: pick.breed, stars: pick.stars, category: pick.category }) });
+                                const data = await res.json();
+                                if (!res.ok) throw new Error(data.error || "Ошибка");
+                                confirmed.push({ id: data.id, breed: pick.breed, stars: pick.stars });
+                                decrementStock(pick.breed);
+                              }
+                              setGiven(confirmed);
+                              checkNewBonuses(confirmed);
+                              setPendingPicks([]);
+                            } catch (e) { toast.error(e instanceof Error ? e.message : "Ошибка"); setGiving(false); return; }
+                            setGiving(false);
+                          }
                           if (bonusesLeft.length > 0) { setStep("bonuses"); } else { onDone(); }
                         }}
                       >
@@ -355,27 +458,40 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
                   </div>
                 )}
 
+                {pendingPicks.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-muted-foreground font-medium">Выбрано для выдачи:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {pendingPicks.map((p) => (
+                        <span
+                          key={p.breed}
+                          className="inline-flex items-center gap-1 border rounded-full px-2.5 py-1 text-xs font-medium bg-amber-100 border-amber-300 text-amber-900"
+                        >
+                          {p.breed} {STAR_LABELS[p.stars]}
+                          <button onClick={() => handleRemovePending(p.breed)} className="ml-0.5 hover:text-red-500">
+                            <Icon name="X" size={10} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2 pt-1">
                   <Button
                     className="w-full bg-orange-500 hover:bg-orange-600 gap-1.5"
-                    disabled={given.length === 0 && !isFirstOrder && recommendedOptions.length > 0}
-                    onClick={() => {
-                      const warning = validateGiven(given, orderAmount, isFirstOrder, clientTotal, alreadyOwned);
-                      if (warning) {
-                        setValidationWarning(warning);
-                      } else if (bonusesLeft.length > 0) {
-                        setStep("bonuses");
-                      } else {
-                        onDone();
-                      }
-                    }}
+                    disabled={giving || (given.length === 0 && pendingPicks.length === 0 && !isFirstOrder && recommendedOptions.length > 0)}
+                    onClick={handleConfirm}
                   >
-                    <Icon name="Check" size={15} />
-                    {isFirstOrder
-                      ? "Готово (Падук выдан)"
-                      : given.length > 0
-                        ? `Готово (${given.length} магн.)`
-                        : "Готово"}
+                    {giving
+                      ? <><Icon name="Loader2" size={15} className="animate-spin" />Выдаём...</>
+                      : <><Icon name="Check" size={15} />
+                        {isFirstOrder
+                          ? "Готово (Падук выдан)"
+                          : given.length + pendingPicks.length > 0
+                            ? `Подтвердить и выдать (${given.length + pendingPicks.length} магн.)`
+                            : "Готово"}
+                      </>}
                   </Button>
                   <button
                     className="w-full text-xs text-muted-foreground hover:text-red-500 transition-colors py-1"
