@@ -343,9 +343,9 @@ const ClientExpandedRow = ({
             {!mLoading && magnets.length > 0 && (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 mb-4">
                 {magnets.map((m) => (
-                  <div key={m.id} className={`relative group rounded-lg border p-2 text-center text-xs ${starBg[m.stars] || "bg-white"}`}>
+                  <div key={m.id} className={`relative rounded-lg border p-2 text-center text-xs ${starBg[m.stars] || "bg-white"}`}>
                     <button
-                      className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-400 hover:bg-red-600 text-white flex items-center justify-center"
                       onClick={(e) => { e.stopPropagation(); handleDeleteMagnet(m.id, m.breed); }}
                       disabled={deletingMagnetId === m.id}
                       title="Удалить магнит"
