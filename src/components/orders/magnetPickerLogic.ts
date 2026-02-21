@@ -76,6 +76,36 @@ export function pickBreedsForOption(
 }
 
 /**
+ * Веса вариантов по максимальной звёздности: чем дороже — тем реже рекомендуется.
+ * ⭐ = 6, ⭐⭐ = 3, ⭐⭐⭐ = 1
+ */
+const OPTION_STAR_WEIGHT: Record<number, number> = { 1: 6, 2: 3, 3: 1 };
+
+function optionWeight(option: RecommendedOption): number {
+  const maxStars = Math.max(...option.slots.map((s) => s.stars));
+  return OPTION_STAR_WEIGHT[maxStars] ?? 1;
+}
+
+/**
+ * Взвешенный случайный выбор индекса варианта:
+ * ⭐ ~60%, ⭐⭐ ~30%, ⭐⭐⭐ ~10% (при наличии всех трёх).
+ * При одном варианте — всегда возвращает 0.
+ */
+export function pickWeightedOptionIndex(options: RecommendedOption[]): number {
+  if (options.length === 0) return 0;
+  if (options.length === 1) return 0;
+
+  const weights = options.map(optionWeight);
+  const total = weights.reduce((s, w) => s + w, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < weights.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return i;
+  }
+  return options.length - 1;
+}
+
+/**
  * Возвращает все допустимые варианты выдачи магнитов по правилам акции.
  * Каждый вариант — { label, slots[] }
  */

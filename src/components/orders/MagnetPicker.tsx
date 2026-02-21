@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
@@ -6,7 +6,7 @@ import { WOOD_BREEDS, STAR_LABELS } from "@/lib/store";
 import { GIVE_MAGNET_URL, ADD_CLIENT_URL } from "../clients/types";
 import { GET_REGISTRATIONS_URL } from "./types";
 import { useInventory } from "@/hooks/useInventory";
-import { GivenMagnet, PickedBreed, calcRecommendedOptions, validateGiven } from "./magnetPickerLogic";
+import { GivenMagnet, PickedBreed, calcRecommendedOptions, validateGiven, pickWeightedOptionIndex } from "./magnetPickerLogic";
 import MagnetRecommendations from "./MagnetRecommendations";
 import MagnetBreedDropdown from "./MagnetBreedDropdown";
 import MagnetNoGiftForm from "./MagnetNoGiftForm";
@@ -40,6 +40,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
   const [comment, setComment] = useState("");
   const [savingComment, setSavingComment] = useState(false);
   const [reshuffleKey, setReshuffleKey] = useState(0);
+  const [recommendedIndex, setRecommendedIndex] = useState(0);
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
   const [step, setStep] = useState<"magnets" | "bonuses">("magnets");
   const [givingBonus, setGivingBonus] = useState<string | null>(null);
@@ -77,7 +78,17 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
     ? availableBreeds.filter((b) => b.breed.toLowerCase().includes(search.toLowerCase()))
     : availableBreeds;
 
-  const recommendedOptions = calcRecommendedOptions(orderAmount, isFirstOrder, clientTotal, alreadyOwned);
+  const recommendedOptions = useMemo(
+    () => calcRecommendedOptions(orderAmount, isFirstOrder, clientTotal, alreadyOwned),
+    [orderAmount, isFirstOrder, clientTotal, alreadyOwned]
+  );
+
+  // Пересчитываем рекомендованный вариант при перетасовке или смене числа доступных вариантов
+  useEffect(() => {
+    setRecommendedIndex(pickWeightedOptionIndex(recommendedOptions));
+  // reshuffleKey намеренно в зависимостях — перетасовка меняет индекс
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reshuffleKey, recommendedOptions.length]);
 
   const handleGive = async (breed: string, stars: number, category: string) => {
     setGiving(true);
@@ -252,6 +263,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
                 <MagnetRecommendations
                   isFirstOrder={isFirstOrder}
                   options={recommendedOptions}
+                  recommendedIndex={recommendedIndex}
                   alreadyOwned={alreadyOwned}
                   givenBreeds={givenBreeds}
                   inventory={inventory}

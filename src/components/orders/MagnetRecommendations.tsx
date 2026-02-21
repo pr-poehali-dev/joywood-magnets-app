@@ -6,6 +6,7 @@ import { starBg, GivenMagnet, RecommendedOption, PickedBreed, pickBreedsForOptio
 interface Props {
   isFirstOrder: boolean;
   options: RecommendedOption[];
+  recommendedIndex: number;
   alreadyOwned: Set<string>;
   givenBreeds: Set<string>;
   inventory: Record<string, number>;
@@ -22,6 +23,7 @@ interface Props {
 const MagnetRecommendations = ({
   isFirstOrder,
   options,
+  recommendedIndex,
   alreadyOwned,
   givenBreeds,
   inventory,
@@ -42,7 +44,6 @@ const MagnetRecommendations = ({
 
   const hasOptions = !isFirstOrder && options.length > 0;
 
-   
   const allPicks = useMemo(() => {
     return options.map((opt) =>
       pickBreedsForOption(opt.slots, alreadyOwned, givenBreeds, inventory)
@@ -50,6 +51,8 @@ const MagnetRecommendations = ({
   }, [reshuffleKey, options, givenBreeds, inventory]);
 
   const allCollected = !isFirstOrder && options.length === 0;
+
+  const safeRecommendedIndex = Math.min(recommendedIndex, options.length - 1);
 
   return (
     <>
@@ -82,6 +85,7 @@ const MagnetRecommendations = ({
           </div>
 
           {options.map((opt, oi) => {
+            const isRecommended = oi === safeRecommendedIndex;
             const picks = allPicks[oi] ?? [];
             const notYetGiven = picks.filter(
               (p) => p !== null && !givenBreeds.has(p.breed)
@@ -89,15 +93,36 @@ const MagnetRecommendations = ({
             const allGiven = notYetGiven.length === 0 && picks.some((p) => p !== null);
 
             return (
-              <div key={oi} className={`border rounded-lg p-3 space-y-2 ${
-                allGiven ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
-              }`}>
+              <div
+                key={oi}
+                className={`border rounded-lg p-3 space-y-2 transition-all ${
+                  allGiven
+                    ? "bg-green-50 border-green-200"
+                    : isRecommended
+                      ? "bg-amber-50 border-amber-400 ring-2 ring-amber-300"
+                      : "bg-slate-50 border-slate-200 opacity-75"
+                }`}
+              >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-amber-900">{opt.label}</p>
-                  {notYetGiven.length > 1 && !giving && (
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <p className={`text-xs font-medium truncate ${isRecommended && !allGiven ? "text-amber-900" : "text-muted-foreground"}`}>
+                      {opt.label}
+                    </p>
+                    {isRecommended && !allGiven && (
+                      <span className="inline-flex items-center gap-0.5 bg-amber-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0">
+                        <Icon name="Wand2" size={9} />
+                        Рекомендовано
+                      </span>
+                    )}
+                  </div>
+                  {notYetGiven.length > 0 && !giving && (
                     <button
                       onClick={() => onGiveAll(notYetGiven)}
-                      className="text-[10px] text-amber-700 hover:text-amber-900 border border-amber-300 rounded px-1.5 py-0.5 transition-colors shrink-0"
+                      className={`text-[10px] border rounded px-1.5 py-0.5 transition-colors shrink-0 ${
+                        isRecommended && !allGiven
+                          ? "text-amber-700 hover:text-amber-900 border-amber-300"
+                          : "text-slate-500 hover:text-slate-700 border-slate-300"
+                      }`}
                     >
                       выдать все
                     </button>
