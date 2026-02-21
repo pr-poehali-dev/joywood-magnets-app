@@ -1,10 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import Icon from "@/components/ui/icon";
 import { WOOD_BREEDS, STAR_LABELS } from "@/lib/store";
 import { toast } from "sonner";
@@ -15,11 +10,12 @@ import {
   ADD_CLIENT_URL,
   GIVE_MAGNET_URL,
   GET_REGISTRATIONS_URL,
-  formatPhone,
-  starBg,
 } from "./types";
 import OrderDetailModal from "@/components/orders/OrderDetailModal";
 import { OrderRecord } from "@/components/orders/types";
+import ClientModalInfo from "./ClientModalInfo";
+import ClientModalOrders from "./ClientModalOrders";
+import ClientModalMagnets from "./ClientModalMagnets";
 
 interface Props {
   client: Registration | null;
@@ -51,7 +47,6 @@ const ClientModal = ({
   const [selectedBreed, setSelectedBreed] = useState("");
   const [breedSearch, setBreedSearch] = useState("");
   const [breedOpen, setBreedOpen] = useState(false);
-  const breedRef = useRef<HTMLDivElement>(null);
   const [givingMagnet, setGivingMagnet] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -92,26 +87,7 @@ const ClientModal = ({
     }
   }, [open, client?.id]);
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (breedRef.current && !breedRef.current.contains(e.target as Node)) {
-        setBreedOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
   if (!client) return null;
-
-  const collectedBreeds = new Set(magnets.map((m) => m.breed));
-  const availableBreeds = WOOD_BREEDS
-    .filter((b) => !collectedBreeds.has(b.breed))
-    .map((b) => ({ ...b, stock: inventory[b.breed] ?? 0 }))
-    .sort((a, b) => b.stock - a.stock);
-  const filteredBreeds = breedSearch.trim()
-    ? availableBreeds.filter((b) => b.breed.toLowerCase().includes(breedSearch.toLowerCase()))
-    : availableBreeds;
 
   const handleSaveEdit = async () => {
     if (!editName.trim() && !editPhone.trim()) { toast.error("Укажите хотя бы имя или телефон"); return; }
@@ -206,7 +182,8 @@ const ClientModal = ({
       setClientOrders((prev) => prev.filter((o) => o.id !== orderId));
       setConfirmDeleteOrderId(null);
       if (data.magnet_removed) {
-        toast.success(`Заказ удалён, магнит «${data.magnet_breed}» возвращён на склад`);
+        const breeds = (data.magnets_removed as string[] | undefined)?.join(", ") || data.magnet_breed || "";
+        toast.success(`Заказ удалён, магниты возвращены на склад: ${breeds}`);
         onMagnetsReload(client.id);
         onInventoryChanged();
       } else {
@@ -233,9 +210,6 @@ const ClientModal = ({
     setOrderModalOpen(true);
   };
 
-  const magnetsByOrder = (orderId: number) => magnets.filter((m) => m.order_id === orderId);
-  const unlinkedMagnets = magnets.filter((m) => !m.order_id);
-
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -259,237 +233,57 @@ const ClientModal = ({
           </DialogHeader>
 
           <div className="space-y-5 pt-1">
-            {/* Контакты */}
-            {editing ? (
-              <div className="flex items-end gap-3 flex-wrap bg-slate-50 rounded-lg p-4">
-                <div className="space-y-1 flex-1 min-w-[150px]">
-                  <Label className="text-xs">Имя</Label>
-                  <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Имя клиента" className="h-8 text-sm" />
-                </div>
-                <div className="space-y-1 flex-1 min-w-[150px]">
-                  <Label className="text-xs">Телефон</Label>
-                  <Input value={editPhone} onChange={(e) => setEditPhone(formatPhone(e.target.value))} placeholder="+7 (___) ___-__-__" className="h-8 text-sm" />
-                </div>
-                <div className="flex gap-1.5">
-                  <Button size="sm" className="h-8 gap-1" disabled={savingEdit} onClick={handleSaveEdit}>
-                    {savingEdit ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Check" size={14} />}
-                    Сохранить
-                  </Button>
-                  <Button size="sm" variant="outline" className="h-8" onClick={() => setEditing(false)}>Отмена</Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-4 flex-wrap text-sm bg-slate-50 rounded-lg px-4 py-3">
-                {client.phone && <div className="flex items-center gap-1.5"><Icon name="Phone" size={14} className="text-muted-foreground" />{client.phone}</div>}
-                {client.ozon_order_code && <div className="flex items-center gap-1.5"><Icon name="Package" size={14} className="text-blue-500" />Ozon: <strong>{client.ozon_order_code}</strong></div>}
-                {client.total_amount > 0 && <div className="flex items-center gap-1.5"><Icon name="Banknote" size={14} className="text-green-600" /><strong>{client.total_amount.toLocaleString("ru-RU")} ₽</strong></div>}
-                <div className="flex gap-1.5 ml-auto">
-                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1" onClick={() => { setEditName(client.name || ""); setEditPhone(client.phone || ""); setEditing(true); }}>
-                    <Icon name="Pencil" size={12} />Редактировать
-                  </Button>
-                  {client.phone && (
-                    <a href={`https://t.me/+${client.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">
-                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-blue-500 hover:text-blue-700 hover:bg-blue-50 gap-1">
-                        <Icon name="Send" size={12} />Telegram
-                      </Button>
-                    </a>
-                  )}
-                  {client.phone && (
-                    <a href={`https://max.ru/+${client.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">
-                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-purple-500 hover:text-purple-700 hover:bg-purple-50 gap-1">
-                        <Icon name="MessageCircle" size={12} />Max
-                      </Button>
-                    </a>
-                  )}
-                </div>
-              </div>
-            )}
+            <ClientModalInfo
+              client={client}
+              editing={editing}
+              editName={editName}
+              editPhone={editPhone}
+              savingEdit={savingEdit}
+              onEditNameChange={setEditName}
+              onEditPhoneChange={setEditPhone}
+              onSaveEdit={handleSaveEdit}
+              onCancelEdit={() => setEditing(false)}
+              onStartEdit={() => { setEditName(client.name || ""); setEditPhone(client.phone || ""); setEditing(true); }}
+            />
 
-            {/* Заказы */}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Заказы</p>
-              {ordersLoading ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                  <Icon name="Loader2" size={14} className="animate-spin" />Загрузка...
-                </div>
-              ) : clientOrders.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Нет заказов</p>
-              ) : (
-                <div className="divide-y border rounded-lg overflow-hidden">
-                  {clientOrders.map((order) => {
-                    const orderMagnets = magnetsByOrder(order.id);
-                    return (
-                      <div key={order.id} className="px-4 py-3 hover:bg-slate-50 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <button className="flex-1 flex items-center gap-3 text-left" onClick={() => openOrder(order)}>
-                            <div>
-                              <p className="text-sm font-medium">
-                                {order.order_code ? `#${order.order_code}` : `Заказ ID ${order.id}`}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" })}
-                                {" · "}{order.channel}
-                                {order.amount > 0 && ` · ${order.amount.toLocaleString("ru-RU")} ₽`}
-                              </p>
-                            </div>
-                            {orderMagnets.length > 0 && (
-                              <div className="flex flex-wrap gap-1 ml-2">
-                                {orderMagnets.map((m) => (
-                                  <span key={m.id} className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${starBg[m.stars] ?? ""}`}>
-                                    {m.breed} {STAR_LABELS[m.stars]}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            <Icon name="ChevronRight" size={14} className="ml-auto text-muted-foreground shrink-0" />
-                          </button>
-                          <div className="shrink-0">
-                            {confirmDeleteOrderId === order.id ? (
-                              <div className="flex items-center gap-1">
-                                <Button size="sm" variant="destructive" className="h-7 px-2 text-xs gap-1" disabled={deletingOrderId === order.id} onClick={() => handleDeleteOrder(order.id)}>
-                                  {deletingOrderId === order.id ? <Icon name="Loader2" size={12} className="animate-spin" /> : <Icon name="Check" size={12} />}
-                                  Да
-                                </Button>
-                                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setConfirmDeleteOrderId(null)}>Нет</Button>
-                              </div>
-                            ) : (
-                              <button onClick={() => setConfirmDeleteOrderId(order.id)} className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors">
-                                <Icon name="Trash2" size={14} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <ClientModalOrders
+              orders={clientOrders}
+              magnets={magnets}
+              ordersLoading={ordersLoading}
+              deletingOrderId={deletingOrderId}
+              confirmDeleteOrderId={confirmDeleteOrderId}
+              onOpenOrder={openOrder}
+              onConfirmDelete={setConfirmDeleteOrderId}
+              onCancelDelete={() => setConfirmDeleteOrderId(null)}
+              onDeleteOrder={handleDeleteOrder}
+            />
 
-            {/* Магниты */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Коллекция магнитов</p>
-                <span className="text-xs text-muted-foreground">({magnets.length} шт)</span>
-              </div>
-              {mLoading ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                  <Icon name="Loader2" size={14} className="animate-spin" />Загрузка...
-                </div>
-              ) : magnets.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Магнитов нет</p>
-              ) : (
-                <div className="flex flex-wrap gap-1.5">
-                  {magnets.map((m) => (
-                    <span key={m.id} className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-1 text-xs font-medium ${starBg[m.stars] ?? ""}`}>
-                      {m.breed} {STAR_LABELS[m.stars]}
-                      <button
-                        className="ml-0.5 text-red-400 hover:text-red-600 disabled:opacity-50"
-                        onClick={() => handleDeleteMagnet(m.id, m.breed)}
-                        disabled={deletingMagnetId === m.id}
-                        title="Удалить магнит"
-                      >
-                        {deletingMagnetId === m.id
-                          ? <Icon name="Loader2" size={10} className="animate-spin" />
-                          : <Icon name="X" size={10} />}
-                      </button>
-                    </span>
-                  ))}
-                  {unlinkedMagnets.length > 0 && clientOrders.length > 0 && (
-                    <span className="text-xs text-muted-foreground italic self-center ml-1">({unlinkedMagnets.length} без заказа)</span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Выдать магнит вручную */}
-            <div className="space-y-2 border-t pt-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Выдать магнит вручную</p>
-              <div className="flex gap-2">
-                <div className="relative flex-1" ref={breedRef}>
-                  <button
-                    className="w-full flex items-center justify-between gap-2 border rounded-lg px-3 py-2 text-sm bg-white hover:border-orange-300 transition-colors"
-                    onClick={() => setBreedOpen((v) => !v)}
-                  >
-                    <span className={selectedBreed ? "text-foreground" : "text-muted-foreground"}>
-                      {selectedBreed ? (() => { const b = WOOD_BREEDS.find((b) => b.breed === selectedBreed); return b ? `${b.breed} ${STAR_LABELS[b.stars]}` : selectedBreed; })() : "Выбрать породу..."}
-                    </span>
-                    <Icon name="ChevronDown" size={14} className="text-muted-foreground shrink-0" />
-                  </button>
-                  {breedOpen && (
-                    <div className="absolute z-50 top-full mt-1 w-full bg-white border rounded-lg shadow-lg overflow-hidden">
-                      <div className="p-2 border-b">
-                        <Input
-                          autoFocus
-                          placeholder="Поиск породы..."
-                          value={breedSearch}
-                          onChange={(e) => setBreedSearch(e.target.value)}
-                          className="h-7 text-sm"
-                        />
-                      </div>
-                      <div className="max-h-48 overflow-y-auto">
-                        {filteredBreeds.slice(0, 40).map((b) => (
-                          <button
-                            key={b.breed}
-                            className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-orange-50 transition-colors ${b.stock === 0 ? "opacity-40" : ""}`}
-                            onClick={() => { setSelectedBreed(b.breed); setBreedOpen(false); setBreedSearch(""); }}
-                            disabled={b.stock === 0}
-                          >
-                            <span>{b.breed} {STAR_LABELS[b.stars]}</span>
-                            <span className="text-xs text-muted-foreground">{b.stock} шт</span>
-                          </button>
-                        ))}
-                        {filteredBreeds.length === 0 && (
-                          <p className="text-sm text-muted-foreground px-3 py-2">Не найдено</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <Button size="sm" disabled={!selectedBreed || givingMagnet} onClick={handleGiveMagnet} className="gap-1 shrink-0">
-                  {givingMagnet ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Gift" size={14} />}
-                  Выдать
-                </Button>
-              </div>
-            </div>
-
-            {/* Комментарий к клиенту */}
-            <div className="space-y-2 border-t pt-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                <Icon name="MessageSquare" size={13} />
-                Комментарий
-              </p>
-              <Textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Заметки по клиенту..."
-                className="text-sm resize-none"
-                rows={2}
-              />
-              <Button size="sm" variant="outline" className="gap-1" disabled={savingComment} onClick={handleSaveComment}>
-                {savingComment ? <Icon name="Loader2" size={13} className="animate-spin" /> : <Icon name="Check" size={13} />}
-                Сохранить
-              </Button>
-            </div>
-
-            {/* Удаление клиента */}
-            <div className="border-t pt-4 flex justify-end">
-              {confirmDelete ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Удалить клиента?</span>
-                  <Button size="sm" variant="destructive" disabled={deleting} onClick={handleDelete} className="gap-1">
-                    {deleting ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Trash2" size={14} />}
-                    Да, удалить
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>Отмена</Button>
-                </div>
-              ) : (
-                <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50 gap-1" onClick={() => setConfirmDelete(true)}>
-                  <Icon name="Trash2" size={14} />
-                  Удалить клиента
-                </Button>
-              )}
-            </div>
+            <ClientModalMagnets
+              magnets={magnets}
+              magnetsLoading={mLoading}
+              clientOrders={clientOrders}
+              inventory={inventory}
+              selectedBreed={selectedBreed}
+              breedSearch={breedSearch}
+              breedOpen={breedOpen}
+              givingMagnet={givingMagnet}
+              deletingMagnetId={deletingMagnetId}
+              comment={comment}
+              savingComment={savingComment}
+              confirmDelete={confirmDelete}
+              deleting={deleting}
+              onBreedSelect={setSelectedBreed}
+              onBreedSearchChange={setBreedSearch}
+              onBreedOpenToggle={() => setBreedOpen((v) => !v)}
+              onBreedClose={() => setBreedOpen(false)}
+              onGiveMagnet={handleGiveMagnet}
+              onDeleteMagnet={handleDeleteMagnet}
+              onCommentChange={setComment}
+              onSaveComment={handleSaveComment}
+              onConfirmDelete={() => setConfirmDelete(true)}
+              onCancelDelete={() => setConfirmDelete(false)}
+              onDelete={handleDelete}
+            />
           </div>
         </DialogContent>
       </Dialog>
