@@ -32,6 +32,14 @@ const MyCollection = () => {
       setData(session.data);
       setBreedPhotos(session.photos);
       setStep("collection");
+      fetch(BREED_PHOTOS_URL)
+        .then((r) => r.json())
+        .then((d) => {
+          const photos = d.photos || {};
+          setBreedPhotos(photos);
+          saveSession(session.phone, session.data, photos);
+        })
+        .catch(() => {});
     }
   }, []);
 
