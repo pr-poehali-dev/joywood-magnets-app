@@ -47,13 +47,15 @@ def _handle_delete_order(params):
         if not cur.fetchone():
             return err('Заказ не найден', 404)
         cur.execute("SELECT id, breed FROM client_magnets WHERE order_id = %d" % int(order_id))
-        magnet = cur.fetchone()
-        if magnet:
+        magnets = cur.fetchall()
+        removed_breeds = []
+        for magnet in magnets:
             cur.execute("UPDATE magnet_inventory SET stock = stock + 1, updated_at = now() WHERE breed = '%s'" % magnet[1].replace("'", "''"))
             cur.execute("DELETE FROM client_magnets WHERE id = %d" % magnet[0])
+            removed_breeds.append(magnet[1])
         cur.execute("DELETE FROM orders WHERE id = %d" % int(order_id))
         conn.commit()
-        return ok({'ok': True, 'magnet_removed': magnet is not None, 'magnet_breed': magnet[1] if magnet else None})
+        return ok({'ok': True, 'magnet_removed': len(removed_breeds) > 0, 'magnets_removed': removed_breeds})
     finally:
         conn.close()
 
