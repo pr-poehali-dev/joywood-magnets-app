@@ -31,6 +31,9 @@ def handler(event, context):
         if not reg:
             return err('Участник с таким номером не найден. Сначала зарегистрируйтесь в акции.', 404)
 
+        if body.get('check_only'):
+            return ok({'exists': True})
+
         cur.execute(
             "SELECT id, breed, stars, category, given_at FROM client_magnets "
             "WHERE registration_id = %d ORDER BY given_at DESC" % reg[0]
