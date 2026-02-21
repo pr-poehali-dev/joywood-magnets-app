@@ -279,6 +279,13 @@ const ClientModal = ({
                       </Button>
                     </a>
                   )}
+                  {client.phone && (
+                    <a href={`https://max.ru/+${client.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-purple-500 hover:text-purple-700 hover:bg-purple-50 gap-1">
+                        <Icon name="MessageCircle" size={12} />Max
+                      </Button>
+                    </a>
+                  )}
                 </div>
               </div>
             )}

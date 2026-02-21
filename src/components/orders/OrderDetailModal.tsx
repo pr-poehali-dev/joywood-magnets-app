@@ -198,12 +198,28 @@ const OrderDetailModal = ({ order, open, onClose, onNavigateToClient, onOrderUpd
                 <p className="font-medium">{order.client_name || "—"}</p>
                 {order.client_phone && <p className="text-sm text-muted-foreground">{order.client_phone}</p>}
               </div>
-              {order.registration_id && (
-                <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={() => { onNavigateToClient(order.registration_id); onClose(); }}>
-                  <Icon name="User" size={14} />
-                  Карточка
-                </Button>
-              )}
+              <div className="flex gap-1.5 shrink-0 flex-wrap justify-end">
+                {order.client_phone && (
+                  <a href={`https://t.me/+${order.client_phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-blue-500 hover:text-blue-700 hover:bg-blue-50 gap-1">
+                      <Icon name="Send" size={12} />Telegram
+                    </Button>
+                  </a>
+                )}
+                {order.client_phone && (
+                  <a href={`https://max.ru/+${order.client_phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-purple-500 hover:text-purple-700 hover:bg-purple-50 gap-1">
+                      <Icon name="MessageCircle" size={12} />Max
+                    </Button>
+                  </a>
+                )}
+                {order.registration_id && (
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { onNavigateToClient(order.registration_id); onClose(); }}>
+                    <Icon name="User" size={14} />
+                    Карточка
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
 
