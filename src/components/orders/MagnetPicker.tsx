@@ -93,11 +93,11 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reshuffleKey, recommendedOptions.length]);
 
-  const checkNewBonuses = (newGiven: GivenMagnet[]) => {
-    if (!isRegistered) return;
+  const calcNewBonuses = (newGiven: GivenMagnet[], currentBonusesLeft: PendingBonus[]): PendingBonus[] => {
+    if (!isRegistered) return [];
     const totalMagnets = alreadyOwned.size + newGiven.length;
     const uniqueBreeds = new Set([...alreadyOwned, ...newGiven.map((g) => g.breed)]).size;
-    const alreadyInBonuses = new Set(bonusesLeft.map((b) => `${b.count}-${b.type}`));
+    const alreadyInBonuses = new Set(currentBonusesLeft.map((b) => `${b.count}-${b.type}`));
     const alreadyInPending = new Set(pendingBonuses.map((b) => `${b.count}-${b.type}`));
     const newBonuses: PendingBonus[] = [];
     for (const m of BONUS_MILESTONES) {
@@ -107,6 +107,11 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
         newBonuses.push({ count: m.count, type: m.type, reward: m.reward });
       }
     }
+    return newBonuses;
+  };
+
+  const checkNewBonuses = (newGiven: GivenMagnet[]) => {
+    const newBonuses = calcNewBonuses(newGiven, bonusesLeft);
     if (newBonuses.length > 0) {
       setBonusesLeft((prev) => [...prev, ...newBonuses]);
     }
@@ -183,21 +188,25 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
       setValidationWarning(warning);
       return;
     }
+    let finalGiven = given;
     if (pendingPicks.length > 0) {
       setGiving(true);
       try {
         const confirmed = await givePendingToBackend(pendingPicks);
         setGiven(confirmed);
-        checkNewBonuses(confirmed);
         setPendingPicks([]);
         setGiving(false);
+        finalGiven = confirmed;
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Ошибка выдачи");
         setGiving(false);
         return;
       }
     }
-    if (bonusesLeft.length > 0) {
+    const newBonuses = calcNewBonuses(finalGiven, bonusesLeft);
+    const totalBonuses = [...bonusesLeft, ...newBonuses];
+    if (newBonuses.length > 0) setBonusesLeft(totalBonuses);
+    if (totalBonuses.length > 0) {
       setStep("bonuses");
     } else {
       onDone();
@@ -206,13 +215,14 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
 
   const handleForceConfirm = async () => {
     setValidationWarning(null);
+    let finalGiven = given;
     if (pendingPicks.length > 0) {
       setGiving(true);
       try {
         const confirmed = await givePendingToBackend(pendingPicks);
         setGiven(confirmed);
-        checkNewBonuses(confirmed);
         setPendingPicks([]);
+        finalGiven = confirmed;
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Ошибка");
         setGiving(false);
@@ -220,7 +230,10 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
       }
       setGiving(false);
     }
-    if (bonusesLeft.length > 0) { setStep("bonuses"); } else { onDone(); }
+    const newBonuses = calcNewBonuses(finalGiven, bonusesLeft);
+    const totalBonuses = [...bonusesLeft, ...newBonuses];
+    if (newBonuses.length > 0) setBonusesLeft(totalBonuses);
+    if (totalBonuses.length > 0) { setStep("bonuses"); } else { onDone(); }
   };
 
   const handleRemove = async (magnetId: number, breed: string) => {
