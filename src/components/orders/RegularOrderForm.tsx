@@ -82,6 +82,10 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
       toast.error("Укажите имя нового клиента");
       return;
     }
+    if (!regularAmount || parseFloat(regularAmount) <= 0) {
+      toast.error("Укажите сумму заказа");
+      return;
+    }
 
     setSubmitting(true);
     try {

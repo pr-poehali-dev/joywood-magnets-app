@@ -24,6 +24,10 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
       toast.error("Введите номер заказа (минимум 3 символа)");
       return;
     }
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error("Укажите сумму заказа");
+      return;
+    }
 
     setFormError(null);
     setSubmitting(true);
