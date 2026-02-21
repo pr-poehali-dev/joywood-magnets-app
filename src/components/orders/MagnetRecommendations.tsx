@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { STAR_LABELS, BONUS_MILESTONES } from "@/lib/store";
 import { starBg, GivenMagnet, RecommendedOption, PickedBreed, pickBreedsForOption } from "./magnetPickerLogic";
@@ -44,11 +44,19 @@ const MagnetRecommendations = ({
 
   const hasOptions = !isFirstOrder && options.length > 0;
 
-  const allPicks = useMemo(() => {
-    return options.map((opt) =>
-      pickBreedsForOption(opt.slots, alreadyOwned, givenBreeds, inventory)
+  const allPicksRef = useRef<Array<Array<PickedBreed | null>>>([]);
+  const prevKeyRef = useRef<number | null>(null);
+  const prevOptionsLenRef = useRef<number>(0);
+
+  if (prevKeyRef.current !== reshuffleKey || prevOptionsLenRef.current !== options.length) {
+    prevKeyRef.current = reshuffleKey;
+    prevOptionsLenRef.current = options.length;
+    allPicksRef.current = options.map((opt) =>
+      pickBreedsForOption(opt.slots, alreadyOwned, new Set(), inventory)
     );
-  }, [reshuffleKey, options, givenBreeds, inventory]);
+  }
+
+  const allPicks = allPicksRef.current;
 
   const allCollected = !isFirstOrder && options.length === 0;
 
