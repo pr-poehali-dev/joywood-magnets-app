@@ -1,4 +1,6 @@
 {
+  "check-verify": "https://functions.poehali.dev/97edf104-eb7b-4e03-bb36-53ef11b85257",
+  "send-verify": "https://functions.poehali.dev/0ddb5905-2b59-42a3-a5a2-ddeaa961caa9",
   "analytics": "https://functions.poehali.dev/71f57402-757d-4729-b1a9-3fc46683f526",
   "give-magnet": "https://functions.poehali.dev/05adfa61-68b9-4eb5-95d0-a48462122ff3",
   "add-client-manager": "https://functions.poehali.dev/16cf02a4-2bbe-4378-9c28-f8ad3393c028",

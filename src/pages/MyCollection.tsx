@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +11,20 @@ import { toast } from "sonner";
 import { usePhoneInput } from "@/hooks/usePhoneInput";
 import { PhoneInput } from "@/components/ui/phone-input";
 
+declare global {
+  interface Window {
+    VerifyWidget: {
+      mount: (selector: string, options: object, sendFn: (key: string) => Promise<unknown>, onSuccess: () => void) => void;
+      unmount: (selector: string) => void;
+    };
+  }
+}
+
 const LOOKUP_URL = "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6f26ec4";
+const SEND_VERIFY_URL = "https://functions.poehali.dev/0ddb5905-2b59-42a3-a5a2-ddeaa961caa9";
+const CHECK_VERIFY_URL = "https://functions.poehali.dev/97edf104-eb7b-4e03-bb36-53ef11b85257";
+const WIDGET_ID = "qFvkj4";
+const CAPTCHA_SITEKEY = "9858807e-0328-46a4-914e-1d7e825044e0";
 
 const TOTAL_BREEDS = WOOD_BREEDS.length;
 
@@ -41,16 +53,79 @@ interface CollectionData {
   bonuses: BonusRecord[];
 }
 
+type Step = "phone" | "verify" | "collection";
 
 const MyCollection = () => {
   const [searchParams] = useSearchParams();
+  const [step, setStep] = useState<Step>("phone");
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CollectionData | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const autoSearched = useRef(false);
   const notFoundRef = useRef<HTMLDivElement>(null);
+  const autoSearched = useRef(false);
+  const verifyKeyRef = useRef<string>("");
+  const widgetLoaded = useRef(false);
+  const pendingPhone = useRef<string>("");
 
   const phone = usePhoneInput();
+
+  const loadWidgetAssets = useCallback(() => {
+    if (widgetLoaded.current) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      if (!document.querySelector('link[href*="VerifyWidget.css"]')) {
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = "https://cdn.direct.i-dgtl.ru/VerifyWidget.css";
+        document.head.appendChild(link);
+      }
+      if (!document.querySelector('script[src*="VerifyWidget"]')) {
+        const script = document.createElement("script");
+        script.src = "https://cdn.direct.i-dgtl.ru/VerifyWidget.umd.min.js";
+        script.onload = () => { widgetLoaded.current = true; resolve(); };
+        document.head.appendChild(script);
+      } else {
+        widgetLoaded.current = true;
+        resolve();
+      }
+    });
+  }, []);
+
+  const mountWidget = useCallback((phoneNumber: string) => {
+    if (!window.VerifyWidget) return;
+
+    const sendAuthKeyFunc = async (key: string) => {
+      verifyKeyRef.current = key;
+      const res = await fetch(SEND_VERIFY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key }),
+      });
+      if (!res.ok) throw new Error("Ошибка отправки кода");
+      return res;
+    };
+
+    const onSuccessFunc = async () => {
+      const res = await fetch(CHECK_VERIFY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: verifyKeyRef.current }),
+      });
+      const result = await res.json();
+      if (result.status === "CONFIRMED") {
+        window.VerifyWidget.unmount("#verify-widget");
+        doSearch(phoneNumber);
+      } else {
+        toast.error("Верификация не подтверждена");
+      }
+    };
+
+    window.VerifyWidget.mount(
+      "#verify-widget",
+      { destination: phoneNumber, widgetId: WIDGET_ID, captchaSiteKey: CAPTCHA_SITEKEY },
+      sendAuthKeyFunc,
+      onSuccessFunc,
+    );
+  }, []);
 
   const doSearch = useCallback(async (searchPhone: string) => {
     setLoading(true);
@@ -64,30 +139,49 @@ const MyCollection = () => {
       if (res.status === 404) {
         setNotFound(true);
         setData(null);
+        setStep("phone");
         setTimeout(() => notFoundRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
         return;
       }
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Ошибка загрузки");
       setData(result);
+      setStep("collection");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось загрузить данные");
-    } finally { setLoading(false); }
+      setStep("phone");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     const urlPhone = searchParams.get("phone");
     if (urlPhone && !autoSearched.current) {
       autoSearched.current = true;
-      doSearch(urlPhone);
+      pendingPhone.current = urlPhone;
+      loadWidgetAssets().then(() => {
+        setStep("verify");
+        setTimeout(() => mountWidget(urlPhone), 100);
+      });
     }
-  }, [searchParams, doSearch]);
+  }, [searchParams, loadWidgetAssets, mountWidget]);
 
-  const handleSearch = async (e: React.FormEvent) => {
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone.isValid) return;
     setNotFound(false);
-    await doSearch(phone.fullPhone);
+    pendingPhone.current = phone.fullPhone;
+    await loadWidgetAssets();
+    setStep("verify");
+    setTimeout(() => mountWidget(phone.fullPhone), 100);
+  };
+
+  const handleReset = () => {
+    setData(null);
+    setStep("phone");
+    setNotFound(false);
+    autoSearched.current = false;
   };
 
   const collectedBreeds = data ? new Set(data.magnets.map((m) => m.breed)) : new Set<string>();
@@ -119,10 +213,10 @@ const MyCollection = () => {
           </div>
         </div>
 
-        {!data && (
+        {step === "phone" && (
           <Card className="shadow-lg border-gold-200">
             <CardContent className="pt-6">
-              <form onSubmit={handleSearch} className="space-y-4">
+              <form onSubmit={handlePhoneSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="phone">Номер телефона</Label>
                   <PhoneInput id="phone" phoneHook={phone} />
@@ -132,17 +226,10 @@ const MyCollection = () => {
                   className="w-full bg-gold-500 hover:bg-gold-600"
                   disabled={!phone.isValid || loading}
                 >
-                  {loading ? (
-                    <span className="flex items-center gap-2">
-                      <Icon name="Loader2" size={18} className="animate-spin" />
-                      Поиск...
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <Icon name="Search" size={18} />
-                      Найти мои магниты
-                    </span>
-                  )}
+                  <span className="flex items-center gap-2">
+                    <Icon name="Search" size={18} />
+                    Найти мои магниты
+                  </span>
                 </Button>
               </form>
 
@@ -160,7 +247,28 @@ const MyCollection = () => {
           </Card>
         )}
 
-        {notFound && (
+        {step === "verify" && (
+          <Card className="shadow-lg border-gold-200">
+            <CardContent className="pt-6 space-y-4">
+              <div className="text-center space-y-1">
+                <p className="font-semibold text-foreground">Подтвердите номер телефона</p>
+                <p className="text-sm text-muted-foreground">Выберите удобный способ получения кода</p>
+              </div>
+              <div id="verify-widget" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-muted-foreground"
+                onClick={() => setStep("phone")}
+              >
+                <Icon name="ArrowLeft" size={16} />
+                Изменить номер
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {step === "phone" && notFound && (
           <Card ref={notFoundRef} className="border-gold-200 bg-gold-50">
             <CardContent className="pt-6 text-center space-y-4">
               <Icon name="UserX" size={44} className="mx-auto text-gold-400" />
@@ -180,7 +288,7 @@ const MyCollection = () => {
           </Card>
         )}
 
-        {data && (() => {
+        {step === "collection" && data && (() => {
           const n = data.total_magnets;
           const nextMilestone = BONUS_MILESTONES.find((m) =>
             (m.type === "magnets" ? data.total_magnets : data.unique_breeds) < m.count
@@ -193,170 +301,170 @@ const MyCollection = () => {
             ? { emoji: "🏅", title: "Вы на пути к награде", text: `До следующего приза — «${nextMilestone.reward}» — осталось совсем немного. Продолжайте покупать!` }
             : { emoji: "👑", title: "Невероятная коллекция!", text: "Вы собрали редчайшие породы дерева. Вы — настоящий знаток Joywood." };
           return (
-          <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <Card className="border-gold-200">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-gold-100 rounded-full p-2">
-                    <Icon name="User" size={20} className="text-gold-600" />
+            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <Card className="border-gold-200">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="bg-gold-100 rounded-full p-2">
+                      <Icon name="User" size={20} className="text-gold-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-lg">{data.client_name.replace(/^\d+\s+/, "")}</div>
+                      <div className="text-xs text-muted-foreground/50 tracking-widest">
+                        {data.phone.replace(/\d(?=\d{4})/g, "•")}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-foreground gap-1.5"
+                      onClick={handleReset}
+                    >
+                      <Icon name="LogOut" size={15} />
+                      Выйти
+                    </Button>
                   </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-lg">{data.client_name.replace(/^\d+\s+/, "")}</div>
-                    <div className="text-xs text-muted-foreground/50 tracking-widest">
-                      {data.phone.replace(/\d(?=\d{4})/g, "•")}
+
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <div className="text-2xl font-bold text-gold-600">{data.total_magnets}</div>
+                      <div className="text-xs text-muted-foreground">Всего магнитов</div>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <div className="text-2xl font-bold text-gold-600">{data.unique_breeds}</div>
+                      <div className="text-xs text-muted-foreground">Уникальных пород</div>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <div className="text-2xl font-bold text-gold-600">{TOTAL_BREEDS - data.unique_breeds}</div>
+                      <div className="text-xs text-muted-foreground">Осталось собрать</div>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground hover:text-foreground gap-1.5"
-                    onClick={() => { setData(null); setPhone(""); setNotFound(false); }}
-                  >
-                    <Icon name="LogOut" size={15} />
-                    Выйти
-                  </Button>
-                </div>
+                </CardContent>
+              </Card>
 
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <div className="bg-slate-50 rounded-lg p-3">
-                    <div className="text-2xl font-bold text-gold-600">{data.total_magnets}</div>
-                    <div className="text-xs text-muted-foreground">Всего магнитов</div>
-                  </div>
-                  <div className="bg-slate-50 rounded-lg p-3">
-                    <div className="text-2xl font-bold text-gold-600">{data.unique_breeds}</div>
-                    <div className="text-xs text-muted-foreground">Уникальных пород</div>
-                  </div>
-                  <div className="bg-slate-50 rounded-lg p-3">
-                    <div className="text-2xl font-bold text-gold-600">{TOTAL_BREEDS - data.unique_breeds}</div>
-                    <div className="text-xs text-muted-foreground">Осталось собрать</div>
-                  </div>
+              <div className="rounded-xl bg-gradient-to-r from-gold-50 to-amber-50 border border-gold-200 p-4 flex gap-3 items-start">
+                <span className="text-2xl leading-none mt-0.5">{motivation.emoji}</span>
+                <div>
+                  <div className="font-semibold text-gold-900 text-sm">{motivation.title}</div>
+                  <div className="text-sm text-gold-700 mt-0.5 leading-relaxed">{motivation.text}</div>
                 </div>
-              </CardContent>
-            </Card>
-
-            <div className="rounded-xl bg-gradient-to-r from-gold-50 to-amber-50 border border-gold-200 p-4 flex gap-3 items-start">
-              <span className="text-2xl leading-none mt-0.5">{motivation.emoji}</span>
-              <div>
-                <div className="font-semibold text-gold-900 text-sm">{motivation.title}</div>
-                <div className="text-sm text-gold-700 mt-0.5 leading-relaxed">{motivation.text}</div>
               </div>
-            </div>
 
-            {data.total_magnets > 0 && (data.bonuses || []).length === 0 && (() => {
-              const anyReached = BONUS_MILESTONES.some((m) => {
-                const cur = m.type === "magnets" ? data.total_magnets : data.unique_breeds;
-                return cur >= m.count;
-              });
-              return anyReached ? (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 items-start">
-                  <span className="text-xl shrink-0">ℹ️</span>
-                  <div>
-                    <p className="font-semibold text-amber-900 text-sm">Бонусы не выдавались</p>
-                    <p className="text-sm text-amber-800 mt-1 leading-relaxed">
-                      До вашей регистрации в коллекции накопленные магниты не давали право на бонус. Теперь, когда вы зарегистрированы, при следующем заказе мы добавим к нему эти бонусы.
-                    </p>
-                  </div>
-                </div>
-              ) : null;
-            })()}
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Icon name="Award" size={18} className="text-orange-500" />
-                  Прогресс бонусов
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {BONUS_MILESTONES.map((milestone) => {
-                  const current = milestone.type === "magnets" ? data.total_magnets : data.unique_breeds;
-                  const pct = Math.min((current / milestone.count) * 100, 100);
-                  const reached = current >= milestone.count;
-                  const given = (data.bonuses || []).some(
-                    (b) => b.milestone_count === milestone.count && b.milestone_type === milestone.type
-                  );
-                  return (
-                    <div key={milestone.count + milestone.type} className="space-y-1">
-                      <div className="flex justify-between items-center text-sm gap-2">
-                        <span className={`flex items-center gap-1.5 ${reached ? "font-medium text-green-700" : "text-muted-foreground"}`}>
-                          {milestone.icon} {milestone.reward}
-                          {given && (
-                            <Badge className="bg-green-100 text-green-800 border border-green-200 text-[10px] py-0 px-1.5">Получен</Badge>
-                          )}
-                          {reached && !given && (
-                            <Badge className="bg-orange-100 text-orange-800 border border-orange-200 text-[10px] py-0 px-1.5 animate-pulse">Ожидает выдачи</Badge>
-                          )}
-                        </span>
-                        {!reached && (
-                          <span className="text-xs text-muted-foreground shrink-0">
-                            {current}/{milestone.count}
-                          </span>
-                        )}
-                      </div>
-                      {!reached && <Progress value={pct} className="h-2" />}
+              {data.total_magnets > 0 && (data.bonuses || []).length === 0 && (() => {
+                const anyReached = BONUS_MILESTONES.some((m) => {
+                  const cur = m.type === "magnets" ? data.total_magnets : data.unique_breeds;
+                  return cur >= m.count;
+                });
+                return anyReached ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 items-start">
+                    <span className="text-xl shrink-0">ℹ️</span>
+                    <div>
+                      <p className="font-semibold text-amber-900 text-sm">Бонусы не выдавались</p>
+                      <p className="text-sm text-amber-800 mt-1 leading-relaxed">
+                        До вашей регистрации в коллекции накопленные магниты не давали право на бонус. Теперь, когда вы зарегистрированы, при следующем заказе мы добавим к нему эти бонусы.
+                      </p>
                     </div>
-                  );
-                })}
-
-                {(data.bonuses || []).length > 0 && (
-                  <div className="pt-2 border-t space-y-1.5">
-                    <p className="text-xs font-medium text-muted-foreground">Полученные бонусы:</p>
-                    {(data.bonuses || []).map((b) => (
-                      <div key={b.id} className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                        <Icon name="Gift" size={14} className="text-green-600 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-green-800 truncate">{b.reward}</p>
-                          <p className="text-[11px] text-green-600">
-                            {new Date(b.given_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
-                          </p>
-                        </div>
-                        <Icon name="CheckCircle" size={16} className="text-green-500 shrink-0" />
-                      </div>
-                    ))}
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                ) : null;
+              })()}
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Icon name="Map" size={18} className="text-orange-500" />
-                  Атлас пород — {data.unique_breeds}/{TOTAL_BREEDS}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {sortedBreeds.map((breed) => {
-                    const collected = collectedBreeds.has(breed.breed);
-                    const magnet = collected ? data.magnets.find((m) => m.breed === breed.breed) : null;
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Icon name="Award" size={18} className="text-orange-500" />
+                    Прогресс бонусов
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {BONUS_MILESTONES.map((milestone) => {
+                    const current = milestone.type === "magnets" ? data.total_magnets : data.unique_breeds;
+                    const pct = Math.min((current / milestone.count) * 100, 100);
+                    const reached = current >= milestone.count;
+                    const given = (data.bonuses || []).some(
+                      (b) => b.milestone_count === milestone.count && b.milestone_type === milestone.type
+                    );
                     return (
-                      <div
-                        key={breed.breed}
-                        className={`rounded-lg border p-2 text-center text-xs transition-all ${
-                          collected
-                            ? "bg-green-50 border-green-300 text-green-800"
-                            : "bg-gray-50 border-gray-200 text-gray-400"
-                        }`}
-                      >
-                        <div className="text-lg mb-0.5">
-                          {collected ? STAR_LABELS[breed.stars] : "❓"}
+                      <div key={milestone.count + milestone.type} className="space-y-1">
+                        <div className="flex justify-between items-center text-sm gap-2">
+                          <span className={`flex items-center gap-1.5 ${reached ? "font-medium text-green-700" : "text-muted-foreground"}`}>
+                            {milestone.icon} {milestone.reward}
+                            {given && (
+                              <Badge className="bg-green-100 text-green-800 border border-green-200 text-[10px] py-0 px-1.5">Получен</Badge>
+                            )}
+                            {reached && !given && (
+                              <Badge className="bg-orange-100 text-orange-800 border border-orange-200 text-[10px] py-0 px-1.5 animate-pulse">Ожидает выдачи</Badge>
+                            )}
+                          </span>
+                          {!reached && (
+                            <span className="text-xs text-muted-foreground shrink-0">
+                              {current}/{milestone.count}
+                            </span>
+                          )}
                         </div>
-                        <div className={`font-medium ${collected ? "" : "opacity-50"}`}>
-                          {breed.breed}
-                        </div>
-                        {magnet && (
-                          <div className="text-[10px] text-green-600 mt-0.5">
-                            {new Date(magnet.given_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
-                          </div>
-                        )}
+                        {!reached && <Progress value={pct} className="h-2" />}
                       </div>
                     );
                   })}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+
+                  {(data.bonuses || []).length > 0 && (
+                    <div className="pt-2 border-t space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground">Полученные бонусы:</p>
+                      {(data.bonuses || []).map((b) => (
+                        <div key={b.id} className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                          <Icon name="Gift" size={14} className="text-green-600 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-green-800 truncate">{b.reward}</p>
+                            <p className="text-[11px] text-green-600">
+                              {new Date(b.given_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+                            </p>
+                          </div>
+                          <Icon name="CheckCircle" size={16} className="text-green-500 shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Icon name="Map" size={18} className="text-orange-500" />
+                    Атлас пород — {data.unique_breeds}/{TOTAL_BREEDS}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {sortedBreeds.map((breed) => {
+                      const collected = collectedBreeds.has(breed.breed);
+                      const magnet = collected ? data.magnets.find((m) => m.breed === breed.breed) : null;
+                      return (
+                        <div
+                          key={breed.breed}
+                          className={`rounded-lg border p-2 text-center text-xs transition-all ${
+                            collected
+                              ? "bg-green-50 border-green-300 text-green-800"
+                              : "bg-gray-50 border-gray-200 text-gray-400"
+                          }`}
+                        >
+                          <div className="text-lg mb-0.5">
+                            {collected ? STAR_LABELS[breed.stars] : "❓"}
+                          </div>
+                          <div className={`font-medium ${collected ? "" : "opacity-50"}`}>
+                            {breed.breed}
+                          </div>
+                          {magnet && (
+                            <div className="text-[10px] text-green-600 mt-0.5">
+                              {new Date(magnet.given_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           );
         })()}
       </div>
