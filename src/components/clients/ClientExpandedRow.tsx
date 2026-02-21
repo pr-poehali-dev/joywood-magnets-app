@@ -166,6 +166,22 @@ const ClientExpandedRow = ({
     } finally { setDeletingId(null); }
   };
 
+  const [deletingMagnetId, setDeletingMagnetId] = useState<number | null>(null);
+
+  const handleDeleteMagnet = async (magnetId: number, breed: string) => {
+    setDeletingMagnetId(magnetId);
+    try {
+      const res = await fetch(`${GIVE_MAGNET_URL}?magnet_id=${magnetId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Ошибка");
+      toast.success(`Магнит «${breed}» удалён из коллекции`);
+      onMagnetsReload(client.id);
+      onInventoryChanged();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось удалить магнит");
+    } finally { setDeletingMagnetId(null); }
+  };
+
   const handleDeleteOrder = async (orderId: number) => {
     setDeletingOrderId(orderId);
     try {
@@ -175,7 +191,8 @@ const ClientExpandedRow = ({
       setClientOrders((prev) => prev.filter((o) => o.id !== orderId));
       setConfirmDeleteOrderId(null);
       if (data.magnet_removed) {
-        toast.success(`Заказ удалён, магнит «${data.magnet_breed}» возвращён на склад`);
+        const breeds = (data.magnets_removed as string[] | undefined)?.join(", ") || data.magnet_breed || "";
+        toast.success(`Заказ удалён, магниты возвращены на склад: ${breeds}`);
         onMagnetsReload(client.id);
         onInventoryChanged();
       } else {
@@ -326,7 +343,17 @@ const ClientExpandedRow = ({
             {!mLoading && magnets.length > 0 && (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 mb-4">
                 {magnets.map((m) => (
-                  <div key={m.id} className={`rounded-lg border p-2 text-center text-xs ${starBg[m.stars] || "bg-white"}`}>
+                  <div key={m.id} className={`relative group rounded-lg border p-2 text-center text-xs ${starBg[m.stars] || "bg-white"}`}>
+                    <button
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      onClick={(e) => { e.stopPropagation(); handleDeleteMagnet(m.id, m.breed); }}
+                      disabled={deletingMagnetId === m.id}
+                      title="Удалить магнит"
+                    >
+                      {deletingMagnetId === m.id
+                        ? <Icon name="Loader2" size={10} className="animate-spin" />
+                        : <Icon name="X" size={10} />}
+                    </button>
                     <div className="text-lg">{STAR_LABELS[m.stars]}</div>
                     <div className="font-medium">{m.breed}</div>
                     <div className="text-[10px] text-muted-foreground mt-0.5">
