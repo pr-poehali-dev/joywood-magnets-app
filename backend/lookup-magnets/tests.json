@@ -14,7 +14,7 @@
         "phone": "+7 (927) 767-74-77"
       },
       "expectedStatus": 200,
-      "expectedBody": {"rating": {"rank_magnets": 2}},
+      "expectedBody": {"total_magnets": 6},
       "bodyMatcher": "partial"
     },
     {

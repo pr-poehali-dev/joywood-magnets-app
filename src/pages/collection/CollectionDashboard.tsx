@@ -30,7 +30,7 @@ const CollectionDashboard = ({ data, onReset }: Props) => {
   const renderTop = (
     list: RatingEntry[],
     myRank: number,
-    valueKey: "total_magnets" | "total_amount",
+    valueKey: "total_magnets" | "collection_value",
     label: string,
     myValue: number
   ) => {
@@ -53,7 +53,7 @@ const CollectionDashboard = ({ data, onReset }: Props) => {
                 <span className="text-xs text-muted-foreground shrink-0">
                   {valueKey === "total_magnets"
                     ? `${entry.total_magnets} магн.`
-                    : `${entry.total_amount.toLocaleString("ru-RU")} ₽`}
+                    : `${entry.collection_value.toLocaleString("ru-RU")} ₽`}
                 </span>
               </div>
             );
@@ -133,7 +133,7 @@ const CollectionDashboard = ({ data, onReset }: Props) => {
       </div>
 
       {data.rating && (() => {
-        const { rank_magnets, rank_amount, total_participants, my_total_amount, top_magnets, top_amount } = data.rating;
+        const { rank_magnets, rank_value, total_participants, my_collection_value, top_magnets, top_value } = data.rating;
         return (
           <Card>
             <CardHeader className="pb-3">
@@ -144,7 +144,7 @@ const CollectionDashboard = ({ data, onReset }: Props) => {
             </CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {renderTop(top_magnets, rank_magnets, "total_magnets", "По количеству магнитов", data.total_magnets)}
-              {renderTop(top_amount, rank_amount, "total_amount", "По сумме заказов", my_total_amount)}
+              {renderTop(top_value, rank_value, "collection_value", "По стоимости коллекции", my_collection_value)}
             </CardContent>
           </Card>
         );

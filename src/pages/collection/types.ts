@@ -17,16 +17,16 @@ export interface BonusRecord {
 export interface RatingEntry {
   name: string;
   total_magnets: number;
-  total_amount: number;
+  collection_value: number;
 }
 
 export interface Rating {
   rank_magnets: number;
-  rank_amount: number;
+  rank_value: number;
   total_participants: number;
-  my_total_amount: number;
+  my_collection_value: number;
   top_magnets: RatingEntry[];
-  top_amount: RatingEntry[];
+  top_value: RatingEntry[];
 }
 
 export interface CollectionData {

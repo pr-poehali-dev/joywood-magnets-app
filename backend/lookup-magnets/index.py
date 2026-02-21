@@ -55,55 +55,54 @@ def handler(event, context):
         total_magnets = len(magnets)
         unique_breeds = len(set(m['breed'] for m in magnets))
 
+        cv_formula = "COALESCE(SUM(CASE cm2.stars WHEN 1 THEN 150 WHEN 2 THEN 350 WHEN 3 THEN 700 ELSE 0 END), 0)"
+
         cur.execute("""
             SELECT
                 r2.id,
                 COUNT(cm2.id) AS total_magnets,
-                COALESCE(SUM(o2.amount), 0) AS total_amount
+                %s AS collection_value
             FROM t_p65563100_joywood_magnets_app.registrations r2
             LEFT JOIN t_p65563100_joywood_magnets_app.client_magnets cm2 ON cm2.registration_id = r2.id
-            LEFT JOIN t_p65563100_joywood_magnets_app.orders o2 ON o2.registration_id = r2.id
             GROUP BY r2.id
-        """)
+        """ % cv_formula)
         all_stats = cur.fetchall()
 
         sorted_by_magnets = sorted(all_stats, key=lambda x: x[1], reverse=True)
-        sorted_by_amount = sorted(all_stats, key=lambda x: float(x[2]), reverse=True)
+        sorted_by_value = sorted(all_stats, key=lambda x: float(x[2]), reverse=True)
 
         rank_magnets = next((i + 1 for i, x in enumerate(sorted_by_magnets) if x[0] == reg[0]), None)
-        rank_amount = next((i + 1 for i, x in enumerate(sorted_by_amount) if x[0] == reg[0]), None)
+        rank_value = next((i + 1 for i, x in enumerate(sorted_by_value) if x[0] == reg[0]), None)
         total_participants = len(all_stats)
 
         cur.execute("""
-            SELECT r2.name, COUNT(cm2.id) AS total_magnets, COALESCE(SUM(o2.amount), 0) AS total_amount
+            SELECT r2.name, COUNT(cm2.id) AS total_magnets, %s AS collection_value
             FROM t_p65563100_joywood_magnets_app.registrations r2
             LEFT JOIN t_p65563100_joywood_magnets_app.client_magnets cm2 ON cm2.registration_id = r2.id
-            LEFT JOIN t_p65563100_joywood_magnets_app.orders o2 ON o2.registration_id = r2.id
             GROUP BY r2.id, r2.name
             ORDER BY total_magnets DESC
             LIMIT 3
-        """)
+        """ % cv_formula)
         top_magnets = [
-            {'name': r[0], 'total_magnets': r[1], 'total_amount': float(r[2])}
+            {'name': r[0], 'total_magnets': r[1], 'collection_value': int(r[2])}
             for r in cur.fetchall()
         ]
 
         cur.execute("""
-            SELECT r2.name, COUNT(cm2.id) AS total_magnets, COALESCE(SUM(o2.amount), 0) AS total_amount
+            SELECT r2.name, COUNT(cm2.id) AS total_magnets, %s AS collection_value
             FROM t_p65563100_joywood_magnets_app.registrations r2
             LEFT JOIN t_p65563100_joywood_magnets_app.client_magnets cm2 ON cm2.registration_id = r2.id
-            LEFT JOIN t_p65563100_joywood_magnets_app.orders o2 ON o2.registration_id = r2.id
             GROUP BY r2.id, r2.name
-            ORDER BY total_amount DESC
+            ORDER BY collection_value DESC
             LIMIT 3
-        """)
-        top_amount = [
-            {'name': r[0], 'total_magnets': r[1], 'total_amount': float(r[2])}
+        """ % cv_formula)
+        top_value = [
+            {'name': r[0], 'total_magnets': r[1], 'collection_value': int(r[2])}
             for r in cur.fetchall()
         ]
 
         my_stats = next((x for x in all_stats if x[0] == reg[0]), None)
-        my_total_amount = float(my_stats[2]) if my_stats else 0.0
+        my_collection_value = int(my_stats[2]) if my_stats else 0
 
         return ok({
             'client_name': reg[1], 'phone': reg[2],
@@ -112,11 +111,11 @@ def handler(event, context):
             'bonuses': bonuses,
             'rating': {
                 'rank_magnets': rank_magnets,
-                'rank_amount': rank_amount,
+                'rank_value': rank_value,
                 'total_participants': total_participants,
-                'my_total_amount': my_total_amount,
+                'my_collection_value': my_collection_value,
                 'top_magnets': top_magnets,
-                'top_amount': top_amount,
+                'top_value': top_value,
             },
         })
     finally:
