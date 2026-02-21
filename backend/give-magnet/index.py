@@ -105,9 +105,14 @@ def handler(event, context):
                     % (int(registration_id), int(milestone_count), milestone_type.replace("'", "''"), reward.replace("'", "''"))
                 )
                 row = cur.fetchone()
-                conn.commit()
                 if not row:
+                    conn.commit()
                     return err('Этот бонус уже был выдан', 409)
+                cur.execute(
+                    "UPDATE bonus_stock SET stock = GREATEST(stock - 1, 0), updated_at = now() "
+                    "WHERE reward = '%s'" % reward.replace("'", "''")
+                )
+                conn.commit()
                 return ok({'id': row[0], 'given_at': str(row[1])})
             finally:
                 conn.close()

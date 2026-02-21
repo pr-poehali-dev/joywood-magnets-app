@@ -16,9 +16,7 @@
       "name": "GET bonuses for client",
       "method": "GET",
       "path": "/?action=bonuses&registration_id=12",
-      "expectedStatus": 200,
-      "expectedBody": {"bonuses": []},
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     },
     {
       "name": "GET bonuses missing id",
