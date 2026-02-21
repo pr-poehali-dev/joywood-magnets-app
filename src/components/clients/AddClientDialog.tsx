@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -18,9 +17,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import Icon from "@/components/ui/icon";
+import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { usePhoneInput } from "@/hooks/usePhoneInput";
 import { CHANNELS } from "@/lib/store";
 import { toast } from "sonner";
-import { ADD_CLIENT_URL, formatPhone, Registration } from "./types";
+import { ADD_CLIENT_URL, Registration } from "./types";
 
 interface AddClientDialogProps {
   onClientAdded: (client: Registration) => void;
@@ -30,18 +32,18 @@ const AddClientDialog = ({ onClientAdded }: AddClientDialogProps) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addMode, setAddMode] = useState<string>("ozon");
   const [newName, setNewName] = useState("");
-  const [newPhone, setNewPhone] = useState("");
   const [newChannel, setNewChannel] = useState("");
   const [newOzonCode, setNewOzonCode] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const phoneDigits = newPhone.replace(/\D/g, "");
+  const phone = usePhoneInput();
+
   const isOzonOnly = addMode === "ozon";
   const isFormValid = isOzonOnly
     ? newOzonCode.trim().length >= 3
-    : newName.trim().length >= 2 && phoneDigits.length >= 11 && newChannel;
+    : newName.trim().length >= 2 && phone.isValid && newChannel;
 
-  const resetForm = () => { setNewName(""); setNewPhone(""); setNewChannel(""); setNewOzonCode(""); };
+  const resetForm = () => { setNewName(""); phone.reset(); setNewChannel(""); setNewOzonCode(""); };
 
   const handleAdd = async () => {
     if (!isFormValid) return;
@@ -49,7 +51,7 @@ const AddClientDialog = ({ onClientAdded }: AddClientDialogProps) => {
     try {
       const body = isOzonOnly
         ? { ozon_order_code: newOzonCode.trim() }
-        : { name: newName.trim(), phone: newPhone.trim(), channel: newChannel, ozon_order_code: newChannel === "Ozon" ? newOzonCode.trim() || null : null };
+        : { name: newName.trim(), phone: phone.fullPhone, channel: newChannel, ozon_order_code: newChannel === "Ozon" ? newOzonCode.trim() || null : null };
       const res = await fetch(ADD_CLIENT_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка");
@@ -97,7 +99,7 @@ const AddClientDialog = ({ onClientAdded }: AddClientDialogProps) => {
             <div className="space-y-2"><Label>Имя</Label><Input placeholder="Имя клиента" value={newName} onChange={(e) => setNewName(e.target.value)} /></div>
             <div className="space-y-2">
               <Label>Телефон</Label>
-              <Input type="tel" placeholder="+7 (___) ___-__-__" value={newPhone} onChange={(e) => setNewPhone(formatPhone(e.target.value))} />
+              <PhoneInput id="add-client-phone" phoneHook={phone} />
               <p className="text-xs text-muted-foreground">По этому номеру клиент увидит свои магниты на /my-collection</p>
             </div>
             <div className="space-y-2">
