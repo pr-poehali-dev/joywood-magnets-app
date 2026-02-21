@@ -41,7 +41,7 @@ export interface CollectionData {
 
 export type Step = "phone" | "verify" | "collection";
 
-export const SESSION_KEY = "jw_collection_session";
+export const SESSION_KEY = "jw_collection_session_v2";
 export const SESSION_TTL = 60 * 60 * 1000;
 
 export function saveSession(phone: string, collectionData: CollectionData, photos: Record<string, string>) {
