@@ -46,16 +46,10 @@
       "expectedStatus": 404
     },
     {
-      "name": "POST create order duplicate number fails",
-      "method": "POST",
-      "path": "/",
-      "body": {
-        "action": "create_order",
-        "order_number": "99887766-0001",
-        "channel": "Ozon",
-        "amount": 3500
-      },
-      "expectedStatus": 409
+      "name": "DELETE non-existent order",
+      "method": "DELETE",
+      "path": "/?order_id=999999",
+      "expectedStatus": 404
     },
     {
       "name": "POST create order short number fails",

@@ -28,11 +28,11 @@ def handler(event, context):
         try:
             cur = conn.cursor()
             cur.execute(
-                "SELECT id, milestone_count, milestone_type, reward, given_at FROM bonuses "
+                "SELECT id, milestone_count, milestone_type, reward, given_at, order_id FROM bonuses "
                 "WHERE registration_id = %d ORDER BY given_at DESC" % int(reg_id)
             )
             bonuses = [
-                {'id': r[0], 'milestone_count': r[1], 'milestone_type': r[2], 'reward': r[3], 'given_at': str(r[4])}
+                {'id': r[0], 'milestone_count': r[1], 'milestone_type': r[2], 'reward': r[3], 'given_at': str(r[4]), 'order_id': r[5]}
                 for r in cur.fetchall()
             ]
             return ok({'bonuses': bonuses})
@@ -92,6 +92,7 @@ def handler(event, context):
             milestone_count = body.get('milestone_count')
             milestone_type = body.get('milestone_type')
             reward = (body.get('reward') or '').strip()
+            order_id = body.get('order_id')
             if not registration_id or not milestone_count or not milestone_type or not reward:
                 return err('Укажите registration_id, milestone_count, milestone_type, reward')
             conn = db()
@@ -103,12 +104,13 @@ def handler(event, context):
                 stock_row = cur.fetchone()
                 if stock_row is not None and stock_row[0] <= 0:
                     return err('Бонус «%s» закончился на складе' % reward)
+                order_id_sql = str(int(order_id)) if order_id else 'NULL'
                 cur.execute(
-                    "INSERT INTO bonuses (registration_id, milestone_count, milestone_type, reward) "
-                    "VALUES (%d, %d, '%s', '%s') "
+                    "INSERT INTO bonuses (registration_id, milestone_count, milestone_type, reward, order_id) "
+                    "VALUES (%d, %d, '%s', '%s', %s) "
                     "ON CONFLICT ON CONSTRAINT bonuses_unique DO NOTHING "
                     "RETURNING id, given_at"
-                    % (int(registration_id), int(milestone_count), milestone_type.replace("'", "''"), reward.replace("'", "''"))
+                    % (int(registration_id), int(milestone_count), milestone_type.replace("'", "''"), reward.replace("'", "''"), order_id_sql)
                 )
                 row = cur.fetchone()
                 if not row:

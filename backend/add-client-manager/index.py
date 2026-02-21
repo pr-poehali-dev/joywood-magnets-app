@@ -40,6 +40,8 @@ def _handle_delete_order(params):
     order_id = params.get('order_id')
     if not order_id or not str(order_id).isdigit():
         return err('Укажите order_id')
+    return_magnets = params.get('return_magnets') == '1'
+    return_bonuses = params.get('return_bonuses') == '1'
     conn = db()
     try:
         cur = conn.cursor()
@@ -50,12 +52,30 @@ def _handle_delete_order(params):
         magnets = cur.fetchall()
         removed_breeds = []
         for magnet in magnets:
-            cur.execute("UPDATE magnet_inventory SET stock = stock + 1, updated_at = now() WHERE breed = '%s'" % magnet[1].replace("'", "''"))
+            if return_magnets:
+                cur.execute("UPDATE magnet_inventory SET stock = stock + 1, updated_at = now() WHERE breed = '%s'" % magnet[1].replace("'", "''"))
             cur.execute("DELETE FROM client_magnets WHERE id = %d" % magnet[0])
             removed_breeds.append(magnet[1])
+        cur.execute("SELECT id, reward FROM bonuses WHERE order_id = %d" % int(order_id))
+        bonuses = cur.fetchall()
+        returned_bonuses = []
+        for bonus in bonuses:
+            if return_bonuses:
+                cur.execute(
+                    "INSERT INTO bonus_stock (reward, stock, updated_at) VALUES ('%s', 1, now()) "
+                    "ON CONFLICT (reward) DO UPDATE SET stock = bonus_stock.stock + 1, updated_at = now()"
+                    % bonus[1].replace("'", "''")
+                )
+            cur.execute("DELETE FROM bonuses WHERE id = %d" % bonus[0])
+            returned_bonuses.append(bonus[1])
         cur.execute("DELETE FROM orders WHERE id = %d" % int(order_id))
         conn.commit()
-        return ok({'ok': True, 'magnet_removed': len(removed_breeds) > 0, 'magnets_removed': removed_breeds})
+        return ok({
+            'ok': True,
+            'magnet_removed': len(removed_breeds) > 0,
+            'magnets_removed': removed_breeds,
+            'bonuses_removed': returned_bonuses,
+        })
     finally:
         conn.close()
 

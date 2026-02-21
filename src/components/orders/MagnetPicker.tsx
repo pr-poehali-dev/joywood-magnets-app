@@ -278,6 +278,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
           milestone_count: bonus.count,
           milestone_type: bonus.type,
           reward: bonus.reward,
+          order_id: orderId,
         }),
       });
       const data = await res.json();

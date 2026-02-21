@@ -1,32 +1,49 @@
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { ClientMagnet, ClientOrder, starBg } from "./types";
-import { STAR_LABELS } from "@/lib/store";
+import { STAR_LABELS, BONUS_MILESTONES } from "@/lib/store";
+import { BonusRecord } from "./ClientModal";
 
 interface Props {
   orders: ClientOrder[];
   magnets: ClientMagnet[];
+  bonuses: BonusRecord[];
   ordersLoading: boolean;
   deletingOrderId: number | null;
   confirmDeleteOrderId: number | null;
+  deleteReturnMagnets: boolean;
+  deleteReturnBonuses: boolean;
   onOpenOrder: (order: ClientOrder) => void;
   onConfirmDelete: (orderId: number) => void;
   onCancelDelete: () => void;
   onDeleteOrder: (orderId: number) => void;
+  onReturnMagnetsChange: (v: boolean) => void;
+  onReturnBonusesChange: (v: boolean) => void;
 }
+
+const bonusLabel = (milestone_count: number, milestone_type: string) => {
+  const m = BONUS_MILESTONES.find((b) => b.count === milestone_count && b.type === milestone_type);
+  return m ? `${m.icon} Бонус ×${milestone_count}` : `Бонус ×${milestone_count}`;
+};
 
 const ClientModalOrders = ({
   orders,
   magnets,
+  bonuses,
   ordersLoading,
   deletingOrderId,
   confirmDeleteOrderId,
+  deleteReturnMagnets,
+  deleteReturnBonuses,
   onOpenOrder,
   onConfirmDelete,
   onCancelDelete,
   onDeleteOrder,
+  onReturnMagnetsChange,
+  onReturnBonusesChange,
 }: Props) => {
   const magnetsByOrder = (orderId: number) => magnets.filter((m) => m.order_id === orderId);
+  const bonusesByOrder = (orderId: number) => bonuses.filter((b) => b.order_id === orderId);
 
   return (
     <div className="space-y-2">
@@ -41,6 +58,8 @@ const ClientModalOrders = ({
         <div className="divide-y border rounded-lg overflow-hidden">
           {orders.map((order) => {
             const orderMagnets = magnetsByOrder(order.id);
+            const orderBonuses = bonusesByOrder(order.id);
+            const isConfirming = confirmDeleteOrderId === order.id;
             return (
               <div key={order.id} className="px-4 py-3 hover:bg-slate-50 transition-colors">
                 <div className="flex items-center gap-3">
@@ -55,11 +74,16 @@ const ClientModalOrders = ({
                         {order.amount > 0 && ` · ${order.amount.toLocaleString("ru-RU")} ₽`}
                       </p>
                     </div>
-                    {orderMagnets.length > 0 && (
+                    {(orderMagnets.length > 0 || orderBonuses.length > 0) && (
                       <div className="flex flex-wrap gap-1 ml-2">
                         {orderMagnets.map((m) => (
                           <span key={m.id} className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${starBg[m.stars] ?? ""}`}>
                             {m.breed} {STAR_LABELS[m.stars]}
+                          </span>
+                        ))}
+                        {orderBonuses.map((b) => (
+                          <span key={b.id} className="text-[10px] px-1.5 py-0.5 rounded-full border font-medium bg-green-50 border-green-300 text-green-800">
+                            {bonusLabel(b.milestone_count, b.milestone_type)}
                           </span>
                         ))}
                       </div>
@@ -67,13 +91,13 @@ const ClientModalOrders = ({
                     <Icon name="ChevronRight" size={14} className="ml-auto text-muted-foreground shrink-0" />
                   </button>
                   <div className="shrink-0">
-                    {confirmDeleteOrderId === order.id ? (
+                    {isConfirming ? (
                       <div className="flex items-center gap-1">
                         <Button size="sm" variant="destructive" className="h-7 px-2 text-xs gap-1" disabled={deletingOrderId === order.id} onClick={() => onDeleteOrder(order.id)}>
                           {deletingOrderId === order.id ? <Icon name="Loader2" size={12} className="animate-spin" /> : <Icon name="Check" size={12} />}
-                          Да
+                          Удалить
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onCancelDelete}>Нет</Button>
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onCancelDelete}>Отмена</Button>
                       </div>
                     ) : (
                       <button onClick={() => onConfirmDelete(order.id)} className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors">
@@ -82,6 +106,37 @@ const ClientModalOrders = ({
                     )}
                   </div>
                 </div>
+
+                {isConfirming && (
+                  <div className="mt-2 ml-0 bg-red-50 border border-red-200 rounded-lg px-3 py-2 space-y-1.5">
+                    <p className="text-xs font-semibold text-red-800">Что вернуть на склад?</p>
+                    {orderMagnets.length > 0 && (
+                      <label className="flex items-center gap-2 text-xs text-red-700 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={deleteReturnMagnets}
+                          onChange={(e) => onReturnMagnetsChange(e.target.checked)}
+                          className="accent-red-500"
+                        />
+                        Вернуть магниты ({orderMagnets.map((m) => m.breed).join(", ")})
+                      </label>
+                    )}
+                    {orderBonuses.length > 0 && (
+                      <label className="flex items-center gap-2 text-xs text-red-700 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={deleteReturnBonuses}
+                          onChange={(e) => onReturnBonusesChange(e.target.checked)}
+                          className="accent-red-500"
+                        />
+                        Вернуть бонусы на склад ({orderBonuses.map((b) => b.reward).join(", ")})
+                      </label>
+                    )}
+                    {orderMagnets.length === 0 && orderBonuses.length === 0 && (
+                      <p className="text-xs text-red-700">С этим заказом нет магнитов и бонусов</p>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

@@ -23,6 +23,7 @@ export interface BonusRecord {
   milestone_type: string;
   reward: string;
   given_at: string;
+  order_id?: number | null;
 }
 
 interface Props {
@@ -64,6 +65,8 @@ const ClientModal = ({
   const [deleting, setDeleting] = useState(false);
   const [deletingOrderId, setDeletingOrderId] = useState<number | null>(null);
   const [confirmDeleteOrderId, setConfirmDeleteOrderId] = useState<number | null>(null);
+  const [deleteReturnMagnets, setDeleteReturnMagnets] = useState(true);
+  const [deleteReturnBonuses, setDeleteReturnBonuses] = useState(true);
   const [deletingMagnetId, setDeletingMagnetId] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
@@ -201,7 +204,10 @@ const ClientModal = ({
     setDeletingOrderId(orderId);
     try {
       const deletedOrder = clientOrders.find((o) => o.id === orderId);
-      const res = await fetch(`${ADD_CLIENT_URL}?order_id=${orderId}`, { method: "DELETE" });
+      const params = new URLSearchParams({ order_id: String(orderId) });
+      if (deleteReturnMagnets) params.set("return_magnets", "1");
+      if (deleteReturnBonuses) params.set("return_bonuses", "1");
+      const res = await fetch(`${ADD_CLIENT_URL}?${params}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка");
       setClientOrders((prev) => prev.filter((o) => o.id !== orderId));
@@ -209,14 +215,16 @@ const ClientModal = ({
       if (deletedOrder) {
         onClientUpdated({ id: client.id, name: client.name, phone: client.phone, registered: client.registered, total_amount: (client.total_amount || 0) - deletedOrder.amount });
       }
-      if (data.magnet_removed) {
-        const breeds = (data.magnets_removed as string[] | undefined)?.join(", ") || data.magnet_breed || "";
-        toast.success(`Заказ удалён, магниты возвращены на склад: ${breeds}`);
-        onMagnetsReload(client.id);
+      const parts: string[] = [];
+      if (deleteReturnMagnets && (data.magnets_removed as string[] | undefined)?.length) {
+        parts.push(`магниты возвращены: ${(data.magnets_removed as string[]).join(", ")}`);
         onInventoryChanged();
-      } else {
-        toast.success("Заказ удалён");
       }
+      if (deleteReturnBonuses && (data.bonuses_removed as string[] | undefined)?.length) {
+        parts.push(`бонусы возвращены на склад`);
+      }
+      toast.success(`Заказ удалён${parts.length ? `, ${parts.join("; ")}` : ""}`);
+      onMagnetsReload(client.id);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось удалить заказ");
     } finally { setDeletingOrderId(null); }
@@ -301,13 +309,18 @@ const ClientModal = ({
             <ClientModalOrders
               orders={clientOrders}
               magnets={magnets}
+              bonuses={bonuses}
               ordersLoading={ordersLoading}
               deletingOrderId={deletingOrderId}
               confirmDeleteOrderId={confirmDeleteOrderId}
+              deleteReturnMagnets={deleteReturnMagnets}
+              deleteReturnBonuses={deleteReturnBonuses}
               onOpenOrder={openOrder}
-              onConfirmDelete={setConfirmDeleteOrderId}
+              onConfirmDelete={(id) => { setConfirmDeleteOrderId(id); setDeleteReturnMagnets(true); setDeleteReturnBonuses(true); }}
               onCancelDelete={() => setConfirmDeleteOrderId(null)}
               onDeleteOrder={handleDeleteOrder}
+              onReturnMagnetsChange={setDeleteReturnMagnets}
+              onReturnBonusesChange={setDeleteReturnBonuses}
             />
 
             <ClientModalMagnets

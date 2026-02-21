@@ -1,0 +1,1 @@
+ALTER TABLE t_p65563100_joywood_magnets_app.bonuses ADD COLUMN IF NOT EXISTS order_id INTEGER;
