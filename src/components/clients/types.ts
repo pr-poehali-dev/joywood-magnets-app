@@ -15,6 +15,7 @@ export interface Registration {
   created_at: string;
   registered: boolean;
   total_amount: number;
+  comment?: string;
 }
 
 export interface ClientMagnet {
@@ -33,6 +34,8 @@ export interface ClientOrder {
   channel: string;
   status: string;
   created_at: string;
+  comment?: string;
+  magnet_comment?: string;
 }
 
 export const starBg: Record<number, string> = {

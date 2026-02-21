@@ -15,6 +15,9 @@ def handler(event, context):
 
     if event.get('httpMethod') == 'PUT':
         body = json.loads(event.get('body') or '{}')
+        action = body.get('action', '')
+        if action == 'update_order':
+            return _handle_update_order(body)
         return _handle_update_client(body)
 
     if event.get('httpMethod') != 'POST':
@@ -27,6 +30,8 @@ def handler(event, context):
         return _handle_create_order(body)
     if action == 'save_magnet_comment':
         return _handle_save_magnet_comment(body)
+    if action == 'update_client_comment':
+        return _handle_update_client_comment(body)
 
     return _handle_add_client(body)
 
@@ -290,6 +295,59 @@ def _create_order_for_client(client_id, order_code, channel, amount):
             'magnet_given': 'Падук' if existing_orders == 0 else None,
             'pending_bonuses': pending_bonuses, 'message': 'Заказ оформлен',
         })
+    finally:
+        conn.close()
+
+
+def _handle_update_order(body):
+    order_id = body.get('order_id')
+    if not order_id or not str(order_id).isdigit():
+        return err('Укажите order_id')
+    conn = db()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM orders WHERE id = %d" % int(order_id))
+        if not cur.fetchone():
+            return err('Заказ не найден', 404)
+        updates = []
+        if 'amount' in body:
+            try:
+                amount = float(body['amount'])
+                updates.append("amount = %s" % amount)
+            except (ValueError, TypeError):
+                return err('Некорректная сумма')
+        if 'order_code' in body:
+            code = (body['order_code'] or '').strip()
+            updates.append("order_code = '%s'" % code.replace("'", "''"))
+        if 'comment' in body:
+            comment = (body['comment'] or '').strip()
+            updates.append("comment = '%s'" % comment.replace("'", "''"))
+        if not updates:
+            return err('Нет данных для обновления')
+        cur.execute("UPDATE orders SET %s WHERE id = %d" % (', '.join(updates), int(order_id)))
+        conn.commit()
+        cur.execute("SELECT id, order_code, amount, channel, status, created_at, comment, magnet_comment FROM orders WHERE id = %d" % int(order_id))
+        row = cur.fetchone()
+        return ok({'ok': True, 'order': {
+            'id': row[0], 'order_code': row[1], 'amount': float(row[2] or 0),
+            'channel': row[3], 'status': row[4], 'created_at': str(row[5]),
+            'comment': row[6], 'magnet_comment': row[7],
+        }})
+    finally:
+        conn.close()
+
+
+def _handle_update_client_comment(body):
+    client_id = body.get('client_id')
+    comment = (body.get('comment') or '').strip()
+    if not client_id or not str(client_id).isdigit():
+        return err('Укажите client_id')
+    conn = db()
+    try:
+        cur = conn.cursor()
+        cur.execute("UPDATE registrations SET comment = '%s' WHERE id = %d" % (comment.replace("'", "''"), int(client_id)))
+        conn.commit()
+        return ok({'ok': True})
     finally:
         conn.close()
 

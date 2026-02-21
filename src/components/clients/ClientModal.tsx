@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import Icon from "@/components/ui/icon";
 import { WOOD_BREEDS, STAR_LABELS } from "@/lib/store";
 import { toast } from "sonner";
@@ -64,6 +65,8 @@ const ClientModal = ({
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
   const [orderModalOpen, setOrderModalOpen] = useState(false);
+  const [comment, setComment] = useState("");
+  const [savingComment, setSavingComment] = useState(false);
 
   useEffect(() => {
     if (!open || !client) return;
@@ -83,7 +86,10 @@ const ClientModal = ({
       setSelectedBreed("");
       setBreedSearch("");
     }
-  }, [open]);
+    if (open && client) {
+      setComment(client.comment || "");
+    }
+  }, [open, client?.id]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -123,6 +129,22 @@ const ClientModal = ({
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось сохранить");
     } finally { setSavingEdit(false); }
+  };
+
+  const handleSaveComment = async () => {
+    setSavingComment(true);
+    try {
+      const res = await fetch(ADD_CLIENT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update_client_comment", client_id: client.id, comment }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Ошибка");
+      toast.success("Комментарий сохранён");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось сохранить");
+    } finally { setSavingComment(false); }
   };
 
   const handleGiveMagnet = async () => {
@@ -397,6 +419,25 @@ const ClientModal = ({
                   Выдать
                 </Button>
               </div>
+            </div>
+
+            {/* Комментарий к клиенту */}
+            <div className="space-y-2 border-t pt-4">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <Icon name="MessageSquare" size={13} />
+                Комментарий
+              </p>
+              <Textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Заметки по клиенту..."
+                className="text-sm resize-none"
+                rows={2}
+              />
+              <Button size="sm" variant="outline" className="gap-1" disabled={savingComment} onClick={handleSaveComment}>
+                {savingComment ? <Icon name="Loader2" size={13} className="animate-spin" /> : <Icon name="Check" size={13} />}
+                Сохранить
+              </Button>
             </div>
 
             {/* Удаление клиента */}

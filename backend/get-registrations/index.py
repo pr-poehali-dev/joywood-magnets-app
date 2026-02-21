@@ -38,7 +38,8 @@ def _get_clients():
         cur.execute(
             "SELECT r.id, r.name, r.phone, r.channel, r.ozon_order_code, r.created_at, r.registered, "
             "COALESCE(SUM(o.amount), 0) as total_amount, "
-            "array_remove(array_agg(DISTINCT o.channel), NULL) as channels "
+            "array_remove(array_agg(DISTINCT o.channel), NULL) as channels, "
+            "r.comment "
             "FROM registrations r "
             "LEFT JOIN orders o ON o.registration_id = r.id "
             "GROUP BY r.id ORDER BY r.created_at DESC"
@@ -49,6 +50,7 @@ def _get_clients():
                 'id': row[0], 'name': row[1], 'phone': row[2], 'channel': row[3],
                 'ozon_order_code': row[4], 'created_at': str(row[5]),
                 'registered': bool(row[6]), 'total_amount': float(row[7]), 'channels': row[8] or [],
+                'comment': row[9] or '',
             }
             for row in rows
         ]
@@ -138,7 +140,7 @@ def _get_orders():
         cur = conn.cursor()
         cur.execute(
             "SELECT o.id, o.order_code, o.amount, o.channel, o.status, o.created_at, "
-            "o.registration_id, r.name, r.phone, o.magnet_comment "
+            "o.registration_id, r.name, r.phone, o.magnet_comment, o.comment "
             "FROM orders o "
             "LEFT JOIN registrations r ON r.id = o.registration_id "
             "ORDER BY o.created_at DESC"
@@ -148,7 +150,7 @@ def _get_orders():
                 'id': r[0], 'order_code': r[1] or '', 'amount': float(r[2]) if r[2] else 0,
                 'channel': r[3], 'status': r[4], 'created_at': str(r[5]),
                 'registration_id': r[6], 'client_name': r[7] or '',
-                'client_phone': r[8] or '', 'magnet_comment': r[9] or '',
+                'client_phone': r[8] or '', 'magnet_comment': r[9] or '', 'comment': r[10] or '',
             }
             for r in cur.fetchall()
         ]
@@ -166,14 +168,15 @@ def _get_client_orders(params):
     try:
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, order_code, amount, channel, status, created_at, magnet_comment "
+            "SELECT id, order_code, amount, channel, status, created_at, magnet_comment, comment "
             "FROM orders WHERE registration_id = %d ORDER BY created_at DESC"
             % int(reg_id)
         )
         orders = [
             {
                 'id': r[0], 'order_code': r[1] or '', 'amount': float(r[2]) if r[2] else 0,
-                'channel': r[3], 'status': r[4], 'created_at': str(r[5]), 'magnet_comment': r[6] or '',
+                'channel': r[3], 'status': r[4], 'created_at': str(r[5]),
+                'magnet_comment': r[6] or '', 'comment': r[7] or '',
             }
             for r in cur.fetchall()
         ]
