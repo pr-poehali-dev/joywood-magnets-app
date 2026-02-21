@@ -130,7 +130,9 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
                 </TableCell>
                 <TableCell className="text-center">
                   {client.comment && (
-                    <Icon name="MessageSquare" size={14} className="text-blue-400 mx-auto" title={client.comment} />
+                    <span title={client.comment} className="inline-flex">
+                      <Icon name="MessageSquare" size={14} className="text-blue-400" />
+                    </span>
                   )}
                 </TableCell>
               </TableRow>

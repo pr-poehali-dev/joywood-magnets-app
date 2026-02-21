@@ -128,7 +128,9 @@ const OrdersTable = ({ orders, loading, ozonOnly = false, onNavigateToClient, on
                   </TableCell>
                   <TableCell className="text-center">
                     {order.comment && (
-                      <Icon name="MessageSquare" size={14} className="text-blue-400 mx-auto" title={order.comment} />
+                      <span title={order.comment} className="inline-flex">
+                        <Icon name="MessageSquare" size={14} className="text-blue-400" />
+                      </span>
                     )}
                   </TableCell>
                   <TableCell>
