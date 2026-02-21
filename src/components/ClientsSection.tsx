@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import Icon from "@/components/ui/icon";
 import { ClientMagnet, GIVE_MAGNET_URL } from "./clients/types";
-import ClientExpandedRow from "./clients/ClientExpandedRow";
+import ClientModal from "./clients/ClientModal";
 import { useClients } from "@/hooks/useClients";
 import { useInventory } from "@/hooks/useInventory";
 
@@ -23,25 +23,12 @@ interface ClientsSectionProps {
 
 const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) => {
   const [search, setSearch] = useState("");
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [clientMagnets, setClientMagnets] = useState<Record<number, ClientMagnet[]>>({});
   const [magnetsLoading, setMagnetsLoading] = useState<Record<number, boolean>>({});
 
-  const { clients, loading, reload: loadClients, updateClient } = useClients();
+  const { clients, loading, reload: loadClients, updateClient, removeClient } = useClients();
   const { stockMap: inventory, reload: loadInventory, setStockForBreed } = useInventory();
-
-  useEffect(() => {
-    if (focusClientId != null) {
-      loadClients();
-      setExpandedId(focusClientId);
-      onFocusHandled?.();
-      setTimeout(() => {
-        const el = document.getElementById(`client-row-${focusClientId}`);
-        el?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 300);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusClientId]);
 
   const loadClientMagnets = useCallback((regId: number) => {
     setMagnetsLoading((p) => ({ ...p, [regId]: true }));
@@ -53,10 +40,21 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
   }, []);
 
   useEffect(() => {
-    if (expandedId !== null && !clientMagnets[expandedId]) {
-      loadClientMagnets(expandedId);
+    if (focusClientId != null) {
+      loadClients();
+      setSelectedId(focusClientId);
+      loadClientMagnets(focusClientId);
+      onFocusHandled?.();
     }
-  }, [expandedId, loadClientMagnets, clientMagnets]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusClientId]);
+
+  const handleOpen = useCallback((id: number) => {
+    setSelectedId(id);
+    if (!clientMagnets[id]) loadClientMagnets(id);
+  }, [clientMagnets, loadClientMagnets]);
+
+  const selectedClient = clients.find((c) => c.id === selectedId) ?? null;
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -94,72 +92,69 @@ const ClientsSection = ({ focusClientId, onFocusHandled }: ClientsSectionProps) 
             {loading && (
               <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground"><Icon name="Loader2" size={32} className="mx-auto mb-3 animate-spin opacity-40" />Загрузка...</TableCell></TableRow>
             )}
-            {!loading && filtered.map((client) => {
-              const isExpanded = expandedId === client.id;
-
-              return (
-                <Fragment key={client.id}>
-                  <TableRow id={`client-row-${client.id}`} className={`cursor-pointer hover:bg-orange-50/50 transition-colors ${focusClientId === client.id ? "bg-orange-50" : ""}`} onClick={() => setExpandedId(isExpanded ? null : client.id)}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Icon name={isExpanded ? "ChevronDown" : "ChevronRight"} size={16} className="text-muted-foreground" />
-                        {client.name || <span className="text-muted-foreground italic">Не указано</span>}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{client.phone || "—"}</TableCell>
-                    <TableCell>
-                      {(client.channels?.length > 0 ? client.channels : client.channel ? [client.channel] : []).map((ch, i) => (
-                        <Badge key={ch} variant="outline" className={`text-xs ${i > 0 ? "ml-1" : ""}`}>{ch}</Badge>
-                      ))}
-                      {!client.channels?.length && !client.channel && "—"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{client.ozon_order_code || "—"}</TableCell>
-                    <TableCell>
-                      {client.registered ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          <Icon name="CheckCircle" size={12} />Зарегистрирован
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                          <Icon name="Clock" size={12} />Ожидает
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {new Date(client.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
-                    </TableCell>
-                  </TableRow>
-
-                  {isExpanded && (
-                    <ClientExpandedRow
-                      client={client}
-                      magnets={clientMagnets[client.id] || []}
-                      magnetsLoading={!!magnetsLoading[client.id]}
-                      inventory={inventory}
-                      onMagnetGiven={(regId, magnet, breed, stockAfter) => {
-                        setClientMagnets((p) => ({ ...p, [regId]: [magnet, ...(p[regId] || [])] }));
-                        if (stockAfter !== null && stockAfter !== undefined) {
-                          setStockForBreed(breed, stockAfter);
-                        }
-                      }}
-                      onMagnetsReload={loadClientMagnets}
-                      onInventoryChanged={loadInventory}
-                      onClientDeleted={() => {
-                        setExpandedId(null);
-                        loadClients();
-                      }}
-                      onClientUpdated={updateClient}
-                    />
+            {!loading && filtered.map((client) => (
+              <TableRow
+                key={client.id}
+                id={`client-row-${client.id}`}
+                className="cursor-pointer hover:bg-orange-50/50 transition-colors"
+                onClick={() => handleOpen(client.id)}
+              >
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
+                    {client.name || <span className="text-muted-foreground italic">Не указано</span>}
+                  </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground">{client.phone || "—"}</TableCell>
+                <TableCell>
+                  {(client.channels?.length > 0 ? client.channels : client.channel ? [client.channel] : []).map((ch, i) => (
+                    <Badge key={ch} variant="outline" className={`text-xs ${i > 0 ? "ml-1" : ""}`}>{ch}</Badge>
+                  ))}
+                  {!client.channels?.length && !client.channel && "—"}
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">{client.ozon_order_code || "—"}</TableCell>
+                <TableCell>
+                  {client.registered ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      <Icon name="CheckCircle" size={12} />Зарегистрирован
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      <Icon name="Clock" size={12} />Ожидает
+                    </span>
                   )}
-                </Fragment>
-              );
-            })}
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {new Date(client.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                </TableCell>
+              </TableRow>
+            ))}
             {!loading && filtered.length === 0 && (
               <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground"><Icon name="SearchX" size={40} className="mx-auto mb-3 opacity-30" />Клиенты не найдены</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
       </Card>
+
+      <ClientModal
+        client={selectedClient}
+        open={selectedId !== null}
+        magnets={selectedId ? (clientMagnets[selectedId] || []) : []}
+        magnetsLoading={selectedId ? !!magnetsLoading[selectedId] : false}
+        inventory={inventory}
+        onClose={() => setSelectedId(null)}
+        onMagnetGiven={(regId, magnet, breed, stockAfter) => {
+          setClientMagnets((p) => ({ ...p, [regId]: [magnet, ...(p[regId] || [])] }));
+          if (stockAfter !== null && stockAfter !== undefined) setStockForBreed(breed, stockAfter);
+        }}
+        onMagnetsReload={loadClientMagnets}
+        onInventoryChanged={loadInventory}
+        onClientDeleted={() => {
+          setSelectedId(null);
+          loadClients();
+        }}
+        onClientUpdated={updateClient}
+      />
     </div>
   );
 };
