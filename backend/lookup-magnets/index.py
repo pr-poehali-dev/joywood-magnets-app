@@ -64,6 +64,7 @@ def handler(event, context):
                 %s AS collection_value
             FROM t_p65563100_joywood_magnets_app.registrations r2
             LEFT JOIN t_p65563100_joywood_magnets_app.client_magnets cm2 ON cm2.registration_id = r2.id
+            WHERE r2.registered = true
             GROUP BY r2.id
         """ % cv_formula)
         all_stats = cur.fetchall()
@@ -79,6 +80,7 @@ def handler(event, context):
             SELECT r2.name, COUNT(cm2.id) AS total_magnets, %s AS collection_value
             FROM t_p65563100_joywood_magnets_app.registrations r2
             LEFT JOIN t_p65563100_joywood_magnets_app.client_magnets cm2 ON cm2.registration_id = r2.id
+            WHERE r2.registered = true
             GROUP BY r2.id, r2.name
             ORDER BY total_magnets DESC
             LIMIT 3
@@ -92,6 +94,7 @@ def handler(event, context):
             SELECT r2.name, COUNT(cm2.id) AS total_magnets, %s AS collection_value
             FROM t_p65563100_joywood_magnets_app.registrations r2
             LEFT JOIN t_p65563100_joywood_magnets_app.client_magnets cm2 ON cm2.registration_id = r2.id
+            WHERE r2.registered = true
             GROUP BY r2.id, r2.name
             ORDER BY collection_value DESC
             LIMIT 3
