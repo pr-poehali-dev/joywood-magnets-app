@@ -104,18 +104,15 @@ const OrderDetailModal = ({ order, open, onClose, onNavigateToClient, onOrderUpd
           <DialogTitle className="flex items-center gap-2">
             <Icon name="ShoppingBag" size={20} className="text-orange-500" />
             Заказ {order.order_code ? `#${order.order_code}` : `ID ${order.id}`}
-            <button
-              className="ml-auto p-1.5 rounded hover:bg-slate-100 text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setEditing((v) => !v)}
-              title={editing ? "Отменить" : "Редактировать"}
-            >
-              <Icon name={editing ? "X" : "Pencil"} size={15} />
-            </button>
+            <Button size="sm" variant="outline" className="ml-auto gap-1.5 h-7 text-xs" onClick={() => setEditing((v) => !v)}>
+              <Icon name={editing ? "X" : "Pencil"} size={13} />
+              {editing ? "Отмена" : "Редактировать"}
+            </Button>
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-1">
-          {editing ? (
+          {editing && (
             <div className="bg-slate-50 rounded-lg p-4 space-y-3">
               <div className="space-y-1">
                 <Label className="text-xs">Номер заказа</Label>
@@ -125,19 +122,16 @@ const OrderDetailModal = ({ order, open, onClose, onNavigateToClient, onOrderUpd
                 <Label className="text-xs">Сумма заказа, ₽</Label>
                 <Input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} placeholder="0" className="h-8 text-sm" />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Комментарий</Label>
-                <Textarea value={editComment} onChange={(e) => setEditComment(e.target.value)} placeholder="Заметки по заказу..." className="text-sm resize-none" rows={3} />
-              </div>
               <div className="flex gap-2">
                 <Button size="sm" className="gap-1" disabled={saving} onClick={handleSave}>
                   {saving ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Check" size={14} />}
                   Сохранить
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setEditing(false)}>Отмена</Button>
               </div>
             </div>
-          ) : (
+          )}
+
+          {!editing && (
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-slate-50 rounded-lg p-3 space-y-1">
@@ -175,18 +169,27 @@ const OrderDetailModal = ({ order, open, onClose, onNavigateToClient, onOrderUpd
                   </div>
                 )}
               </div>
-
-              {order.comment && (
-                <div className="border rounded-lg p-4 space-y-1">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium flex items-center gap-1.5">
-                    <Icon name="MessageSquare" size={13} className="text-slate-400" />
-                    Комментарий
-                  </p>
-                  <p className="text-sm">{order.comment}</p>
-                </div>
-              )}
             </>
           )}
+
+          {/* Комментарий — всегда виден */}
+          <div className="border rounded-lg p-4 space-y-2">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium flex items-center gap-1.5">
+              <Icon name="MessageSquare" size={13} className="text-slate-400" />
+              Комментарий
+            </p>
+            <Textarea
+              value={editComment}
+              onChange={(e) => setEditComment(e.target.value)}
+              placeholder="Заметки по заказу..."
+              className="text-sm resize-none border-dashed"
+              rows={2}
+            />
+            <Button size="sm" variant="outline" className="gap-1 h-7 text-xs" disabled={saving} onClick={handleSave}>
+              {saving ? <Icon name="Loader2" size={12} className="animate-spin" /> : <Icon name="Check" size={12} />}
+              Сохранить комментарий
+            </Button>
+          </div>
 
           <div className="border rounded-lg p-4 space-y-2">
             <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Клиент</p>
