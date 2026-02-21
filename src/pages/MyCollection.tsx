@@ -48,6 +48,7 @@ const MyCollection = () => {
   const [data, setData] = useState<CollectionData | null>(null);
   const [notFound, setNotFound] = useState(false);
   const autoSearched = useRef(false);
+  const notFoundRef = useRef<HTMLDivElement>(null);
 
   const phone = usePhoneInput();
 
@@ -60,7 +61,12 @@ const MyCollection = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: searchPhone }),
       });
-      if (res.status === 404) { setNotFound(true); setData(null); return; }
+      if (res.status === 404) {
+        setNotFound(true);
+        setData(null);
+        setTimeout(() => notFoundRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+        return;
+      }
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Ошибка загрузки");
       setData(result);
@@ -155,7 +161,7 @@ const MyCollection = () => {
         )}
 
         {notFound && (
-          <Card className="border-gold-200 bg-gold-50">
+          <Card ref={notFoundRef} className="border-gold-200 bg-gold-50">
             <CardContent className="pt-6 text-center space-y-4">
               <Icon name="UserX" size={44} className="mx-auto text-gold-400" />
               <div>
