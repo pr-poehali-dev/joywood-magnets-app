@@ -340,23 +340,7 @@ const MyCollection = () => {
                     );
                   })}
 
-                  {(data.bonuses || []).length > 0 && (
-                    <div className="pt-2 border-t space-y-1.5">
-                      <p className="text-xs font-medium text-muted-foreground">Полученные бонусы:</p>
-                      {(data.bonuses || []).map((b) => (
-                        <div key={b.id} className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                          <Icon name="Gift" size={14} className="text-green-600 shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-green-800 truncate">{b.reward}</p>
-                            <p className="text-[11px] text-green-600">
-                              {new Date(b.given_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
-                            </p>
-                          </div>
-                          <Icon name="CheckCircle" size={16} className="text-green-500 shrink-0" />
-                        </div>
-                      ))}
-                    </div>
-                  )}
+
                 </CardContent>
               </Card>
 
