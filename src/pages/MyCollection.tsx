@@ -16,6 +16,8 @@ const BREED_PHOTOS_URL = "https://functions.poehali.dev/264a19bd-40c8-4203-a8cd-
 const SETTINGS_URL = "https://functions.poehali.dev/8d9bf70e-b9a7-466a-a2e0-7e510754dde1";
 const SAVE_CONSENT_URL = "https://functions.poehali.dev/abee8bc8-7d35-4fe6-88d2-d62e1faec0c5";
 
+const SCAN_URL = "https://functions.poehali.dev/a1fcc017-69d2-46bf-95cc-a735deda6c26";
+
 const MyCollection = () => {
   const [searchParams] = useSearchParams();
   const [step, setStep] = useState<Step>("phone");
@@ -25,8 +27,10 @@ const MyCollection = () => {
   const [verifiedPhone, setVerifiedPhone] = useState("");
   const [breedPhotos, setBreedPhotos] = useState<Record<string, string>>({});
   const [justRegistered, setJustRegistered] = useState(false);
+  const [scanResult, setScanResult] = useState<{ result: string; breed: string } | null>(null);
   const notFoundRef = useRef<HTMLDivElement>(null);
   const autoSearched = useRef(false);
+  const scanBreed = searchParams.get("scan") || "";
 
   const phone = usePhoneInput();
   const [verificationEnabled, setVerificationEnabled] = useState(true);
@@ -53,14 +57,40 @@ const MyCollection = () => {
       setData(session.data);
       setBreedPhotos(session.photos);
       setStep("collection");
+      const phone = session.phone;
       fetch(BREED_PHOTOS_URL)
         .then((r) => r.json())
         .then((d) => {
           const photos = d.photos || {};
           setBreedPhotos(photos);
-          saveSession(session.phone, session.data, photos);
+          saveSession(phone, session.data, photos);
         })
         .catch(() => {});
+      if (scanBreed) {
+        fetch(SCAN_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone, breed: scanBreed }),
+        })
+          .then((r) => r.json())
+          .then((scanData) => {
+            setScanResult({ result: scanData.result, breed: scanBreed });
+            if (scanData.result === "revealed") {
+              fetch(LOOKUP_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone }),
+              })
+                .then((r) => r.json())
+                .then((refreshed) => {
+                  setData(refreshed);
+                  saveSession(phone, refreshed, session.photos);
+                })
+                .catch(() => {});
+            }
+          })
+          .catch(() => {});
+      }
     }
   }, []);
 
@@ -84,6 +114,29 @@ const MyCollection = () => {
       saveSession(searchPhone, result, photos);
       if (isNewRegistration) setJustRegistered(true);
       setStep("collection");
+      if (scanBreed) {
+        try {
+          const scanRes = await fetch(SCAN_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone: searchPhone, breed: scanBreed }),
+          });
+          const scanData = await scanRes.json();
+          setScanResult({ result: scanData.result, breed: scanBreed });
+          if (scanData.result === "revealed") {
+            const refreshRes = await fetch(LOOKUP_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ phone: searchPhone }),
+            });
+            if (refreshRes.ok) {
+              const refreshed = await refreshRes.json();
+              setData(refreshed);
+              saveSession(searchPhone, refreshed, photos);
+            }
+          }
+        } catch { /* non-critical */ }
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось загрузить данные");
       setStep("phone");
@@ -253,6 +306,38 @@ const MyCollection = () => {
                     Вы успешно зарегистрированы. Ваш первый магнит уже ждёт вас — он прибыл вместе с заказом Ozon. Каждая следующая покупка принесёт новые редкие породы.
                   </div>
                 </div>
+              </div>
+            )}
+            {scanResult && (
+              <div className={`rounded-xl border p-4 flex gap-3 items-start animate-in fade-in slide-in-from-top-2 duration-500 ${
+                scanResult.result === "revealed" ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200" :
+                scanResult.result === "already_revealed" ? "bg-blue-50 border-blue-200" :
+                "bg-orange-50 border-orange-200"
+              }`}>
+                <span className="text-2xl leading-none mt-0.5">
+                  {scanResult.result === "revealed" ? "🎉" : scanResult.result === "already_revealed" ? "✅" : "📦"}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className={`font-semibold text-sm ${
+                    scanResult.result === "revealed" ? "text-green-900" :
+                    scanResult.result === "already_revealed" ? "text-blue-900" : "text-orange-900"
+                  }`}>
+                    {scanResult.result === "revealed" && `Магнит «${scanResult.breed}» раскрыт!`}
+                    {scanResult.result === "already_revealed" && `«${scanResult.breed}» уже в коллекции`}
+                    {scanResult.result === "not_in_collection" && `Магнит «${scanResult.breed}» не найден`}
+                  </div>
+                  <div className={`text-sm mt-0.5 leading-relaxed ${
+                    scanResult.result === "revealed" ? "text-green-700" :
+                    scanResult.result === "already_revealed" ? "text-blue-700" : "text-orange-700"
+                  }`}>
+                    {scanResult.result === "revealed" && "Порода добавлена в вашу коллекцию — смотрите ниже!"}
+                    {scanResult.result === "already_revealed" && "Этот магнит уже был отсканирован ранее."}
+                    {scanResult.result === "not_in_collection" && "Этот магнит не числится среди отправленных вам."}
+                  </div>
+                </div>
+                <button onClick={() => setScanResult(null)} className="text-muted-foreground hover:text-foreground shrink-0 mt-0.5">
+                  <Icon name="X" size={16} />
+                </button>
               </div>
             )}
             <CollectionDashboard data={data} onReset={handleReset} />

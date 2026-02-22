@@ -30,7 +30,7 @@ const STAR_GROUP_LABELS: Record<number, string> = {
 };
 
 const getScanUrl = (breed: string) =>
-  `${window.location.origin}/scan/${encodeURIComponent(breed)}`;
+  `${window.location.origin}/my-collection?scan=${encodeURIComponent(breed)}`;
 
 const MagnetsPhotos = ({
   photos,
@@ -121,7 +121,7 @@ const MagnetsPhotos = ({
                         <div className="flex items-center gap-1 bg-slate-50 rounded border border-slate-200 px-1.5 py-1">
                           <Icon name="QrCode" size={11} className="text-slate-400 shrink-0" />
                           <span className="text-[10px] text-slate-500 truncate flex-1 min-w-0" title={scanUrl}>
-                            /scan/{encodeURIComponent(breed.breed)}
+                            ?scan={breed.breed}
                           </span>
                           <button
                             onClick={() => handleCopy(breed.breed)}
