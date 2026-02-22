@@ -1,4 +1,8 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
+
+const PROMO_STATS_URL = "https://functions.poehali.dev/50db6681-a72d-448a-a473-d9806f371a7d";
 
 const BONUS_MILESTONES = [
   { count: 5, icon: "🎁", label: "5 магнитов" },
@@ -15,7 +19,8 @@ const STAR_TIERS = [
     color: "from-amber-50 to-yellow-50",
     border: "border-amber-200",
     text: "text-amber-800",
-    desc: "Привычные породы, знакомые каждому мастеру",
+    desc: "Привычные породы — достаются при каждом заказе",
+    hint: "Чем чаще покупаете — тем выше шанс получить редкую породу",
     examples: ["Дуб", "Бук", "Ясень", "Лиственница", "Сосна"],
   },
   {
@@ -25,7 +30,8 @@ const STAR_TIERS = [
     color: "from-orange-50 to-amber-50",
     border: "border-orange-200",
     text: "text-orange-800",
-    desc: "Редкие породы с выразительной текстурой и характером",
+    desc: "Редкие породы с выразительной текстурой — за крупные и повторные заказы",
+    hint: null,
     examples: ["Венге", "Падук", "Сапели", "Зебрано", "Мербау"],
   },
   {
@@ -35,12 +41,22 @@ const STAR_TIERS = [
     color: "from-red-50 to-orange-50",
     border: "border-red-200",
     text: "text-red-800",
-    desc: "Экзотические породы — настоящая гордость коллекционера",
+    desc: "Экзотические породы — настоящая гордость коллекционера. Достаются постоянным покупателям",
+    hint: null,
     examples: ["Бубинго", "Лайсвуд", "Амарант", "Палисандр"],
   },
 ];
 
 const Promo = () => {
+  const [stats, setStats] = useState<{ participants: number; total_magnets: number } | null>(null);
+
+  useEffect(() => {
+    fetch(PROMO_STATS_URL)
+      .then((r) => r.json())
+      .then(setStats)
+      .catch(() => null);
+  }, []);
+
   return (
     <div className="min-h-screen bg-white font-sans">
 
@@ -55,15 +71,13 @@ const Promo = () => {
             />
             <span className="font-semibold text-sm text-gold-500">Joywood</span>
           </div>
-          <a
-            href="https://joywood.store/shop"
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            to="/my-collection"
             className="flex items-center gap-1.5 bg-gold-500 hover:bg-gold-600 text-white text-sm font-semibold px-4 py-2 rounded-full transition-colors shadow-sm"
           >
-            <Icon name="ShoppingBag" size={15} />
-            Купить
-          </a>
+            <Icon name="Layers" size={15} />
+            Уже в игре
+          </Link>
         </div>
       </div>
 
@@ -90,6 +104,20 @@ const Promo = () => {
           <p className="text-stone-300 text-base leading-relaxed max-w-md mx-auto">
             С каждым заказом Joywood вы получаете магнит из настоящей, иногда даже очень редкой породы древесины. Десятки уникальных экземпляров — от привычного дуба до экзотического лайсвуда
           </p>
+          {/* Live counter */}
+          {stats && (
+            <div className="inline-flex items-center gap-3 bg-white/10 border border-white/20 rounded-2xl px-5 py-3 backdrop-blur">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white">{stats.participants}</div>
+                <div className="text-[11px] text-stone-400">мастеров в игре</div>
+              </div>
+              <div className="w-px h-8 bg-white/20" />
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gold-300">{stats.total_magnets}</div>
+                <div className="text-[11px] text-stone-400">магнитов выдано</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -121,6 +149,15 @@ const Promo = () => {
             </div>
           ))}
         </div>
+
+        {/* No duplicates note */}
+        <div className="flex items-start gap-3 bg-stone-50 border border-stone-200 rounded-2xl px-5 py-4">
+          <span className="text-xl mt-0.5">✅</span>
+          <div>
+            <p className="font-semibold text-sm text-foreground">Каждый магнит — уникальный экземпляр</p>
+            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">Повторы исключены: одна и та же порода не попадётся дважды. Каждый заказ — новая порода в коллекции</p>
+          </div>
+        </div>
       </div>
 
       {/* Competition & social */}
@@ -150,7 +187,7 @@ const Promo = () => {
         <div className="max-w-2xl mx-auto px-4 space-y-8">
           <div className="text-center space-y-2">
             <h2 className="text-2xl font-bold text-foreground">Породы трёх разных категорий</h2>
-            <p className="text-muted-foreground text-sm">Каждая порода уникальна — текстура, цвет, история</p>
+            <p className="text-muted-foreground text-sm">Чем чаще и больше покупаете — тем выше категория породы</p>
           </div>
           <div className="space-y-3">
             {STAR_TIERS.map((tier) => (
@@ -162,6 +199,11 @@ const Promo = () => {
                       <span className={`font-bold text-sm ${tier.text}`}>{tier.label}</span>
                     </div>
                     <p className="text-xs text-muted-foreground mb-2 leading-relaxed">{tier.desc}</p>
+                    {tier.hint && (
+                      <p className="text-[11px] text-amber-700 bg-amber-100/60 rounded-lg px-2.5 py-1.5 mb-2 leading-relaxed">
+                        💡 {tier.hint}
+                      </p>
+                    )}
                     <div className="flex flex-wrap gap-1.5">
                       {tier.examples.map((name) => (
                         <span key={name} className="text-xs bg-white/70 border border-white/50 rounded-full px-2.5 py-0.5 font-medium text-stone-700">

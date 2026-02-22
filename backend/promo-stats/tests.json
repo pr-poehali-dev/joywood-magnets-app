@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Get promo stats",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"participants": "number", "total_magnets": "number"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
