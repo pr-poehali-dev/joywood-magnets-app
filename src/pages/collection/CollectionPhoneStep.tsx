@@ -272,10 +272,15 @@ const CollectionPhoneStep = ({
               )}
 
               {regError && (
-                <p className="text-sm text-red-600 flex items-center gap-1.5">
-                  <Icon name="AlertCircle" size={14} />
-                  {regError}
-                </p>
+                <div className="text-sm text-red-600 flex items-start gap-1.5">
+                  <Icon name="AlertCircle" size={14} className="shrink-0 mt-0.5" />
+                  <span>
+                    {regError.replace('+79277760036', '').trimEnd().replace(/по номеру$/, 'по номеру')}
+                    {regError.includes('+79277760036') && (
+                      <>{" "}<a href="tel:+79277760036" className="font-semibold underline hover:text-red-700 whitespace-nowrap">+7 927 776-00-36</a></>
+                    )}
+                  </span>
+                </div>
               )}
 
               <Button
