@@ -10,6 +10,7 @@ import CollectionDashboard from "./collection/CollectionDashboard";
 import CollectionBonusProgress from "./collection/CollectionBonusProgress";
 import CollectionBreedAtlas from "./collection/CollectionBreedAtlas";
 import MagnetRevealModal from "@/components/MagnetRevealModal";
+import LevelUpModal from "@/components/LevelUpModal";
 import Icon from "@/components/ui/icon";
 
 const LOOKUP_URL = "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6f26ec4";
@@ -39,6 +40,8 @@ const MyCollection = () => {
   const [justRegistered, setJustRegistered] = useState(false);
   const [scanResult, setScanResult] = useState<{ result: string; breed: string } | null>(null);
   const [revealModal, setRevealModal] = useState<{ breed: string; photoUrl?: string; stars: number; category: string } | null>(null);
+  const [levelUpModal, setLevelUpModal] = useState<number | null>(null);
+  const prevLevelRef = useRef<number | null>(null);
   const notFoundRef = useRef<HTMLDivElement>(null);
   const autoSearched = useRef(false);
   const scanBreed = searchParams.get("scan") || "";
@@ -295,6 +298,15 @@ const MyCollection = () => {
     }, 100);
   };
 
+  // Детектор повышения уровня
+  useEffect(() => {
+    const newLevel = data?.raccoon?.level ?? null;
+    if (newLevel !== null && prevLevelRef.current !== null && newLevel > prevLevelRef.current) {
+      setLevelUpModal(newLevel);
+    }
+    prevLevelRef.current = newLevel;
+  }, [data?.raccoon?.level]);
+
   // Мемоизируем тяжёлые вычисления — пересчитываются только при изменении data
   const collectedBreeds = useMemo(
     () => data ? new Set(data.magnets.map((m) => m.breed)) : new Set<string>(),
@@ -426,6 +438,13 @@ const MyCollection = () => {
         )}
       </div>
     </div>
+
+    {levelUpModal && (
+      <LevelUpModal
+        newLevel={levelUpModal}
+        onClose={() => setLevelUpModal(null)}
+      />
+    )}
 
     {revealModal && (
       <MagnetRevealModal

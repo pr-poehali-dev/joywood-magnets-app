@@ -88,6 +88,35 @@ def handler(event, context):
         unique_breeds = len(set(m['breed'] for m in magnets))
         total_in_transit = len(in_transit)
 
+        # XP и уровни Енота-мастера
+        XP_BY_STARS = {1: 10, 2: 25, 3: 50}
+        total_xp = sum(XP_BY_STARS.get(m['stars'], 0) for m in magnets)
+
+        LEVELS = [
+            (0,    1, 'Сборщик щепы',       3),
+            (50,   2, 'Сортировщик пород',  5),
+            (200,  3, 'Шлифовщик',          7),
+            (450,  4, 'Столяр на опыте',    10),
+            (800,  5, 'Хранитель секретов', 12),
+            (1000, 6, 'Резчик по легендам', 15),
+        ]
+        current_level_data = LEVELS[0]
+        for lvl in LEVELS:
+            if total_xp >= lvl[0]:
+                current_level_data = lvl
+        next_level_data = next((l for l in LEVELS if l[1] > current_level_data[1]), None)
+
+        level_num = current_level_data[1]
+        level_name = current_level_data[2]
+        empty_slots = current_level_data[3]
+        xp_current_floor = current_level_data[0]
+        xp_next_floor = next_level_data[0] if next_level_data else current_level_data[0]
+        xp_for_level = total_xp - xp_current_floor
+        xp_needed = xp_next_floor - xp_current_floor if next_level_data else 0
+
+        # Слоты = собрано + пустые (никогда меньше пустых по уровню)
+        total_slots = unique_breeds + empty_slots
+
         cv_formula = "COALESCE(SUM(CASE cm2.stars WHEN 1 THEN 150 WHEN 2 THEN 350 WHEN 3 THEN 700 ELSE 0 END), 0)"
 
         cur.execute("""
@@ -147,6 +176,16 @@ def handler(event, context):
             'in_transit': in_transit, 'total_in_transit': total_in_transit,
             'bonuses': bonuses,
             'inactive_breeds': list(inactive_breeds),
+            'raccoon': {
+                'xp': total_xp,
+                'level': level_num,
+                'level_name': level_name,
+                'xp_for_level': xp_for_level,
+                'xp_needed': xp_needed,
+                'empty_slots': empty_slots,
+                'total_slots': total_slots,
+                'is_max_level': next_level_data is None,
+            },
             'rating': {
                 'rank_magnets': rank_magnets,
                 'rank_value': rank_value,

@@ -37,6 +37,17 @@ export interface Rating {
   top_value: RatingEntry[];
 }
 
+export interface RaccoonData {
+  xp: number;
+  level: number;
+  level_name: string;
+  xp_for_level: number;
+  xp_needed: number;
+  empty_slots: number;
+  total_slots: number;
+  is_max_level: boolean;
+}
+
 export interface CollectionData {
   client_name: string;
   phone: string;
@@ -48,6 +59,7 @@ export interface CollectionData {
   bonuses: BonusRecord[];
   rating?: Rating;
   inactive_breeds?: string[];
+  raccoon?: RaccoonData;
 }
 
 export type Step = "phone" | "verify" | "collection";
