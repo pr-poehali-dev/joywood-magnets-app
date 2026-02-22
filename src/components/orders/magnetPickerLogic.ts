@@ -29,9 +29,18 @@ export const starBg: Record<number, string> = {
 };
 
 /**
+ * Возвращает активные породы по звёздности.
+ * activeBreeds = undefined означает "все активны" (обратная совместимость).
+ */
+function activeByStars(stars: number, activeBreeds?: Set<string>) {
+  const all = WOOD_BREEDS.filter((b) => b.stars === stars);
+  if (!activeBreeds) return all;
+  return all.filter((b) => activeBreeds.has(b.breed));
+}
+
+/**
  * Weighted random pick: чем больше остаток, тем выше шанс,
  * но с добавлением шума — так разным клиентам попадаются разные породы.
- * Из топ-N кандидатов выбирается случайный с вероятностью пропорциональной остатку + шум.
  */
 function weightedPick(
   candidates: PickedBreed[],
@@ -62,11 +71,17 @@ export function pickBreedsForOption(
   alreadyOwned: Set<string>,
   givenBreeds: Set<string>,
   inventory: Record<string, number>,
+  activeBreeds?: Set<string>,
 ): Array<PickedBreed | null> {
   const used = new Set<string>(givenBreeds);
   return slots.map((slot) => {
     const candidates: PickedBreed[] = WOOD_BREEDS
-      .filter((b) => b.stars === slot.stars && !alreadyOwned.has(b.breed) && !used.has(b.breed))
+      .filter((b) =>
+        b.stars === slot.stars &&
+        !alreadyOwned.has(b.breed) &&
+        !used.has(b.breed) &&
+        (!activeBreeds || activeBreeds.has(b.breed))
+      )
       .map((b) => ({ breed: b.breed, stars: b.stars, category: b.category, stock: inventory[b.breed] ?? 0 }))
       .filter((b) => b.stock > 0);
     const pick = weightedPick(candidates, used);
@@ -87,9 +102,7 @@ function optionWeight(option: RecommendedOption): number {
 }
 
 /**
- * Взвешенный случайный выбор индекса варианта:
- * ⭐ ~60%, ⭐⭐ ~30%, ⭐⭐⭐ ~10% (при наличии всех трёх).
- * При одном варианте — всегда возвращает 0.
+ * Взвешенный случайный выбор индекса варианта.
  */
 export function pickWeightedOptionIndex(options: RecommendedOption[]): number {
   if (options.length === 0) return 0;
@@ -107,35 +120,34 @@ export function pickWeightedOptionIndex(options: RecommendedOption[]): number {
 
 /**
  * Возвращает все допустимые варианты выдачи магнитов по правилам акции.
- * Каждый вариант — { label, slots[] }
+ * activeBreeds — множество активных пород (только они доступны для выдачи и считаются при проверке).
  */
 export function calcRecommendedOptions(
   orderAmount: number,
   isFirstOrder: boolean,
   clientTotal: number,
   alreadyOwned: Set<string>,
+  activeBreeds?: Set<string>,
 ): RecommendedOption[] {
   if (isFirstOrder) return [];
 
-  const allStar1 = WOOD_BREEDS.filter((b) => b.stars === 1);
-  const allStar2 = WOOD_BREEDS.filter((b) => b.stars === 2);
-  const allStar3 = WOOD_BREEDS.filter((b) => b.stars === 3);
+  const active1 = activeByStars(1, activeBreeds);
+  const active2 = activeByStars(2, activeBreeds);
+  const active3 = activeByStars(3, activeBreeds);
 
-  const collectedAll1 = allStar1.every((b) => alreadyOwned.has(b.breed));
-  const collectedAll2 = allStar2.every((b) => alreadyOwned.has(b.breed));
-  const collectedAll3 = allStar3.every((b) => alreadyOwned.has(b.breed));
+  const collectedAll1 = active1.length === 0 || active1.every((b) => alreadyOwned.has(b.breed));
+  const collectedAll2 = active2.length === 0 || active2.every((b) => alreadyOwned.has(b.breed));
+  const collectedAll3 = active3.length === 0 || active3.every((b) => alreadyOwned.has(b.breed));
 
-  if (collectedAll3) return [];
+  if (collectedAll1 && collectedAll2 && collectedAll3) return [];
 
   const canHave3star = clientTotal >= 10000;
 
-  // ≥10 000₽ заказ — гарантированно 1×3⭐ (если накопленная сумма тоже ≥10 000₽)
   if (orderAmount >= 10000) {
-    if (!canHave3star) return [{ label: "1 особенный ⭐⭐", slots: [{ stars: 2 }] }];
-    return [{ label: "1 элитный ⭐⭐⭐", slots: [{ stars: 3 }] }];
+    if (!canHave3star) return collectedAll2 ? [] : [{ label: "1 особенный ⭐⭐", slots: [{ stars: 2 }] }];
+    return collectedAll3 ? [] : [{ label: "1 элитный ⭐⭐⭐", slots: [{ stars: 3 }] }];
   }
 
-  // ≥7 000₽ — на выбор: 1×3⭐ / 2×2⭐ / 3×1⭐ (3⭐ только если clientTotal ≥ 10 000₽)
   if (orderAmount >= 7000) {
     const opts: RecommendedOption[] = [];
     if (canHave3star && !collectedAll3) opts.push({ label: "1 элитный ⭐⭐⭐", slots: [{ stars: 3 }] });
@@ -162,7 +174,6 @@ export function calcRecommendedOptions(
 
 /**
  * Проверяет набор выданных менеджером магнитов на соответствие правилам.
- * Возвращает null если всё ок, или строку с описанием нарушения.
  */
 export function validateGiven(
   given: GivenMagnet[],
@@ -170,10 +181,11 @@ export function validateGiven(
   isFirstOrder: boolean,
   clientTotal: number,
   alreadyOwned: Set<string>,
+  activeBreeds?: Set<string>,
 ): string | null {
   if (isFirstOrder || given.length === 0) return null;
 
-  const options = calcRecommendedOptions(orderAmount, isFirstOrder, clientTotal, alreadyOwned);
+  const options = calcRecommendedOptions(orderAmount, isFirstOrder, clientTotal, alreadyOwned, activeBreeds);
   if (options.length === 0) return null;
 
   const givenStars = given.map((g) => g.stars).sort();
@@ -186,9 +198,7 @@ export function validateGiven(
     return `Магнит ⭐⭐⭐ доступен только при общей сумме заказов клиента ≥ 10 000 ₽ (сейчас ${clientTotal.toLocaleString("ru-RU")} ₽).`;
   }
 
-  // Минимально допустимое количество магнитов — минимум по всем вариантам
   const minAllowed = Math.min(...options.map((o) => o.slots.length));
-  // Максимально допустимое — максимум по всем вариантам
   const maxAllowed = Math.max(...options.map((o) => o.slots.length));
 
   if (givenCount < minAllowed) {
@@ -198,7 +208,6 @@ export function validateGiven(
     return `По правилам акции при этой сумме заказа полагается максимум ${maxAllowed} магн., выдано ${givenCount}.`;
   }
 
-  // Проверяем, подходит ли набор хотя бы под один из допустимых вариантов по звёздам
   const matchesAnyOption = options.some((opt) => {
     const slotStars = opt.slots.map((s) => s.stars).sort();
     return (

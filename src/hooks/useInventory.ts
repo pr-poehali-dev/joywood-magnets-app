@@ -5,6 +5,7 @@ export interface InventoryItem {
   stars: number;
   category: string;
   stock: number;
+  active: boolean;
 }
 
 export type InventoryMap = Record<string, InventoryItem>;
@@ -15,7 +16,7 @@ interface UseInventoryResult {
   stockMap: InventoryStockMap;
   loading: boolean;
   reload: () => void;
-  setStockForBreed: (breed: string, stock: number) => void;
+  setStockForBreed: (breed: string, stock?: number, active?: boolean) => void;
   decrementStock: (breed: string) => void;
   incrementStock: (breed: string) => void;
 }
@@ -39,10 +40,14 @@ export function useInventory(): UseInventoryResult {
     Object.entries(inventory).map(([breed, info]) => [breed, info.stock])
   );
 
-  const setStockForBreed = useCallback((breed: string, stock: number) => {
+  const setStockForBreed = useCallback((breed: string, stock?: number, active?: boolean) => {
     setInventory((prev) => ({
       ...prev,
-      [breed]: { ...prev[breed], stock },
+      [breed]: {
+        ...prev[breed],
+        ...(stock !== undefined ? { stock } : {}),
+        ...(active !== undefined ? { active } : {}),
+      },
     }));
   }, []);
 

@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { STAR_LABELS, WOOD_BREEDS } from "@/lib/store";
 import { CollectionData } from "./types";
 
+// Используется только как запасное значение, реальный total передаётся через props
 const TOTAL_BREEDS = WOOD_BREEDS.length;
 
 const STAR_BG: Record<number, string> = {
@@ -16,15 +17,17 @@ interface Props {
   sortedBreeds: typeof WOOD_BREEDS;
   collectedBreeds: Set<string>;
   breedPhotos: Record<string, string>;
+  totalVisible?: number;
 }
 
-const CollectionBreedAtlas = ({ data, sortedBreeds, collectedBreeds, breedPhotos }: Props) => {
+const CollectionBreedAtlas = ({ data, sortedBreeds, collectedBreeds, breedPhotos, totalVisible }: Props) => {
+  const total = totalVisible ?? TOTAL_BREEDS;
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Icon name="Map" size={18} className="text-orange-500" />
-          Атлас пород — {data.unique_breeds}/{TOTAL_BREEDS}
+          Атлас пород — {data.unique_breeds}/{total}
         </CardTitle>
       </CardHeader>
       <CardContent>

@@ -27,7 +27,12 @@ interface Props {
 }
 
 const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirstOrder, isRegistered, pendingBonuses, onDone }: Props) => {
-  const { stockMap: inventory, decrementStock, incrementStock } = useInventory();
+  const { inventory: inventoryFull, stockMap: inventory, decrementStock, incrementStock } = useInventory();
+
+  const activeBreeds = useMemo(
+    () => new Set(Object.entries(inventoryFull).filter(([, v]) => v.active).map(([k]) => k)),
+    [inventoryFull]
+  );
   const [alreadyOwned, setAlreadyOwned] = useState<Set<string>>(new Set());
   const [alreadyOwnedLoaded, setAlreadyOwnedLoaded] = useState(false);
   const [clientTotal, setClientTotal] = useState(0);
@@ -97,7 +102,11 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
   const givenBreeds = new Set(given.map((g) => g.breed));
 
   const availableBreeds = WOOD_BREEDS
-    .filter((b) => !givenBreeds.has(b.breed) && !alreadyOwned.has(b.breed))
+    .filter((b) =>
+      !givenBreeds.has(b.breed) &&
+      !alreadyOwned.has(b.breed) &&
+      (activeBreeds.size === 0 || activeBreeds.has(b.breed))
+    )
     .map((b) => ({ ...b, stock: inventory[b.breed] ?? 0 }))
     .sort((a, b) => b.stock - a.stock);
 
@@ -106,8 +115,8 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
     : availableBreeds;
 
   const recommendedOptions = useMemo(
-    () => calcRecommendedOptions(orderAmount, isFirstOrder, clientTotal, alreadyOwned),
-    [orderAmount, isFirstOrder, clientTotal, alreadyOwned]
+    () => calcRecommendedOptions(orderAmount, isFirstOrder, clientTotal, alreadyOwned, activeBreeds),
+    [orderAmount, isFirstOrder, clientTotal, alreadyOwned, activeBreeds]
   );
 
   // Пересчитываем рекомендованный вариант при перетасовке или смене числа доступных вариантов
@@ -207,7 +216,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
 
   const handleConfirm = async () => {
     const allToGive = [...given, ...pendingPicks.map((p, i) => ({ id: i, breed: p.breed, stars: p.stars }))];
-    const warning = validateGiven(allToGive, orderAmount, isFirstOrder, clientTotal, alreadyOwned);
+    const warning = validateGiven(allToGive, orderAmount, isFirstOrder, clientTotal, alreadyOwned, activeBreeds);
     if (warning) {
       setValidationWarning(warning);
       return;
@@ -355,6 +364,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
                 givenBreeds={givenBreeds}
                 alreadyOwned={alreadyOwned}
                 inventory={inventory}
+                activeBreeds={activeBreeds}
                 recommendedOptions={recommendedOptions}
                 recommendedIndex={recommendedIndex}
                 reshuffleKey={reshuffleKey}

@@ -43,6 +43,9 @@ def handler(event, context):
             for r in cur.fetchall()
         ]
 
+        cur.execute("SELECT breed FROM magnet_inventory WHERE active = false")
+        inactive_breeds = set(r[0] for r in cur.fetchall())
+
         cur.execute(
             "SELECT id, milestone_count, milestone_type, reward, given_at FROM bonuses "
             "WHERE registration_id = %d ORDER BY given_at DESC" % reg[0]
@@ -112,6 +115,7 @@ def handler(event, context):
             'magnets': magnets, 'total_magnets': total_magnets,
             'unique_breeds': unique_breeds,
             'bonuses': bonuses,
+            'inactive_breeds': list(inactive_breeds),
             'rating': {
                 'rank_magnets': rank_magnets,
                 'rank_value': rank_value,

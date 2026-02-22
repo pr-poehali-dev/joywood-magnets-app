@@ -15,6 +15,7 @@ interface Props {
   alreadyOwnedSize: number;
   reshuffleKey: number;
   pendingBreeds: Set<string>;
+  activeBreeds?: Set<string>;
   onGive: (pick: PickedBreed) => void;
   onGiveAll: (picks: Array<PickedBreed | null>) => void;
   onReshuffle: () => void;
@@ -33,6 +34,7 @@ const MagnetRecommendations = ({
   giving,
   alreadyOwnedSize,
   reshuffleKey,
+  activeBreeds,
   onGive,
   onGiveAll,
   onReshuffle,
@@ -63,7 +65,7 @@ const MagnetRecommendations = ({
     prevKeyRef.current = reshuffleKey;
     prevOptionsLenRef.current = options.length;
     allPicksRef.current = options.map((opt) =>
-      pickBreedsForOption(opt.slots, alreadyOwned, alreadyOwned, inventory)
+      pickBreedsForOption(opt.slots, alreadyOwned, alreadyOwned, inventory, activeBreeds)
     );
   }
 

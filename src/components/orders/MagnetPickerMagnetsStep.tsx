@@ -24,6 +24,7 @@ interface Props {
   givenBreeds: Set<string>;
   alreadyOwned: Set<string>;
   inventory: Record<string, number>;
+  activeBreeds?: Set<string>;
   recommendedOptions: RecommendedOption[];
   recommendedIndex: number;
   reshuffleKey: number;
@@ -62,6 +63,7 @@ const MagnetPickerMagnetsStep = ({
   givenBreeds,
   alreadyOwned,
   inventory,
+  activeBreeds,
   recommendedOptions,
   recommendedIndex,
   reshuffleKey,
@@ -129,6 +131,7 @@ const MagnetPickerMagnetsStep = ({
           giving={giving}
           alreadyOwnedSize={alreadyOwned.size}
           reshuffleKey={reshuffleKey}
+          activeBreeds={activeBreeds}
           onGive={(pick) => onSelectPick(pick.breed, pick.stars, pick.category)}
           onGiveAll={(picks) => onSelectAll(picks)}
           onReshuffle={onReshuffle}

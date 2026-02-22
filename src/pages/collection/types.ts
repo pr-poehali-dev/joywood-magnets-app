@@ -37,6 +37,7 @@ export interface CollectionData {
   unique_breeds: number;
   bonuses: BonusRecord[];
   rating?: Rating;
+  inactive_breeds?: string[];
 }
 
 export type Step = "phone" | "verify" | "collection";

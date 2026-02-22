@@ -14,8 +14,8 @@ def handler(event, context):
         conn = db()
         try:
             cur = conn.cursor()
-            cur.execute("SELECT breed, stars, category, stock FROM magnet_inventory ORDER BY stars, breed")
-            inventory = {r[0]: {'stars': r[1], 'category': r[2], 'stock': r[3]} for r in cur.fetchall()}
+            cur.execute("SELECT breed, stars, category, stock, active FROM magnet_inventory ORDER BY stars, breed")
+            inventory = {r[0]: {'stars': r[1], 'category': r[2], 'stock': r[3], 'active': r[4]} for r in cur.fetchall()}
             return ok({'inventory': inventory})
         finally:
             conn.close()
@@ -60,6 +60,25 @@ def handler(event, context):
 
     if method == 'PUT':
         body = json.loads(event.get('body') or '{}')
+
+        # Переключение активности одной породы
+        if body.get('action') == 'toggle_active':
+            breed = (body.get('breed') or '').strip()
+            active = body.get('active')
+            if not breed or active is None:
+                return err('Укажите breed и active')
+            conn = db()
+            try:
+                cur = conn.cursor()
+                cur.execute(
+                    "UPDATE magnet_inventory SET active = %s, updated_at = now() WHERE breed = '%s'"
+                    % ('true' if active else 'false', breed.replace("'", "''"))
+                )
+                conn.commit()
+                return ok({'ok': True, 'breed': breed, 'active': active})
+            finally:
+                conn.close()
+
         items = body.get('items')
         if not items or not isinstance(items, list):
             return err('Укажите items — массив {breed, stars, category, stock}')
@@ -148,9 +167,11 @@ def handler(event, context):
             if cur.fetchone():
                 return err('Порода «%s» уже есть в коллекции этого клиента' % breed, 409)
 
-            cur.execute("SELECT stock FROM magnet_inventory WHERE breed = '%s'" % breed.replace("'", "''"))
+            cur.execute("SELECT stock, active FROM magnet_inventory WHERE breed = '%s'" % breed.replace("'", "''"))
             inv_row = cur.fetchone()
             current_stock = inv_row[0] if inv_row else 0
+            if inv_row and not inv_row[1]:
+                return err('Магнит «%s» снят с участия в акции' % breed)
             if inv_row and current_stock <= 0:
                 return err('Магнит «%s» закончился на складе (остаток: 0)' % breed)
 
@@ -182,7 +203,7 @@ def handler(event, context):
             conn.commit()
             return ok({
                 'id': row[0], 'given_at': str(row[1]), 'breed': breed,
-                'stars': int(stars), 'stock_after': max(current_stock - 1, 0) if inv_row else None,
+                'stars': int(stars), 'stock_after': max(inv_row[0] - 1, 0) if inv_row else None,
             })
         finally:
             conn.close()

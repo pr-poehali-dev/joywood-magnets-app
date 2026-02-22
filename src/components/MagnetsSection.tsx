@@ -33,6 +33,7 @@ const MagnetsSection = () => {
   const [photosLoading, setPhotosLoading] = useState(false);
   const [uploadingBreed, setUploadingBreed] = useState<string | null>(null);
   const [deletingBreed, setDeletingBreed] = useState<string | null>(null);
+  const [togglingBreed, setTogglingBreed] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingBreedRef = useRef<string | null>(null);
 
@@ -164,6 +165,24 @@ const MagnetsSection = () => {
     }
   }, []);
 
+  const handleToggleActive = useCallback(async (breed: string, active: boolean) => {
+    setTogglingBreed(breed);
+    try {
+      const res = await fetch(GIVE_MAGNET_URL, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "toggle_active", breed, active }),
+      });
+      if (!res.ok) throw new Error("Ошибка");
+      setStockForBreed(breed, undefined, active);
+      toast.success(active ? `«${breed}» возвращён в акцию` : `«${breed}» отправлен в архив`);
+    } catch {
+      toast.error("Не удалось изменить статус");
+    } finally {
+      setTogglingBreed(null);
+    }
+  }, [setStockForBreed]);
+
   const handleDeletePhoto = useCallback(async (breed: string) => {
     setDeletingBreed(breed);
     try {
@@ -233,8 +252,11 @@ const MagnetsSection = () => {
           photosLoading={photosLoading}
           uploadingBreed={uploadingBreed}
           deletingBreed={deletingBreed}
+          togglingBreed={togglingBreed}
+          inventory={inventory}
           onUploadClick={(breed) => { pendingBreedRef.current = breed; fileInputRef.current?.click(); }}
           onDeletePhoto={handleDeletePhoto}
+          onToggleActive={handleToggleActive}
         />
       )}
 

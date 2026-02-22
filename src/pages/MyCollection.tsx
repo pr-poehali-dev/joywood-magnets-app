@@ -134,15 +134,21 @@ const MyCollection = () => {
 
   const collectedBreeds = data ? new Set(data.magnets.map((m) => m.breed)) : new Set<string>();
   const collectedOrder = data ? data.magnets.map((m) => m.breed) : [];
+  const inactiveBreeds = data?.inactive_breeds ? new Set(data.inactive_breeds) : new Set<string>();
+
+  // Неактивные породы скрываем, если клиент их не получал
+  const visibleBreeds = WOOD_BREEDS.filter(
+    (b) => !inactiveBreeds.has(b.breed) || collectedBreeds.has(b.breed)
+  );
 
   const sortedBreeds = data
     ? [
-        ...WOOD_BREEDS.filter((b) => collectedBreeds.has(b.breed)).sort(
+        ...visibleBreeds.filter((b) => collectedBreeds.has(b.breed)).sort(
           (a, b) => collectedOrder.indexOf(a.breed) - collectedOrder.indexOf(b.breed)
         ),
-        ...WOOD_BREEDS.filter((b) => !collectedBreeds.has(b.breed)),
+        ...visibleBreeds.filter((b) => !collectedBreeds.has(b.breed)),
       ]
-    : WOOD_BREEDS;
+    : visibleBreeds;
 
   return (
     <div className="min-h-screen bg-white px-4 py-8">
@@ -184,6 +190,7 @@ const MyCollection = () => {
               sortedBreeds={sortedBreeds}
               collectedBreeds={collectedBreeds}
               breedPhotos={breedPhotos}
+              totalVisible={visibleBreeds.length}
             />
           </div>
         )}
