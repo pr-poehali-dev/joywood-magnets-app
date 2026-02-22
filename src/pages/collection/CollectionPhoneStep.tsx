@@ -161,7 +161,12 @@ const CollectionPhoneStep = ({
                   onChange={(e) => setOzonCode(e.target.value)}
                   className="bg-white border-blue-200 focus:border-blue-400 font-mono"
                 />
-                <p className="text-[11px] text-blue-600">Номер заказа указан в приложении Ozon в разделе «Мои заказы»</p>
+                <p className="text-[11px] text-blue-600">Номер заказа указан в приложении Ozon в разделе «Мои заказы» — он выделен зелёной рамкой:</p>
+                <img
+                  src="https://cdn.poehali.dev/projects/d4862cdc-db07-4efa-aa4f-e8229141eeb3/bucket/86724393-e12b-46b0-9cb5-6e194e8c0824.png"
+                  alt="Где найти номер заказа в Ozon"
+                  className="w-full rounded-lg border border-blue-100 mt-1"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm text-blue-900">Номер телефона</Label>
