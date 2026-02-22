@@ -53,7 +53,7 @@ const Promo = () => {
               alt="Joywood"
               className="w-8 h-8 object-contain rounded"
             />
-            <span className="font-semibold text-sm text-foreground">Joywood</span>
+            <span className="font-semibold text-sm text-gold-500">Joywood</span>
           </div>
           <a
             href="https://joywood.store/shop"
@@ -85,10 +85,10 @@ const Promo = () => {
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight">
             Собери коллекцию<br />
-            <span className="text-gold-300">ценных пород дерева</span>
+            <span className="text-gold-300">образцов столярных пород древесины</span>
           </h1>
           <p className="text-stone-300 text-base leading-relaxed max-w-md mx-auto">
-            С каждым заказом Joywood вы получаете магнит из настоящей ценной породы дерева. Десятки уникальных экземпляров — от привычного дуба до экзотического лайсвуда
+            С каждым заказом Joywood вы получаете магнит из настоящей, иногда даже очень редкой породы древесины. Десятки уникальных экземпляров — от привычного дуба до экзотического лайсвуда
           </p>
         </div>
       </div>
@@ -102,9 +102,9 @@ const Promo = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[
-            { icon: "ShoppingBag", step: "1", title: "Делаете заказ", desc: "Покупаете изделия Joywood на Ozon или на сайте", color: "bg-blue-50 text-blue-600 border-blue-100" },
-            { icon: "Gift", step: "2", title: "Получаете магнит", desc: "Вместе с заказом приходит магнит из ценной породы дерева", color: "bg-amber-50 text-amber-600 border-amber-100" },
-            { icon: "QrCode", step: "3", title: "Сканируете QR-код", desc: "Сканируете QR-код магнита и отслеживаете свой прогресс в акции", color: "bg-purple-50 text-purple-600 border-purple-100" },
+            { icon: "ShoppingBag", step: "1", title: "Делаете заказ", desc: "Покупаете товары Joywood на Ozon или на сайте", color: "bg-blue-50 text-blue-600 border-blue-100" },
+            { icon: "Gift", step: "2", title: "Получаете магнит", desc: "Вместе с заказом приходит магнит из настоящей ценной породы дерева", color: "bg-amber-50 text-amber-600 border-amber-100" },
+            { icon: "QrCode", step: "3", title: "Сканируете QR-код", desc: "Отслеживаете прогресс в акции и узнаёте интересное о каждой породе", color: "bg-purple-50 text-purple-600 border-purple-100" },
             { icon: "Trophy", step: "4", title: "Копите подарки", desc: "Достигайте рубежей и получайте ценные подарки для мастера", color: "bg-green-50 text-green-600 border-green-100" },
           ].map((item) => (
             <div key={item.step} className={`rounded-2xl border p-5 space-y-3 ${item.color}`}>
@@ -120,6 +120,28 @@ const Promo = () => {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Competition & social */}
+      <div className="bg-gradient-to-r from-gold-50 to-amber-50 border-y border-gold-100 py-10">
+        <div className="max-w-2xl mx-auto px-4 space-y-6">
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-bold text-foreground">Соревнуйтесь и делитесь</h2>
+            <p className="text-muted-foreground text-sm">Кто соберёт больше — тот и в лидерах</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-white rounded-2xl border border-gold-200 p-5 space-y-2">
+              <div className="text-2xl">🏅</div>
+              <p className="font-semibold text-sm text-foreground">Рейтинг мастеров</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">Смотрите, кто из мастеров впереди, и соревнуйтесь за первые места в таблице лидеров</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gold-200 p-5 space-y-2">
+              <div className="text-2xl">🎁</div>
+              <p className="font-semibold text-sm text-foreground">Бонус за репост</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">Поделитесь своим прогрессом в соцсетях — получите дополнительный подарок от Joywood</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -219,7 +241,7 @@ const Promo = () => {
               alt="Joywood"
               className="w-6 h-6 object-contain rounded opacity-70"
             />
-            <span className="text-stone-500 text-xs">© Joywood — изделия из ценных пород дерева</span>
+            <span className="text-stone-500 text-xs">© Joywood — материалы для творчества и столярного дела</span>
           </div>
           <a href="https://joywood.store" target="_blank" rel="noopener noreferrer" className="text-stone-500 text-xs hover:text-stone-300 transition-colors">
             joywood.store
