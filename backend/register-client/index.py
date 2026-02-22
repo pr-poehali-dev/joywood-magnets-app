@@ -59,13 +59,18 @@ def handler(event, context):
                     conn.commit()
                     merged = True
                 else:
-                    # Код Ozon не найден среди незарегистрированных — логируем
+                    # Код Ozon не найден среди незарегистрированных — логируем и возвращаем ошибку
                     cur.execute(
                         "INSERT INTO t_p65563100_joywood_magnets_app.lookup_log "
                         "(phone, event, details) VALUES ('%s', 'ozon_code_not_matched', '%s')"
                         % (phone.replace("'", "''"), ozon_order_code.replace("'", "''"))
                     )
                     conn.commit()
+                    return err(
+                        'К сожалению, система не нашла ваши заказы — возможно, они ещё не были совершены. '
+                        'Если это не так, для выяснения свяжитесь с нами по номеру +79277760036',
+                        404
+                    )
 
         if not merged:
             # Проверяем, существует ли уже клиент с таким телефоном
