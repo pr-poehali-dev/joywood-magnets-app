@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { loadWidgetAssets } from "@/components/ui/phone-verify-widget";
 import { WOOD_BREEDS } from "@/lib/store";
 import { toast } from "sonner";
 import { usePhoneInput } from "@/hooks/usePhoneInput";
-import { CollectionData, Step, SESSION_KEY, saveSession, loadSession } from "./collection/types";
+import { CollectionData, Step, saveSession, loadSession } from "./collection/types";
 import CollectionPhoneStep from "./collection/CollectionPhoneStep";
 import CollectionDashboard from "./collection/CollectionDashboard";
 import CollectionBonusProgress from "./collection/CollectionBonusProgress";
@@ -16,8 +16,17 @@ const LOOKUP_URL = "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6
 const BREED_PHOTOS_URL = "https://functions.poehali.dev/264a19bd-40c8-4203-a8cd-9f3709bedcee";
 const SETTINGS_URL = "https://functions.poehali.dev/8d9bf70e-b9a7-466a-a2e0-7e510754dde1";
 const SAVE_CONSENT_URL = "https://functions.poehali.dev/abee8bc8-7d35-4fe6-88d2-d62e1faec0c5";
-
 const SCAN_URL = "https://functions.poehali.dev/a1fcc017-69d2-46bf-95cc-a735deda6c26";
+
+// Модульный кэш фото — загружается один раз за сессию страницы
+let photosCache: Record<string, string> | null = null;
+const getBreedPhotos = async (): Promise<Record<string, string>> => {
+  if (photosCache) return photosCache;
+  const res = await fetch(BREED_PHOTOS_URL);
+  const data = await res.json();
+  photosCache = data.photos || {};
+  return photosCache!;
+};
 
 const MyCollection = () => {
   const [searchParams] = useSearchParams();
@@ -42,6 +51,7 @@ const MyCollection = () => {
   const [pendingPhone, setPendingPhone] = useState("");
   const [pendingPolicyVersion, setPendingPolicyVersion] = useState("");
 
+  // Загружаем настройки параллельно с фото — не ждём друг друга
   useEffect(() => {
     fetch(SETTINGS_URL)
       .then((r) => r.json())
@@ -51,6 +61,9 @@ const MyCollection = () => {
         setPolicyUrl(s.privacy_policy_url || "");
       })
       .catch(() => {});
+
+    // Прогреваем кэш фото сразу при загрузке страницы
+    getBreedPhotos().catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -59,24 +72,23 @@ const MyCollection = () => {
       setData(session.data);
       setBreedPhotos(session.photos);
       setStep("collection");
-      const phone = session.phone;
-      // Всегда обновляем данные с сервера в фоне (чтобы новые in_transit магниты появлялись сразу)
+      const sessionPhone = session.phone;
+
       const tryFetchFresh = (attempt = 1): void => {
         Promise.all([
-          fetch(LOOKUP_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone }) }).then((r) => r.json()),
-          fetch(BREED_PHOTOS_URL).then((r) => r.json()),
+          fetch(LOOKUP_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: sessionPhone }) }).then((r) => r.json()),
+          getBreedPhotos(),
         ])
-          .then(([freshData, photosData]) => {
-            const photos = photosData.photos || {};
+          .then(([freshData, photos]) => {
             if (freshData && !freshData.error) {
               setData(freshData);
               setBreedPhotos(photos);
-              saveSession(phone, freshData, photos);
+              saveSession(sessionPhone, freshData, photos);
             } else if (attempt < 3) {
               setTimeout(() => tryFetchFresh(attempt + 1), 1000);
             } else {
               setBreedPhotos(photos);
-              saveSession(phone, session.data, photos);
+              saveSession(sessionPhone, session.data, photos);
             }
           })
           .catch(() => {
@@ -84,11 +96,12 @@ const MyCollection = () => {
           });
       };
       tryFetchFresh();
+
       if (scanBreed) {
         fetch(SCAN_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone, breed: scanBreed }),
+          body: JSON.stringify({ phone: sessionPhone, breed: scanBreed }),
         })
           .then((r) => r.json())
           .then((scanData) => {
@@ -96,12 +109,12 @@ const MyCollection = () => {
               fetch(LOOKUP_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phone }),
+                body: JSON.stringify({ phone: sessionPhone }),
               })
                 .then((r) => r.json())
                 .then((refreshed) => {
                   setData(refreshed);
-                  saveSession(phone, refreshed, session.photos);
+                  saveSession(sessionPhone, refreshed, session.photos);
                   const breedInfo = WOOD_BREEDS.find((b) => b.breed === scanBreed);
                   setRevealModal({
                     breed: scanBreed,
@@ -121,22 +134,18 @@ const MyCollection = () => {
   const doSearch = useCallback(async (searchPhone: string, isNewRegistration = false) => {
     setLoading(true);
     try {
-      const [res, photosRes] = await Promise.all([
+      const [res, photos] = await Promise.all([
         fetch(LOOKUP_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ phone: searchPhone }),
-        }),
-        fetch(BREED_PHOTOS_URL),
+        }).then((r) => r.json()),
+        getBreedPhotos(),
       ]);
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Ошибка загрузки");
-      const photosData = await photosRes.json();
-      const photos = photosData.photos || {};
-      console.log('[JW] lookup result:', JSON.stringify({ total_magnets: result.total_magnets, in_transit_count: result.in_transit?.length, in_transit: result.in_transit }));
+      if (res.error) throw new Error(res.error || "Ошибка загрузки");
       setBreedPhotos(photos);
-      setData(result);
-      saveSession(searchPhone, result, photos);
+      setData(res);
+      saveSession(searchPhone, res, photos);
       if (isNewRegistration) setJustRegistered(true);
       setStep("collection");
       if (scanBreed) {
@@ -183,7 +192,8 @@ const MyCollection = () => {
       await doSearch(searchPhone);
       return;
     }
-    await loadWidgetAssets();
+    // Загружаем виджет без await — параллельно с переходом на шаг верификации
+    loadWidgetAssets().catch(() => {});
     setVerifiedPhone(searchPhone);
     setStep("verify");
   }, [verificationEnabled, doSearch]);
@@ -259,7 +269,7 @@ const MyCollection = () => {
   };
 
   const handleReset = () => {
-    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem("jw_collection_session_v2");
     setData(null);
     setStep("phone");
     setNotFound(false);
@@ -285,22 +295,32 @@ const MyCollection = () => {
     }, 100);
   };
 
-  const collectedBreeds = data ? new Set(data.magnets.map((m) => m.breed)) : new Set<string>();
-  const collectedOrder = data ? data.magnets.map((m) => m.breed) : [];
-  const inactiveBreeds = data?.inactive_breeds ? new Set(data.inactive_breeds) : new Set<string>();
-
-  const visibleBreeds = WOOD_BREEDS.filter(
-    (b) => !inactiveBreeds.has(b.breed) || collectedBreeds.has(b.breed)
+  // Мемоизируем тяжёлые вычисления — пересчитываются только при изменении data
+  const collectedBreeds = useMemo(
+    () => data ? new Set(data.magnets.map((m) => m.breed)) : new Set<string>(),
+    [data]
   );
-
-  const sortedBreeds = data
-    ? [
-        ...visibleBreeds.filter((b) => collectedBreeds.has(b.breed)).sort(
-          (a, b) => collectedOrder.indexOf(a.breed) - collectedOrder.indexOf(b.breed)
-        ),
-        ...visibleBreeds.filter((b) => !collectedBreeds.has(b.breed)),
-      ]
-    : visibleBreeds;
+  const collectedOrder = useMemo(
+    () => data ? data.magnets.map((m) => m.breed) : [],
+    [data]
+  );
+  const inactiveBreeds = useMemo(
+    () => data?.inactive_breeds ? new Set(data.inactive_breeds) : new Set<string>(),
+    [data]
+  );
+  const visibleBreeds = useMemo(
+    () => WOOD_BREEDS.filter((b) => !inactiveBreeds.has(b.breed) || collectedBreeds.has(b.breed)),
+    [inactiveBreeds, collectedBreeds]
+  );
+  const sortedBreeds = useMemo(() => {
+    if (!data) return visibleBreeds;
+    return [
+      ...visibleBreeds.filter((b) => collectedBreeds.has(b.breed)).sort(
+        (a, b) => collectedOrder.indexOf(a.breed) - collectedOrder.indexOf(b.breed)
+      ),
+      ...visibleBreeds.filter((b) => !collectedBreeds.has(b.breed)),
+    ];
+  }, [data, visibleBreeds, collectedBreeds, collectedOrder]);
 
   return (
     <>
@@ -424,6 +444,5 @@ const MyCollection = () => {
     </>
   );
 };
-
 
 export default MyCollection;

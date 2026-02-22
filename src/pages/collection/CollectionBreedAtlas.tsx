@@ -83,6 +83,8 @@ const CollectionBreedAtlas = ({ data, sortedBreeds, collectedBreeds, breedPhotos
                       <img
                         src={photoUrl}
                         alt={breed.breed}
+                        loading="lazy"
+                        decoding="async"
                         className={`w-full h-full object-cover ${!collected ? "grayscale opacity-50" : ""}`}
                       />
                       {!collected && (
