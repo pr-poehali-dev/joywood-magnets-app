@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { loadWidgetAssets } from "@/components/ui/phone-verify-widget";
 import { WOOD_BREEDS } from "@/lib/store";
+import { loadRaccoonAssets } from "@/lib/raccoon";
 import { toast } from "sonner";
 import { usePhoneInput } from "@/hooks/usePhoneInput";
 import { CollectionData, Step, saveSession, loadSession } from "./collection/types";
@@ -65,8 +66,9 @@ const MyCollection = () => {
       })
       .catch(() => {});
 
-    // Прогреваем кэш фото сразу при загрузке страницы
+    // Прогреваем кэш фото и активы Енота параллельно
     getBreedPhotos().catch(() => {});
+    loadRaccoonAssets().catch(() => {});
   }, []);
 
   useEffect(() => {

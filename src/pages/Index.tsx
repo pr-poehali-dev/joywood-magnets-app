@@ -8,6 +8,7 @@ import RecentRegistrations from "@/components/RecentRegistrations";
 import AdminGuard from "@/components/AdminGuard";
 import AnalyticsSection from "@/components/AnalyticsSection";
 import SettingsSection from "@/components/SettingsSection";
+import RaccoonSection from "@/components/RaccoonSection";
 
 const tabsList = [
   { value: "orders", label: "Заказы", icon: "ShoppingCart" },
@@ -15,6 +16,7 @@ const tabsList = [
   { value: "registrations", label: "Регистрации", icon: "UserCheck" },
   { value: "magnets", label: "Магниты", icon: "Magnet" },
   { value: "analytics", label: "Аналитика", icon: "TrendingUp" },
+  { value: "raccoon", label: "Енот", icon: "Squirrel" },
   { value: "settings", label: "Настройки", icon: "Settings" },
 ];
 
@@ -102,6 +104,9 @@ const Index = () => {
           </TabsContent>
           <TabsContent value="analytics">
             <AnalyticsSection onNavigateToClient={navigateToClient} />
+          </TabsContent>
+          <TabsContent value="raccoon">
+            <RaccoonSection />
           </TabsContent>
           <TabsContent value="settings">
             <SettingsSection />
