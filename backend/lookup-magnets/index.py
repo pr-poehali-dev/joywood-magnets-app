@@ -29,6 +29,11 @@ def handler(event, context):
         reg = cur.fetchone()
 
         if not reg:
+            cur.execute(
+                "INSERT INTO t_p65563100_joywood_magnets_app.lookup_log (phone, event, details) "
+                "VALUES ('%s', 'not_found', NULL)" % raw_phone.replace("'", "''")
+            )
+            conn.commit()
             return err('Участник с таким номером не найден. Сначала зарегистрируйтесь в акции.', 404)
 
         if body.get('check_only'):

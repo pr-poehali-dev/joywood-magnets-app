@@ -28,6 +28,12 @@ def handler(event, context):
     if action == 'list':
         return _get_registrations_list()
 
+    if action == 'attention_clients':
+        return _get_attention_clients()
+
+    if action == 'lookup_log':
+        return _get_lookup_log(params)
+
     return _get_clients()
 
 
@@ -155,6 +161,68 @@ def _get_orders():
             for r in cur.fetchall()
         ]
         return ok({'orders': orders})
+    finally:
+        conn.close()
+
+
+def _get_attention_clients():
+    """Клиенты зарегистрированные через Ozon-форму, но без магнитов (нужно внимание менеджера)"""
+    conn = db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT r.id, r.name, r.phone, r.ozon_order_code, r.created_at, "
+            "COUNT(cm.id) as magnet_count, COUNT(o.id) as order_count "
+            "FROM t_p65563100_joywood_magnets_app.registrations r "
+            "LEFT JOIN t_p65563100_joywood_magnets_app.client_magnets cm ON cm.registration_id = r.id "
+            "LEFT JOIN t_p65563100_joywood_magnets_app.orders o ON o.registration_id = r.id "
+            "WHERE r.registered = TRUE "
+            "GROUP BY r.id "
+            "HAVING COUNT(cm.id) = 0 "
+            "ORDER BY r.created_at DESC"
+        )
+        items = [
+            {
+                'id': r[0], 'name': r[1], 'phone': r[2],
+                'ozon_order_code': r[3] or '',
+                'created_at': str(r[4]),
+                'magnet_count': int(r[5]),
+                'order_count': int(r[6]),
+            }
+            for r in cur.fetchall()
+        ]
+        return ok({'clients': items, 'total': len(items)})
+    finally:
+        conn.close()
+
+
+def _get_lookup_log(params):
+    """Лог поисков: не найденные номера и события регистрации"""
+    limit = min(int(params.get('limit', 100)), 500)
+    event_filter = params.get('event', '')
+    conn = db()
+    try:
+        cur = conn.cursor()
+        where = "WHERE event = '%s'" % event_filter.replace("'", "''") if event_filter else ""
+        cur.execute(
+            "SELECT id, phone, event, details, created_at "
+            "FROM t_p65563100_joywood_magnets_app.lookup_log "
+            "%s ORDER BY created_at DESC LIMIT %d" % (where, limit)
+        )
+        items = [
+            {
+                'id': r[0], 'phone': r[1] or '', 'event': r[2],
+                'details': r[3] or '', 'created_at': str(r[4]),
+            }
+            for r in cur.fetchall()
+        ]
+        # Счётчики по типам за последние 7 дней
+        cur.execute(
+            "SELECT event, COUNT(*) FROM t_p65563100_joywood_magnets_app.lookup_log "
+            "WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY event"
+        )
+        counts = {r[0]: int(r[1]) for r in cur.fetchall()}
+        return ok({'log': items, 'counts_7d': counts})
     finally:
         conn.close()
 

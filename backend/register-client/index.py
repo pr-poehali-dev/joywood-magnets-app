@@ -45,7 +45,6 @@ def handler(event, context):
                 row = cur.fetchone()
                 if row:
                     existing_id = row[0]
-                    # Имя храним как "ПРЕФИКС Имя" чтобы помнить источник
                     display_name = ('%s %s' % (ozon_prefix, name)).replace("'", "''")
                     cur.execute(
                         "UPDATE registrations SET name='%s', phone='%s', channel='Ozon', "
@@ -59,6 +58,14 @@ def handler(event, context):
                     )
                     conn.commit()
                     merged = True
+                else:
+                    # Код Ozon не найден среди незарегистрированных — логируем
+                    cur.execute(
+                        "INSERT INTO t_p65563100_joywood_magnets_app.lookup_log "
+                        "(phone, event, details) VALUES ('%s', 'ozon_code_not_matched', '%s')"
+                        % (phone.replace("'", "''"), ozon_order_code.replace("'", "''"))
+                    )
+                    conn.commit()
 
         if not merged:
             # Проверяем, существует ли уже клиент с таким телефоном
@@ -94,6 +101,15 @@ def handler(event, context):
                 row = cur.fetchone()
                 conn.commit()
                 existing_id = row[0]
+
+        event_name = 'registered_merged' if merged else 'registered_new'
+        details = ozon_order_code.replace("'", "''") if ozon_order_code else ''
+        cur.execute(
+            "INSERT INTO t_p65563100_joywood_magnets_app.lookup_log "
+            "(phone, event, details) VALUES ('%s', '%s', '%s')"
+            % (phone.replace("'", "''"), event_name, details)
+        )
+        conn.commit()
 
         return ok({'id': existing_id, 'merged': merged, 'message': 'Регистрация успешна'})
     finally:
