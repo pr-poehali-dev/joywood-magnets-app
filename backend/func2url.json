@@ -1,4 +1,5 @@
 {
+  "upload-video": "https://functions.poehali.dev/23b79142-e8eb-4386-8362-4029358a7c25",
   "get-consents": "https://functions.poehali.dev/4abcb4ec-79d8-4bfa-8e66-1285f23e5eac",
   "save-consent": "https://functions.poehali.dev/abee8bc8-7d35-4fe6-88d2-d62e1faec0c5",
   "upload-privacy-policy": "https://functions.poehali.dev/a3dfac54-994c-4651-8b8f-e2191da2f608",

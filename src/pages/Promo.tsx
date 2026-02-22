@@ -68,11 +68,15 @@ const Promo = () => {
 
       {/* Hero */}
       <div className="relative overflow-hidden bg-gradient-to-b from-stone-900 to-stone-800">
-        <img
-          src="https://cdn.poehali.dev/projects/d4862cdc-db07-4efa-aa4f-e8229141eeb3/files/ecc2355c-5749-4a3d-9837-11fe5a429cbc.jpg"
-          alt="Коллекция магнитов"
-          className="absolute inset-0 w-full h-full object-cover opacity-40"
+        <video
+          src="https://cdn.poehali.dev/projects/d4862cdc-db07-4efa-aa4f-e8229141eeb3/bucket/videos/promo-bg.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover opacity-50"
         />
+        <div className="absolute inset-0 bg-black/50" />
         <div className="relative max-w-2xl mx-auto px-4 py-16 text-center space-y-5">
           <div className="inline-flex items-center gap-2 bg-gold-500/20 border border-gold-400/30 text-gold-200 text-xs font-medium px-3 py-1.5 rounded-full backdrop-blur">
             <Icon name="Sparkles" size={13} />
