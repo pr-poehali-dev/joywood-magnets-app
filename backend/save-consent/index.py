@@ -41,15 +41,19 @@ def handler(event: dict, context) -> dict:
         reg = cur.fetchone()
         reg_id = reg[0] if reg else None
 
+        def esc(s):
+            return s.replace("'", "''")
+
+        reg_id_sql = str(reg_id) if reg_id else 'NULL'
         cur.execute(
             "INSERT INTO %s.policy_consents (registration_id, phone, policy_version, ip_address, user_agent) "
             "VALUES (%s, '%s', '%s', '%s', '%s')" % (
                 SCHEMA,
-                str(reg_id) if reg_id else 'NULL',
-                phone.replace("'", "''"),
-                policy_version.replace("'", "''"),
-                ip.replace("'", "''"),
-                user_agent.replace("'", "''"),
+                reg_id_sql,
+                esc(phone),
+                esc(policy_version)[:100],
+                esc(ip)[:45],
+                esc(user_agent[:500]),
             )
         )
         conn.commit()
