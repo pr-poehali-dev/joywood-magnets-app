@@ -70,6 +70,7 @@ const CollectionBreedAtlas = ({ data, sortedBreeds, collectedBreeds, breedPhotos
             return (
               <div
                 key={breed.breed}
+                data-breed={breed.breed}
                 className={`rounded-xl border overflow-hidden flex flex-col transition-all ${
                   collected
                     ? "border-green-300 shadow-sm"

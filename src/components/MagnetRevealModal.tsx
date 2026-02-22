@@ -8,6 +8,7 @@ interface Props {
   stars: number;
   category: string;
   onClose: () => void;
+  onMagnetClick?: () => void;
 }
 
 const STAR_LABELS: Record<number, string> = { 1: "⭐", 2: "⭐⭐", 3: "⭐⭐⭐" };
@@ -34,7 +35,7 @@ const Particle = ({ index }: { index: number }) => {
   );
 };
 
-export default function MagnetRevealModal({ breed, photoUrl, stars, category, onClose }: Props) {
+export default function MagnetRevealModal({ breed, photoUrl, stars, category, onClose, onMagnetClick }: Props) {
   const [phase, setPhase] = useState<"box" | "opening" | "rising" | "revealed" | "done">("box");
 
   useEffect(() => {
@@ -91,9 +92,12 @@ export default function MagnetRevealModal({ breed, photoUrl, stars, category, on
                 : undefined,
               opacity: phase === "box" || phase === "opening" ? 0 : 1,
               transition: "opacity 0.3s",
+              cursor: (phase === "revealed" || phase === "done") && onMagnetClick ? "pointer" : "default",
             }}
+            onClick={(phase === "revealed" || phase === "done") && onMagnetClick ? () => { onMagnetClick(); onClose(); } : undefined}
+            title={(phase === "revealed" || phase === "done") && onMagnetClick ? "Перейти к магниту в коллекции" : undefined}
           >
-            <div className="w-32 h-32 rounded-2xl overflow-hidden shadow-2xl border-4 border-white/90 ring-4 ring-amber-300/70">
+            <div className={`w-32 h-32 rounded-2xl overflow-hidden shadow-2xl border-4 border-white/90 ring-4 ring-amber-300/70 transition-transform ${(phase === "revealed" || phase === "done") && onMagnetClick ? "hover:scale-105 active:scale-95" : ""}`}>
               {photoUrl ? (
                 <img src={photoUrl} alt={breed} className="w-full h-full object-cover" />
               ) : (
@@ -102,6 +106,11 @@ export default function MagnetRevealModal({ breed, photoUrl, stars, category, on
             </div>
             {(phase === "revealed" || phase === "done") && (
               <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white animate-ping opacity-75" />
+            )}
+            {(phase === "revealed" || phase === "done") && onMagnetClick && (
+              <div className="absolute -bottom-6 left-0 right-0 text-center text-[10px] text-white/60 animate-in fade-in duration-500">
+                нажми, чтобы найти в коллекции
+              </div>
             )}
           </div>
 

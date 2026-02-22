@@ -265,6 +265,18 @@ const MyCollection = () => {
     setNeedsConsent(false);
   };
 
+  const scrollToBreed = (breed: string) => {
+    setTimeout(() => {
+      const el = document.querySelector(`[data-breed="${CSS.escape(breed)}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        (el as HTMLElement).style.transition = "box-shadow 0.3s";
+        (el as HTMLElement).style.boxShadow = "0 0 0 3px #f59e0b, 0 0 16px 4px #fbbf24aa";
+        setTimeout(() => { (el as HTMLElement).style.boxShadow = ""; }, 2000);
+      }
+    }, 100);
+  };
+
   const collectedBreeds = data ? new Set(data.magnets.map((m) => m.breed)) : new Set<string>();
   const collectedOrder = data ? data.magnets.map((m) => m.breed) : [];
   const inactiveBreeds = data?.inactive_breeds ? new Set(data.inactive_breeds) : new Set<string>();
@@ -394,6 +406,11 @@ const MyCollection = () => {
         stars={revealModal.stars}
         category={revealModal.category}
         onClose={() => setRevealModal(null)}
+        onMagnetClick={() => {
+          const breed = revealModal.breed;
+          setRevealModal(null);
+          scrollToBreed(breed);
+        }}
       />
     )}
     </>
