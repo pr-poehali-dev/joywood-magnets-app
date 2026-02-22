@@ -1,5 +1,4 @@
-
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, Component, ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,24 +14,43 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
+class ChunkErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch() {
+    window.location.reload();
+  }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Suspense fallback={null}>
-          <Routes>
-            <Route path="/" element={<MyCollection />} />
-            <Route path="/my-collection" element={<MyCollection />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/promo" element={<Promo />} />
-            <Route path="/admin" element={<Index />} />
-            <Route path="/scan/:breed" element={<ScanMagnet />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
+        <ChunkErrorBoundary>
+          <Suspense fallback={null}>
+            <Routes>
+              <Route path="/" element={<MyCollection />} />
+              <Route path="/my-collection" element={<MyCollection />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/promo" element={<Promo />} />
+              <Route path="/admin" element={<Index />} />
+              <Route path="/scan/:breed" element={<ScanMagnet />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </ChunkErrorBoundary>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
