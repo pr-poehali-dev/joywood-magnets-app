@@ -9,10 +9,10 @@ import CollectionPhoneStep from "./collection/CollectionPhoneStep";
 import CollectionDashboard from "./collection/CollectionDashboard";
 import CollectionBonusProgress from "./collection/CollectionBonusProgress";
 import CollectionBreedAtlas from "./collection/CollectionBreedAtlas";
-import { API_URLS } from "@/lib/api";
 
 const LOOKUP_URL = "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6f26ec4";
 const BREED_PHOTOS_URL = "https://functions.poehali.dev/264a19bd-40c8-4203-a8cd-9f3709bedcee";
+const SETTINGS_URL = "https://functions.poehali.dev/8d9bf70e-b9a7-466a-a2e0-7e510754dde1";
 
 const MyCollection = () => {
   const [searchParams] = useSearchParams();
@@ -29,7 +29,7 @@ const MyCollection = () => {
   const [verificationEnabled, setVerificationEnabled] = useState(true);
 
   useEffect(() => {
-    fetch(API_URLS.SETTINGS)
+    fetch(SETTINGS_URL)
       .then((r) => r.json())
       .then((data) => {
         setVerificationEnabled(data.phone_verification_enabled !== "false");

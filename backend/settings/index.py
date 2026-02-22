@@ -7,7 +7,7 @@ SCHEMA = 't_p65563100_joywood_magnets_app'
 CORS = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Password',
+    'Access-Control-Allow-Headers': 'Content-Type',
 }
 
 
@@ -36,18 +36,18 @@ def handler(event: dict, context) -> dict:
         }
 
     if method == 'POST':
+        body = json.loads(event.get('body') or '{}')
+        key = body.get('key')
+        value = body.get('value')
+        provided = body.get('password', '')
+
         admin_password = os.environ.get('ADMIN_PASSWORD', '')
-        provided = (event.get('headers') or {}).get('X-Admin-Password', '')
         if provided != admin_password:
             return {
                 'statusCode': 403,
                 'headers': {**CORS, 'Content-Type': 'application/json'},
                 'body': json.dumps({'error': 'Forbidden'}),
             }
-
-        body = json.loads(event.get('body') or '{}')
-        key = body.get('key')
-        value = body.get('value')
 
         if not key or value is None:
             return {
