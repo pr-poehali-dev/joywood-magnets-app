@@ -39,7 +39,7 @@ const CollectionBreedAtlas = ({ data, sortedBreeds, collectedBreeds, breedPhotos
       <CardContent className="space-y-3">
         {inTransitCount > 0 && (
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground font-medium">Едут к вам</p>
+            <p className="text-xs text-muted-foreground font-medium">Отправлены вам</p>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {(data.in_transit ?? []).map((m) => (
                 <div
@@ -48,14 +48,11 @@ const CollectionBreedAtlas = ({ data, sortedBreeds, collectedBreeds, breedPhotos
                 >
                   <div className="relative aspect-square w-full bg-amber-50 flex items-center justify-center">
                     <div className="text-3xl animate-pulse">📦</div>
-                    <div className="absolute top-1 right-1 text-xs leading-none bg-white/80 rounded-full px-1 py-0.5">
-                      {STAR_LABELS[m.stars] ?? "⭐"}
-                    </div>
                   </div>
                   <div className="px-1.5 py-1.5 text-center text-xs bg-amber-50">
-                    <div className="font-medium leading-tight text-amber-800">В пути...</div>
+                    <div className="font-medium leading-tight text-amber-800">Отправлен</div>
                     <div className="text-[10px] text-amber-600 mt-0.5">
-                      Сканируй QR магнита
+                      Отсканируй QR после получения
                     </div>
                   </div>
                 </div>
