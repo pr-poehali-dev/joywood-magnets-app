@@ -148,8 +148,7 @@ def handler(event, context):
         breed = (body.get('breed') or '').strip()
         stars = body.get('stars')
         category = (body.get('category') or '').strip()
-        in_transit = bool(body.get('in_transit', False))
-        magnet_status = 'in_transit' if in_transit else 'revealed'
+        magnet_status = 'in_transit'
 
         if not registration_id or not breed or not stars or not category:
             return err('Укажите registration_id, breed, stars и category')

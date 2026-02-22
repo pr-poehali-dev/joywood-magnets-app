@@ -51,7 +51,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
   const [step, setStep] = useState<"magnets" | "bonuses">("magnets");
   const [givingBonus, setGivingBonus] = useState<string | null>(null);
   const [bonusesLeft, setBonusesLeft] = useState<PendingBonus[]>(pendingBonuses);
-  const [sendInTransit, setSendInTransit] = useState(false);
+
   const [bonusStock, setBonusStock] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -157,17 +157,16 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
       const res = await fetch(GIVE_MAGNET_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ registration_id: registrationId, breed, stars, category, in_transit: sendInTransit }),
+        body: JSON.stringify({ registration_id: registrationId, breed, stars, category }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка");
       const newGiven = [...given, { id: data.id, breed, stars }];
       setGiven(newGiven);
-      if (!sendInTransit) checkNewBonuses(newGiven);
       decrementStock(breed);
       setSearch("");
       setDropdownOpen(false);
-      toast.success(`${breed} ${STAR_LABELS[stars]} ${sendInTransit ? "отправлен (в пути)" : "выдан"}`);
+      toast.success(`${breed} ${STAR_LABELS[stars]} отправлен`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Ошибка выдачи магнита");
     } finally {
@@ -204,13 +203,13 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
       const res = await fetch(GIVE_MAGNET_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ registration_id: registrationId, breed: pick.breed, stars: pick.stars, category: pick.category, in_transit: sendInTransit }),
+        body: JSON.stringify({ registration_id: registrationId, breed: pick.breed, stars: pick.stars, category: pick.category }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка");
       confirmed.push({ id: data.id, breed: pick.breed, stars: pick.stars });
       decrementStock(pick.breed);
-      toast.success(`${pick.breed} ${STAR_LABELS[pick.stars]} ${sendInTransit ? "отправлен (в пути)" : "выдан"}`);
+      toast.success(`${pick.breed} ${STAR_LABELS[pick.stars]} отправлен`);
     }
     return confirmed;
   };
@@ -344,19 +343,6 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
           <MagnetPickerHeader clientName={clientName} orderAmount={orderAmount} />
 
           <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
-            {step === "magnets" && (
-              <label className="flex items-center gap-2 cursor-pointer select-none bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                <input
-                  type="checkbox"
-                  checked={sendInTransit}
-                  onChange={(e) => setSendInTransit(e.target.checked)}
-                  className="w-4 h-4 accent-amber-500"
-                />
-                <span className="text-sm text-amber-800">
-                  📦 Магнит отправлен по почте (клиент раскроет по QR)
-                </span>
-              </label>
-            )}
             {step === "bonuses" ? (
               <MagnetPickerBonusStep
                 bonusesLeft={bonusesLeft}
