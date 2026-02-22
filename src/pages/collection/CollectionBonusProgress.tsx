@@ -59,13 +59,13 @@ const CollectionBonusProgress = ({ data }: Props) => {
                     <span className="text-[10px] text-muted-foreground shrink-0">🔒</span>
                   )}
                 </span>
-                {!reached && (
+                {!reached && !given && (
                   <span className="text-xs text-muted-foreground shrink-0">
                     {current}/{milestone.count}
                   </span>
                 )}
               </div>
-              {!reached && <Progress value={pct} className="h-2" />}
+              {!reached && !given && <Progress value={pct} className="h-2" />}
             </div>
           );
         })}
