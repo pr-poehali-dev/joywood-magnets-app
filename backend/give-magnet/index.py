@@ -47,11 +47,11 @@ def handler(event, context):
         try:
             cur = conn.cursor()
             cur.execute(
-                "SELECT id, breed, stars, category, given_at, order_id FROM client_magnets "
+                "SELECT id, breed, stars, category, given_at, order_id, status FROM client_magnets "
                 "WHERE registration_id = %d ORDER BY given_at DESC" % int(reg_id)
             )
             magnets = [
-                {'id': r[0], 'breed': r[1], 'stars': r[2], 'category': r[3], 'given_at': str(r[4]), 'order_id': r[5]}
+                {'id': r[0], 'breed': r[1], 'stars': r[2], 'category': r[3], 'given_at': str(r[4]), 'order_id': r[5], 'status': r[6]}
                 for r in cur.fetchall()
             ]
             return ok({'magnets': magnets})

@@ -96,21 +96,29 @@ const ClientModalMagnets = ({
           <p className="text-sm text-muted-foreground">Магнитов нет</p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
-            {magnets.map((m) => (
-              <span key={m.id} className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-1 text-xs font-medium ${starBg[m.stars] ?? ""}`}>
-                {m.breed} {STAR_LABELS[m.stars]}
-                <button
-                  className="ml-0.5 text-red-400 hover:text-red-600 disabled:opacity-50"
-                  onClick={() => onDeleteMagnet(m.id, m.breed)}
-                  disabled={deletingMagnetId === m.id}
-                  title="Удалить магнит"
+            {magnets.map((m) => {
+              const isTransit = m.status === 'in_transit';
+              return (
+                <span
+                  key={m.id}
+                  title={isTransit ? "Не отсканирован клиентом" : undefined}
+                  className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-1 text-xs font-medium ${starBg[m.stars] ?? ""} ${isTransit ? "opacity-50 border-dashed" : ""}`}
                 >
-                  {deletingMagnetId === m.id
-                    ? <Icon name="Loader2" size={10} className="animate-spin" />
-                    : <Icon name="X" size={10} />}
-                </button>
-              </span>
-            ))}
+                  {isTransit && <Icon name="Package" size={10} className="shrink-0" />}
+                  {m.breed} {STAR_LABELS[m.stars]}
+                  <button
+                    className="ml-0.5 text-red-400 hover:text-red-600 disabled:opacity-50"
+                    onClick={() => onDeleteMagnet(m.id, m.breed)}
+                    disabled={deletingMagnetId === m.id}
+                    title="Удалить магнит"
+                  >
+                    {deletingMagnetId === m.id
+                      ? <Icon name="Loader2" size={10} className="animate-spin" />
+                      : <Icon name="X" size={10} />}
+                  </button>
+                </span>
+              );
+            })}
             {unlinkedMagnets.length > 0 && clientOrders.length > 0 && (
               <span className="text-xs text-muted-foreground italic self-center ml-1">({unlinkedMagnets.length} без заказа)</span>
             )}

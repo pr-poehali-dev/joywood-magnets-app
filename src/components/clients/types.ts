@@ -25,6 +25,7 @@ export interface ClientMagnet {
   category: string;
   given_at: string;
   order_id?: number | null;
+  status?: string;
 }
 
 export interface ClientOrder {

@@ -17,6 +17,7 @@ interface ClientMagnet {
   stars: number;
   given_at: string;
   order_id: number | null;
+  status?: string;
 }
 
 const starBg: Record<number, string> = {
@@ -241,11 +242,19 @@ const OrderDetailModal = ({ order, open, onClose, onNavigateToClient, onOrderUpd
               </div>
             ) : (
               <div className="flex flex-wrap gap-1.5 pt-1">
-                {magnets.map((m) => (
-                  <span key={m.id} className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-1 text-xs font-medium ${starBg[m.stars] ?? "bg-slate-50 border-slate-200 text-slate-700"}`}>
-                    {m.breed} {STAR_LABELS[m.stars]}
-                  </span>
-                ))}
+                {magnets.map((m) => {
+                  const isTransit = m.status === 'in_transit';
+                  return (
+                    <span
+                      key={m.id}
+                      title={isTransit ? "Не отсканирован клиентом" : undefined}
+                      className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-1 text-xs font-medium ${starBg[m.stars] ?? "bg-slate-50 border-slate-200 text-slate-700"} ${isTransit ? "opacity-50 border-dashed" : ""}`}
+                    >
+                      {isTransit && <Icon name="Package" size={10} className="shrink-0" />}
+                      {m.breed} {STAR_LABELS[m.stars]}
+                    </span>
+                  );
+                })}
               </div>
             )}
           </div>
