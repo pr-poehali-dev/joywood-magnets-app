@@ -37,7 +37,26 @@ def handler(event, context):
             return err('Участник с таким номером не найден. Сначала зарегистрируйтесь в акции.', 404)
 
         if body.get('check_only'):
-            return ok({'exists': True})
+            cur.execute("SELECT value FROM t_p65563100_joywood_magnets_app.settings WHERE key = 'privacy_policy_url'")
+            policy_row = cur.fetchone()
+            policy_url = (policy_row[0] if policy_row else '') or ''
+
+            needs_consent = False
+            policy_version = ''
+            if policy_url:
+                cur.execute(
+                    "SELECT value FROM t_p65563100_joywood_magnets_app.settings WHERE key = 'privacy_policy_updated_at'"
+                )
+                ver_row = cur.fetchone()
+                policy_version = ver_row[0] if ver_row else policy_url
+
+                cur.execute(
+                    "SELECT id FROM t_p65563100_joywood_magnets_app.policy_consents "
+                    "WHERE registration_id = %d ORDER BY created_at DESC LIMIT 1" % reg[0]
+                )
+                needs_consent = cur.fetchone() is None
+
+            return ok({'exists': True, 'needs_consent': needs_consent, 'policy_url': policy_url, 'policy_version': policy_version})
 
         cur.execute(
             "SELECT id, breed, stars, category, given_at FROM client_magnets "

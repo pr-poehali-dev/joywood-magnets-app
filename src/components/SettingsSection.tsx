@@ -2,11 +2,17 @@ import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
 
 const SETTINGS_URL = "https://functions.poehali.dev/8d9bf70e-b9a7-466a-a2e0-7e510754dde1";
 const UPLOAD_POLICY_URL = "https://functions.poehali.dev/a3dfac54-994c-4651-8b8f-e2191da2f608";
+const GET_CONSENTS_URL = "https://functions.poehali.dev/4abcb4ec-79d8-4bfa-8e66-1285f23e5eac";
+
+interface ConsentItem {
+  id: number; phone: string; name: string; policy_version: string; ip: string; created_at: string;
+}
 
 interface SettingRowProps {
   label: string;
@@ -48,6 +54,8 @@ const SettingsSection = () => {
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [policyUrl, setPolicyUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [consents, setConsents] = useState<ConsentItem[]>([]);
+  const [consentsLoading, setConsentsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -62,6 +70,17 @@ const SettingsSection = () => {
       .catch(() => {})
       .finally(() => setFetching(false));
   }, []);
+
+  const loadConsents = () => {
+    setConsentsLoading(true);
+    fetch(GET_CONSENTS_URL)
+      .then((r) => r.json())
+      .then((d) => setConsents(d.consents || []))
+      .catch(() => {})
+      .finally(() => setConsentsLoading(false));
+  };
+
+  useEffect(() => { if (policyUrl) loadConsents(); }, [policyUrl]);
 
   const saveSetting = async (key: string, value: boolean, onSuccess: (v: boolean) => void, labels: [string, string]) => {
     setLoadingKey(key);
@@ -202,6 +221,56 @@ const SettingsSection = () => {
             </Button>
             <p className="text-xs text-muted-foreground mt-1.5">Только PDF-файл</p>
           </div>
+
+          {policyUrl && (
+            <div className="pt-2">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <Icon name="Users" size={15} className="text-slate-500" />
+                  Согласия клиентов
+                  <span className="text-xs text-muted-foreground font-normal">({consents.length})</span>
+                </p>
+                <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={loadConsents} disabled={consentsLoading}>
+                  <Icon name={consentsLoading ? "Loader2" : "RefreshCw"} size={12} className={consentsLoading ? "animate-spin" : ""} />
+                  Обновить
+                </Button>
+              </div>
+              {consents.length === 0 && !consentsLoading ? (
+                <p className="text-xs text-muted-foreground">Согласий пока нет</p>
+              ) : (
+                <div className="rounded-md border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs">Клиент</TableHead>
+                        <TableHead className="text-xs">Версия политики</TableHead>
+                        <TableHead className="text-xs">IP-адрес</TableHead>
+                        <TableHead className="text-xs">Дата и время</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {consentsLoading && (
+                        <TableRow><TableCell colSpan={4} className="text-center py-6"><Icon name="Loader2" size={20} className="mx-auto animate-spin opacity-40" /></TableCell></TableRow>
+                      )}
+                      {!consentsLoading && consents.map((c) => (
+                        <TableRow key={c.id}>
+                          <TableCell className="text-xs">
+                            <p className="font-medium">{c.name}</p>
+                            <p className="text-muted-foreground">{c.phone}</p>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{c.policy_version}</TableCell>
+                          <TableCell className="text-xs font-mono text-muted-foreground">{c.ip}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(c.created_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

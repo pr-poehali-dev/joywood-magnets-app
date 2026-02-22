@@ -19,11 +19,35 @@ interface Props {
   phoneHook: ReturnType<typeof usePhoneInput>;
   showRegister?: boolean;
   policyUrl?: string;
+  policyVersion?: string;
+  needsConsent?: boolean;
+  pendingPhone?: string;
   onPhoneSubmit: (e: React.FormEvent) => void;
   onVerifySuccess: () => void;
   onVerifyBack: () => void;
   onRegistered: (phone: string) => void;
+  onConsentAccepted: (phone: string, policyVersion: string) => void;
 }
+
+const PolicyCheckbox = ({ policyUrl, accepted, onChange, colorClass = "text-muted-foreground", linkClass = "text-amber-600 hover:text-amber-700" }: {
+  policyUrl: string; accepted: boolean; onChange: (v: boolean) => void; colorClass?: string; linkClass?: string;
+}) => (
+  <div className="flex items-start gap-2.5">
+    <input
+      type="checkbox"
+      checked={accepted}
+      onChange={(e) => onChange(e.target.checked)}
+      className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-amber-600 shrink-0 cursor-pointer"
+    />
+    <label className={`text-xs leading-relaxed cursor-pointer ${colorClass}`} onClick={() => onChange(!accepted)}>
+      Выражаю своё согласие с{" "}
+      <a href={policyUrl} target="_blank" rel="noopener noreferrer" className={`underline ${linkClass}`} onClick={(e) => e.stopPropagation()}>
+        политикой конфиденциальности
+      </a>{" "}
+      в отношении пользовательских данных и даю своё согласие на обработку персональных данных
+    </label>
+  </div>
+);
 
 const CollectionPhoneStep = ({
   step,
@@ -34,16 +58,21 @@ const CollectionPhoneStep = ({
   phoneHook,
   showRegister = false,
   policyUrl = "",
+  policyVersion = "",
+  needsConsent = false,
+  pendingPhone = "",
   onPhoneSubmit,
   onVerifySuccess,
   onVerifyBack,
   onRegistered,
+  onConsentAccepted,
 }: Props) => {
   const [ozonName, setOzonName] = useState("");
   const [ozonCode, setOzonCode] = useState("");
   const [registering, setRegistering] = useState(false);
   const [regError, setRegError] = useState("");
-  const [policyAccepted, setPolicyAccepted] = useState(false);
+  const [regPolicyAccepted, setRegPolicyAccepted] = useState(false);
+  const [consentAccepted, setConsentAccepted] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +80,7 @@ const CollectionPhoneStep = ({
     if (ozonName.trim().length < 2) { setRegError("Введите имя (минимум 2 символа)"); return; }
     if (!ozonCode.trim()) { setRegError("Введите номер заказа Ozon"); return; }
     if (!phoneHook.isValid) { setRegError("Введите корректный номер телефона"); return; }
+    if (policyUrl && !regPolicyAccepted) { setRegError("Необходимо принять политику конфиденциальности"); return; }
     setRegistering(true);
     try {
       const res = await fetch(REGISTER_URL, {
@@ -64,6 +94,13 @@ const CollectionPhoneStep = ({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка регистрации");
+      if (policyUrl) {
+        await fetch("https://functions.poehali.dev/abee8bc8-7d35-4fe6-88d2-d62e1faec0c5", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: phoneHook.fullPhone, policy_version: policyVersion, user_agent: navigator.userAgent }),
+        }).catch(() => {});
+      }
       onRegistered(phoneHook.fullPhone);
     } catch (err) {
       setRegError(err instanceof Error ? err.message : "Ошибка. Попробуйте ещё раз.");
@@ -74,7 +111,7 @@ const CollectionPhoneStep = ({
 
   return (
     <>
-      {step === "phone" && (
+      {step === "phone" && !needsConsent && (
         <Card className="shadow-lg border-gold-200">
           <CardContent className="pt-6">
             <form onSubmit={onPhoneSubmit} className="space-y-4">
@@ -85,28 +122,10 @@ const CollectionPhoneStep = ({
                   По номеру телефона мы находим ваши магниты и показываем прогресс в акции
                 </p>
               </div>
-              {policyUrl && (
-                <div className="flex items-start gap-2.5">
-                  <input
-                    type="checkbox"
-                    id="policy-accept"
-                    checked={policyAccepted}
-                    onChange={(e) => setPolicyAccepted(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-amber-600 shrink-0"
-                  />
-                  <label htmlFor="policy-accept" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
-                    Выражаю своё согласие с{" "}
-                    <a href={policyUrl} target="_blank" rel="noopener noreferrer" className="text-amber-600 underline hover:text-amber-700">
-                      политикой конфиденциальности
-                    </a>{" "}
-                    в отношении пользовательских данных и даю своё согласие на обработку персональных данных
-                  </label>
-                </div>
-              )}
               <Button
                 type="submit"
                 className="w-full bg-gold-500 hover:bg-gold-600"
-                disabled={!phoneHook.isValid || loading || (!!policyUrl && !policyAccepted)}
+                disabled={!phoneHook.isValid || loading}
               >
                 {loading ? (
                   <span className="flex items-center gap-2">
@@ -134,6 +153,51 @@ const CollectionPhoneStep = ({
                 </a>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Блок согласия с политикой — первичный вход */}
+      {step === "phone" && needsConsent && policyUrl && (
+        <Card className="shadow-lg border-amber-200 bg-amber-50">
+          <CardContent className="pt-5 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="bg-amber-100 rounded-full p-2 shrink-0 mt-0.5">
+                <Icon name="FileText" size={18} className="text-amber-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-amber-900">Подтвердите согласие</p>
+                <p className="text-sm text-amber-700 mt-0.5 leading-relaxed">
+                  Для просмотра вашей коллекции необходимо дать согласие на обработку персональных данных
+                </p>
+              </div>
+            </div>
+
+            <PolicyCheckbox
+              policyUrl={policyUrl}
+              accepted={consentAccepted}
+              onChange={setConsentAccepted}
+              colorClass="text-amber-800"
+              linkClass="text-amber-700 hover:text-amber-900"
+            />
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => { onVerifyBack(); setConsentAccepted(false); }}
+              >
+                Назад
+              </Button>
+              <Button
+                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                disabled={!consentAccepted || loading}
+                onClick={() => onConsentAccepted(pendingPhone, policyVersion)}
+              >
+                {loading ? <Icon name="Loader2" size={16} className="animate-spin" /> : "Продолжить"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -198,22 +262,13 @@ const CollectionPhoneStep = ({
               </div>
 
               {policyUrl && (
-                <div className="flex items-start gap-2.5">
-                  <input
-                    type="checkbox"
-                    id="policy-accept-reg"
-                    checked={policyAccepted}
-                    onChange={(e) => setPolicyAccepted(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-blue-300 accent-blue-600 shrink-0"
-                  />
-                  <label htmlFor="policy-accept-reg" className="text-xs text-blue-800 leading-relaxed cursor-pointer">
-                    Выражаю своё согласие с{" "}
-                    <a href={policyUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-900">
-                      политикой конфиденциальности
-                    </a>{" "}
-                    в отношении пользовательских данных и даю своё согласие на обработку персональных данных
-                  </label>
-                </div>
+                <PolicyCheckbox
+                  policyUrl={policyUrl}
+                  accepted={regPolicyAccepted}
+                  onChange={setRegPolicyAccepted}
+                  colorClass="text-blue-800"
+                  linkClass="text-blue-700 hover:text-blue-900"
+                />
               )}
 
               {regError && (
@@ -226,7 +281,7 @@ const CollectionPhoneStep = ({
               <Button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2"
-                disabled={registering || (!!policyUrl && !policyAccepted)}
+                disabled={registering || (!!policyUrl && !regPolicyAccepted)}
               >
                 {registering ? (
                   <><Icon name="Loader2" size={16} className="animate-spin" />Регистрация...</>

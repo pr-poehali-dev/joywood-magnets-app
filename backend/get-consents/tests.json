@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "GET consents",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"consents": []},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

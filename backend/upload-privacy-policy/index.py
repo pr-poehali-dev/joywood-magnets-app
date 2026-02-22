@@ -3,6 +3,7 @@ import json
 import base64
 import boto3
 import psycopg2
+from datetime import datetime
 
 SCHEMA = 't_p65563100_joywood_magnets_app'
 CORS = {
@@ -40,6 +41,7 @@ def handler(event: dict, context) -> dict:
     s3.put_object(Bucket='files', Key=key, Body=file_data, ContentType='application/pdf')
 
     cdn_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+    policy_version = datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
 
     conn = get_conn()
     cur = conn.cursor()
@@ -47,11 +49,15 @@ def handler(event: dict, context) -> dict:
         f"INSERT INTO {SCHEMA}.settings (key, value, updated_at) VALUES ('privacy_policy_url', %s, NOW()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()",
         (cdn_url,),
     )
+    cur.execute(
+        f"INSERT INTO {SCHEMA}.settings (key, value, updated_at) VALUES ('privacy_policy_updated_at', %s, NOW()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()",
+        (policy_version,),
+    )
     conn.commit()
     conn.close()
 
     return {
         'statusCode': 200,
         'headers': {**CORS, 'Content-Type': 'application/json'},
-        'body': json.dumps({'ok': True, 'url': cdn_url}),
+        'body': json.dumps({'ok': True, 'url': cdn_url, 'version': policy_version}),
     }

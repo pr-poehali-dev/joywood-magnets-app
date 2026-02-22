@@ -14,6 +14,7 @@ import Icon from "@/components/ui/icon";
 const LOOKUP_URL = "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6f26ec4";
 const BREED_PHOTOS_URL = "https://functions.poehali.dev/264a19bd-40c8-4203-a8cd-9f3709bedcee";
 const SETTINGS_URL = "https://functions.poehali.dev/8d9bf70e-b9a7-466a-a2e0-7e510754dde1";
+const SAVE_CONSENT_URL = "https://functions.poehali.dev/abee8bc8-7d35-4fe6-88d2-d62e1faec0c5";
 
 const MyCollection = () => {
   const [searchParams] = useSearchParams();
@@ -31,6 +32,9 @@ const MyCollection = () => {
   const [verificationEnabled, setVerificationEnabled] = useState(true);
   const [showRegister, setShowRegister] = useState(false);
   const [policyUrl, setPolicyUrl] = useState("");
+  const [needsConsent, setNeedsConsent] = useState(false);
+  const [pendingPhone, setPendingPhone] = useState("");
+  const [pendingPolicyVersion, setPendingPolicyVersion] = useState("");
 
   useEffect(() => {
     fetch(SETTINGS_URL)
@@ -88,9 +92,36 @@ const MyCollection = () => {
     }
   }, []);
 
+  const proceedAfterConsent = useCallback(async (searchPhone: string) => {
+    if (!verificationEnabled) {
+      await doSearch(searchPhone);
+      return;
+    }
+    await loadWidgetAssets();
+    setVerifiedPhone(searchPhone);
+    setStep("verify");
+  }, [verificationEnabled, doSearch]);
+
+  const handleConsentAccepted = useCallback(async (searchPhone: string, policyVersion: string) => {
+    try {
+      await fetch(SAVE_CONSENT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: searchPhone,
+          policy_version: policyVersion,
+          user_agent: navigator.userAgent,
+        }),
+      });
+    } catch { /* non-critical */ }
+    setNeedsConsent(false);
+    await proceedAfterConsent(searchPhone);
+  }, [proceedAfterConsent]);
+
   const checkExists = useCallback(async (searchPhone: string) => {
     setLoading(true);
     setNotFound(false);
+    setNeedsConsent(false);
     try {
       const res = await fetch(LOOKUP_URL, {
         method: "POST",
@@ -103,19 +134,20 @@ const MyCollection = () => {
         return;
       }
       if (!res.ok) throw new Error("Ошибка проверки");
-      if (!verificationEnabled) {
-        await doSearch(searchPhone);
+      const data = await res.json();
+      if (data.needs_consent) {
+        setNeedsConsent(true);
+        setPendingPhone(searchPhone);
+        setPendingPolicyVersion(data.policy_version || data.policy_url || "");
         return;
       }
-      await loadWidgetAssets();
-      setVerifiedPhone(searchPhone);
-      setStep("verify");
+      await proceedAfterConsent(searchPhone);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось проверить номер");
     } finally {
       setLoading(false);
     }
-  }, [verificationEnabled, doSearch]);
+  }, [proceedAfterConsent]);
 
   const handleRegistered = useCallback(async (registeredPhone: string) => {
     await doSearch(registeredPhone, true);
@@ -140,8 +172,14 @@ const MyCollection = () => {
     setData(null);
     setStep("phone");
     setNotFound(false);
+    setNeedsConsent(false);
     setJustRegistered(false);
     autoSearched.current = false;
+  };
+
+  const handleVerifyBack = () => {
+    setStep("phone");
+    setNeedsConsent(false);
   };
 
   const collectedBreeds = data ? new Set(data.magnets.map((m) => m.breed)) : new Set<string>();
@@ -188,10 +226,14 @@ const MyCollection = () => {
             phoneHook={phone}
             showRegister={showRegister}
             policyUrl={policyUrl}
+            policyVersion={pendingPolicyVersion}
+            needsConsent={needsConsent}
+            pendingPhone={pendingPhone}
             onPhoneSubmit={handlePhoneSubmit}
             onVerifySuccess={() => doSearch(verifiedPhone)}
-            onVerifyBack={() => setStep("phone")}
+            onVerifyBack={handleVerifyBack}
             onRegistered={handleRegistered}
+            onConsentAccepted={handleConsentAccepted}
           />
         )}
 
