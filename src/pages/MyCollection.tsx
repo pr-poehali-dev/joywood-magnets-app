@@ -133,6 +133,7 @@ const MyCollection = () => {
       if (!res.ok) throw new Error(result.error || "Ошибка загрузки");
       const photosData = await photosRes.json();
       const photos = photosData.photos || {};
+      console.log('[JW] lookup result:', JSON.stringify({ total_magnets: result.total_magnets, in_transit_count: result.in_transit?.length, in_transit: result.in_transit }));
       setBreedPhotos(photos);
       setData(result);
       saveSession(searchPhone, result, photos);
