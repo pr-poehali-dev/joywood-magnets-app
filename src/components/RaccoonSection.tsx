@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { RACCOON_LEVELS } from "@/lib/raccoon";
 import { toast } from "sonner";
+import LevelUpModal from "@/components/LevelUpModal";
 
 const RACCOON_ASSETS_URL = "https://functions.poehali.dev/81103f27-f9fd-48ca-87c2-027ad46a7df8";
 
@@ -69,6 +70,7 @@ const RaccoonSection = () => {
   const [assets, setAssets] = useState<AssetsIndex>({});
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [loadingIndex, setLoadingIndex] = useState(true);
+  const [previewLevel, setPreviewLevel] = useState<number | null>(null);
 
   useEffect(() => {
     fetch(RACCOON_ASSETS_URL)
@@ -124,15 +126,28 @@ const RaccoonSection = () => {
             return (
               <Card key={lvl.level} className="overflow-hidden">
                 <CardHeader className="pb-2 bg-amber-50 border-b border-amber-100">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <span className="bg-amber-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shrink-0">
-                      {lvl.level}
-                    </span>
-                    {lvl.name}
-                  </CardTitle>
-                  <p className="text-[11px] text-muted-foreground">
-                    от {lvl.xpMin} XP · {lvl.emptySlots} пустых слотов
-                  </p>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <span className="bg-amber-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shrink-0">
+                          {lvl.level}
+                        </span>
+                        {lvl.name}
+                      </CardTitle>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        от {lvl.xpMin} XP · {lvl.emptySlots} пустых слотов
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-amber-600 hover:text-amber-700 hover:bg-amber-100 gap-1 text-xs shrink-0 -mt-0.5"
+                      onClick={() => setPreviewLevel(lvl.level)}
+                    >
+                      <Icon name="Play" size={12} />
+                      Превью
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="pt-4 space-y-4">
                   {/* Фото */}
@@ -186,6 +201,13 @@ const RaccoonSection = () => {
             );
           })}
         </div>
+      )}
+
+      {previewLevel !== null && (
+        <LevelUpModal
+          newLevel={previewLevel}
+          onClose={() => setPreviewLevel(null)}
+        />
       )}
     </div>
   );

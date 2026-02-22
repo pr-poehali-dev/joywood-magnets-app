@@ -10,6 +10,7 @@ import CollectionPhoneStep from "./collection/CollectionPhoneStep";
 import CollectionDashboard from "./collection/CollectionDashboard";
 import CollectionBonusProgress from "./collection/CollectionBonusProgress";
 import CollectionBreedAtlas from "./collection/CollectionBreedAtlas";
+import CollectionRaccoon from "./collection/CollectionRaccoon";
 import MagnetRevealModal from "@/components/MagnetRevealModal";
 import LevelUpModal from "@/components/LevelUpModal";
 import Icon from "@/components/ui/icon";
@@ -421,7 +422,6 @@ const MyCollection = () => {
               </div>
             )}
             <CollectionDashboard data={data} onReset={handleReset} />
-            <CollectionBonusProgress data={data} />
             <CollectionBreedAtlas
               data={data}
               sortedBreeds={sortedBreeds}
@@ -429,6 +429,8 @@ const MyCollection = () => {
               breedPhotos={breedPhotos}
               totalVisible={visibleBreeds.length}
             />
+            {data.raccoon && <CollectionRaccoon raccoon={data.raccoon} />}
+            <CollectionBonusProgress data={data} />
           </div>
         )}
 
