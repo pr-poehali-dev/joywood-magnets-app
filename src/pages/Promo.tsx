@@ -1,11 +1,10 @@
-import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 
 const BONUS_MILESTONES = [
-  { count: 5, reward: "Кисть Titebrush Titebond", icon: "🎁", label: "5 магнитов" },
-  { count: 10, reward: "Клей Titebond III 473 мл", icon: "🎁", label: "10 пород" },
-  { count: 30, reward: "Клей Titebond III 946 мл", icon: "🏆", label: "30 пород" },
-  { count: 50, reward: "Клей Titebond III 3,785 л", icon: "👑", label: "50 пород" },
+  { count: 5, icon: "🎁", label: "5 магнитов" },
+  { count: 10, icon: "🎁", label: "10 пород" },
+  { count: 30, icon: "🏆", label: "30 пород" },
+  { count: 50, icon: "👑", label: "50 пород" },
 ];
 
 const STAR_TIERS = [
@@ -37,7 +36,7 @@ const STAR_TIERS = [
     border: "border-red-200",
     text: "text-red-800",
     desc: "Экзотические породы — настоящая гордость коллекционера",
-    examples: ["Бубинго", "Лайсвуд", "Амарант", "Кокоболо"],
+    examples: ["Бубинго", "Лайсвуд", "Амарант", "Палисандр"],
   },
 ];
 
@@ -56,13 +55,15 @@ const Promo = () => {
             />
             <span className="font-semibold text-sm text-foreground">Joywood</span>
           </div>
-          <Link
-            to="/my-collection"
+          <a
+            href="https://joywood.store/shop"
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex items-center gap-1.5 bg-gold-500 hover:bg-gold-600 text-white text-sm font-semibold px-4 py-2 rounded-full transition-colors shadow-sm"
           >
-            <Icon name="Layers" size={15} />
-            Уже собираю
-          </Link>
+            <Icon name="ShoppingBag" size={15} />
+            Купить
+          </a>
         </div>
       </div>
 
@@ -80,22 +81,15 @@ const Promo = () => {
         <div className="relative max-w-2xl mx-auto px-4 py-16 text-center space-y-5">
           <div className="inline-flex items-center gap-2 bg-gold-500/20 border border-gold-400/30 text-gold-200 text-xs font-medium px-3 py-1.5 rounded-full backdrop-blur">
             <Icon name="Sparkles" size={13} />
-            Программа лояльности Joywood
+            Уникальная программа лояльности Joywood
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight">
             Собери коллекцию<br />
             <span className="text-gold-300">ценных пород дерева</span>
           </h1>
           <p className="text-stone-300 text-base leading-relaxed max-w-md mx-auto">
-            С каждым заказом Joywood вы получаете магнит из настоящей ценной породы дерева. 54 уникальных экземпляра — от привычного дуба до экзотического кокоболо
+            С каждым заказом Joywood вы получаете магнит из настоящей ценной породы дерева. Десятки уникальных экземпляров — от привычного дуба до экзотического лайсвуда
           </p>
-          <Link
-            to="/my-collection"
-            className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-400 text-white font-bold text-base px-8 py-3.5 rounded-full transition-colors shadow-lg"
-          >
-            <Icon name="Layers" size={18} />
-            Посмотреть мою коллекцию
-          </Link>
         </div>
       </div>
 
@@ -106,11 +100,12 @@ const Promo = () => {
           <p className="text-muted-foreground text-sm">Всё просто — покупаете, получаете, коллекционируете</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[
             { icon: "ShoppingBag", step: "1", title: "Делаете заказ", desc: "Покупаете изделия Joywood на Ozon или на сайте", color: "bg-blue-50 text-blue-600 border-blue-100" },
             { icon: "Gift", step: "2", title: "Получаете магнит", desc: "Вместе с заказом приходит магнит из ценной породы дерева", color: "bg-amber-50 text-amber-600 border-amber-100" },
-            { icon: "Trophy", step: "3", title: "Копите подарки", desc: "Достигайте рубежей и получайте ценные подарки для мастера", color: "bg-green-50 text-green-600 border-green-100" },
+            { icon: "QrCode", step: "3", title: "Сканируете QR-код", desc: "Сканируете QR-код магнита и отслеживаете свой прогресс в акции", color: "bg-purple-50 text-purple-600 border-purple-100" },
+            { icon: "Trophy", step: "4", title: "Копите подарки", desc: "Достигайте рубежей и получайте ценные подарки для мастера", color: "bg-green-50 text-green-600 border-green-100" },
           ].map((item) => (
             <div key={item.step} className={`rounded-2xl border p-5 space-y-3 ${item.color}`}>
               <div className="flex items-center gap-2">
@@ -132,7 +127,7 @@ const Promo = () => {
       <div className="bg-stone-50 py-12">
         <div className="max-w-2xl mx-auto px-4 space-y-8">
           <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold text-foreground">54 породы трёх категорий</h2>
+            <h2 className="text-2xl font-bold text-foreground">Породы трёх разных категорий</h2>
             <p className="text-muted-foreground text-sm">Каждая порода уникальна — текстура, цвет, история</p>
           </div>
           <div className="space-y-3">
@@ -165,15 +160,16 @@ const Promo = () => {
       <div className="max-w-2xl mx-auto px-4 py-12 space-y-8">
         <div className="text-center space-y-2">
           <h2 className="text-2xl font-bold text-foreground">Призы за коллекцию</h2>
-          <p className="text-muted-foreground text-sm">Чем больше пород в коллекции — тем ценнее подарок</p>
+          <p className="text-muted-foreground text-sm">Чем больше пород — тем ценнее подарок. Всё пригодится в работе мастера</p>
         </div>
         <div className="space-y-3">
           {BONUS_MILESTONES.map((m, i) => (
             <div key={i} className="flex items-center gap-4 p-4 rounded-2xl border border-stone-100 bg-white shadow-sm">
               <div className="text-2xl leading-none">{m.icon}</div>
               <div className="flex-1">
-                <p className="font-semibold text-sm text-foreground">{m.reward}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">За {m.label}</p>
+                <div className="h-3 w-32 bg-stone-200 rounded-full blur-sm" />
+                <div className="h-2.5 w-20 bg-stone-100 rounded-full blur-sm mt-1.5" />
+                <p className="text-[10px] text-muted-foreground mt-1.5 italic">полезный инструмент для мастера</p>
               </div>
               <div className="bg-gold-50 border border-gold-200 rounded-full px-3 py-1 text-xs font-bold text-gold-700">
                 {m.label}
@@ -181,23 +177,36 @@ const Promo = () => {
             </div>
           ))}
         </div>
+        <p className="text-center text-xs text-muted-foreground">Конкретные призы узнаете после первого магнита 🎁</p>
       </div>
 
       {/* CTA bottom */}
       <div className="bg-gradient-to-b from-stone-800 to-stone-900 py-14">
         <div className="max-w-2xl mx-auto px-4 text-center space-y-5">
-          <h2 className="text-2xl font-bold text-white">Уже есть магниты?</h2>
+          <h2 className="text-2xl font-bold text-white">Начните собирать коллекцию</h2>
           <p className="text-stone-300 text-sm leading-relaxed">
-            Введите номер телефона и посмотрите свою коллекцию, прогресс и место в рейтинге
+            Выбирайте удобную площадку — каждый заказ приближает вас к подарку
           </p>
-          <Link
-            to="/my-collection"
-            className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-400 text-white font-bold text-base px-8 py-3.5 rounded-full transition-colors shadow-lg"
-          >
-            <Icon name="Layers" size={18} />
-            Открыть мою коллекцию
-          </Link>
-          <p className="text-stone-500 text-xs">Бесплатно. Нужен только номер телефона</p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <a
+              href="https://joywood.store/shop"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 bg-gold-500 hover:bg-gold-400 text-white font-bold text-base px-8 py-3.5 rounded-full transition-colors shadow-lg"
+            >
+              <Icon name="ShoppingBag" size={18} />
+              Товары на сайте Joywood
+            </a>
+            <a
+              href="https://www.ozon.ru/seller/joywood/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 bg-[#005BFF] hover:bg-[#0047CC] text-white font-bold text-base px-8 py-3.5 rounded-full transition-colors shadow-lg"
+            >
+              <Icon name="ExternalLink" size={18} />
+              Товары Joywood на Ozon
+            </a>
+          </div>
         </div>
       </div>
 
