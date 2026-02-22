@@ -61,22 +61,29 @@ const MyCollection = () => {
       setStep("collection");
       const phone = session.phone;
       // Всегда обновляем данные с сервера в фоне (чтобы новые in_transit магниты появлялись сразу)
-      Promise.all([
-        fetch(LOOKUP_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone }) }).then((r) => r.json()),
-        fetch(BREED_PHOTOS_URL).then((r) => r.json()),
-      ])
-        .then(([freshData, photosData]) => {
-          const photos = photosData.photos || {};
-          if (freshData && !freshData.error) {
-            setData(freshData);
-            setBreedPhotos(photos);
-            saveSession(phone, freshData, photos);
-          } else {
-            setBreedPhotos(photos);
-            saveSession(phone, session.data, photos);
-          }
-        })
-        .catch(() => {});
+      const tryFetchFresh = (attempt = 1): void => {
+        Promise.all([
+          fetch(LOOKUP_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone }) }).then((r) => r.json()),
+          fetch(BREED_PHOTOS_URL).then((r) => r.json()),
+        ])
+          .then(([freshData, photosData]) => {
+            const photos = photosData.photos || {};
+            if (freshData && !freshData.error) {
+              setData(freshData);
+              setBreedPhotos(photos);
+              saveSession(phone, freshData, photos);
+            } else if (attempt < 3) {
+              setTimeout(() => tryFetchFresh(attempt + 1), 1000);
+            } else {
+              setBreedPhotos(photos);
+              saveSession(phone, session.data, photos);
+            }
+          })
+          .catch(() => {
+            if (attempt < 3) setTimeout(() => tryFetchFresh(attempt + 1), 1000);
+          });
+      };
+      tryFetchFresh();
       if (scanBreed) {
         fetch(SCAN_URL, {
           method: "POST",
