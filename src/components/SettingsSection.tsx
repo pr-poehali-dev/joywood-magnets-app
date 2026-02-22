@@ -59,6 +59,27 @@ const toBase64 = (file: File): Promise<string> =>
     reader.readAsDataURL(file);
   });
 
+// Сжимает фото до max 1200px по длинной стороне, сохраняя пропорции
+const compressPhoto = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 1200;
+      let { width, height } = img;
+      if (width > MAX || height > MAX) {
+        if (width >= height) { height = Math.round((height * MAX) / width); width = MAX; }
+        else { width = Math.round((width * MAX) / height); height = MAX; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", 0.88));
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+
 const SettingsSection = () => {
   const [verificationEnabled, setVerificationEnabled] = useState(true);
   const [showRegister, setShowRegister] = useState(false);
@@ -159,23 +180,58 @@ const SettingsSection = () => {
     const pending = pendingUpload.current;
     if (!file || !pending) return;
     e.target.value = "";
-    const key = `${pending.level}-${pending.type}`;
-    setUploadingKey(key);
+    const uKey = `${pending.level}-${pending.type}`;
+    setUploadingKey(uKey);
     try {
-      const b64 = await toBase64(file);
-      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const res = await fetch(RACCOON_ASSETS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ level: pending.level, type: pending.type, data: b64, ext }),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Ошибка загрузки");
-      setRaccoonAssets((prev) => ({
-        ...prev,
-        [String(pending.level)]: { ...prev[String(pending.level)], [pending.type]: data.url + "?t=" + Date.now() },
-      }));
-      sonerToast.success(`Уровень ${pending.level}: ${pending.type === "photo" ? "фото" : "видео"} загружено`);
+      if (pending.type === "photo") {
+        // Фото — сжимаем без обрезки, грузим через base64
+        const b64 = await compressPhoto(file);
+        const ext = "jpg";
+        const res = await fetch(RACCOON_ASSETS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "upload_photo", level: pending.level, data: b64, ext }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Ошибка загрузки");
+        setRaccoonAssets((prev) => ({
+          ...prev,
+          [String(pending.level)]: { ...prev[String(pending.level)], photo: data.url + "?t=" + Date.now() },
+        }));
+        sonerToast.success(`Уровень ${pending.level}: фото загружено`);
+      } else {
+        // Видео — получаем presigned URL, грузим напрямую в S3
+        const presignRes = await fetch(RACCOON_ASSETS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "presign_video", level: pending.level }),
+        });
+        const presignData = await presignRes.json();
+        if (!presignData.ok) throw new Error(presignData.error || "Ошибка получения URL загрузки");
+
+        // Прямая загрузка в S3 через PUT
+        const uploadRes = await fetch(presignData.upload_url, {
+          method: "PUT",
+          headers: { "Content-Type": "video/mp4" },
+          body: file,
+        });
+        if (!uploadRes.ok) throw new Error("Ошибка загрузки видео в хранилище");
+
+        // Подтверждаем — обновляем индекс
+        const confirmRes = await fetch(RACCOON_ASSETS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "confirm_video", level: pending.level }),
+        });
+        const confirmData = await confirmRes.json();
+        if (!confirmData.ok) throw new Error("Ошибка подтверждения загрузки");
+
+        setRaccoonAssets((prev) => ({
+          ...prev,
+          [String(pending.level)]: { ...prev[String(pending.level)], video: confirmData.url + "?t=" + Date.now() },
+        }));
+        sonerToast.success(`Уровень ${pending.level}: видео загружено`);
+      }
     } catch (err) {
       sonerToast.error(err instanceof Error ? err.message : "Ошибка загрузки");
     } finally {
