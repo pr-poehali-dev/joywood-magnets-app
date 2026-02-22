@@ -39,15 +39,6 @@ def handler(event: dict, context) -> dict:
         body = json.loads(event.get('body') or '{}')
         key = body.get('key')
         value = body.get('value')
-        provided = body.get('password', '')
-
-        admin_password = os.environ.get('ADMIN_PASSWORD', '')
-        if provided != admin_password:
-            return {
-                'statusCode': 403,
-                'headers': {**CORS, 'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'Forbidden'}),
-            }
 
         if not key or value is None:
             return {

@@ -26,11 +26,7 @@ const SettingsSection = () => {
       const res = await fetch(SETTINGS_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          key: "phone_verification_enabled",
-          value: String(checked),
-          password: sessionStorage.getItem("jw_admin_password") || "",
-        }),
+        body: JSON.stringify({ key: "phone_verification_enabled", value: String(checked) }),
       });
       if (res.ok) {
         setVerificationEnabled(checked);
