@@ -233,7 +233,7 @@ const Promo = () => {
               <div className="flex-1">
                 <div className="h-3 w-32 bg-stone-200 rounded-full blur-sm" />
                 <div className="h-2.5 w-20 bg-stone-100 rounded-full blur-sm mt-1.5" />
-                <p className="text-[10px] text-muted-foreground mt-1.5 italic">полезный инструмент для мастера</p>
+                <p className="text-[10px] text-muted-foreground mt-1.5 italic">полезный инструмент/расходник для мастера</p>
               </div>
               <div className="bg-gold-50 border border-gold-200 rounded-full px-3 py-1 text-xs font-bold text-gold-700">
                 {m.label}
@@ -241,7 +241,7 @@ const Promo = () => {
             </div>
           ))}
         </div>
-        <p className="text-center text-xs text-muted-foreground">Конкретные призы узнаете после первого магнита 🎁</p>
+        <p className="text-center text-xs text-muted-foreground">Конкретные призы откроются после второго магнита 🎁</p>
       </div>
 
       {/* CTA bottom */}
