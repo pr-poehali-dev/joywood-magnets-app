@@ -88,7 +88,7 @@ def handler(event, context):
         ext = 'jpg' if 'jpeg' in content_type or 'jpg' in content_type else content_type.split('/')[-1]
         image_bytes = base64.b64decode(b64)
 
-        safe_name = breed.replace('/', '_').replace('\\', '_')
+        safe_name = breed.replace('/', '_').replace('\\', '_').replace('.', '').replace(' ', '_').strip('_')
         filename = f"{safe_name}.{ext}"
         key = f"{PREFIX}{filename}"
 
