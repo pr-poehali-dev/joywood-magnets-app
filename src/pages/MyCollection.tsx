@@ -9,6 +9,7 @@ import CollectionPhoneStep from "./collection/CollectionPhoneStep";
 import CollectionDashboard from "./collection/CollectionDashboard";
 import CollectionBonusProgress from "./collection/CollectionBonusProgress";
 import CollectionBreedAtlas from "./collection/CollectionBreedAtlas";
+import MagnetRevealModal from "@/components/MagnetRevealModal";
 import Icon from "@/components/ui/icon";
 
 const LOOKUP_URL = "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6f26ec4";
@@ -28,6 +29,7 @@ const MyCollection = () => {
   const [breedPhotos, setBreedPhotos] = useState<Record<string, string>>({});
   const [justRegistered, setJustRegistered] = useState(false);
   const [scanResult, setScanResult] = useState<{ result: string; breed: string } | null>(null);
+  const [revealModal, setRevealModal] = useState<{ breed: string; photoUrl?: string; stars: number; category: string } | null>(null);
   const notFoundRef = useRef<HTMLDivElement>(null);
   const autoSearched = useRef(false);
   const scanBreed = searchParams.get("scan") || "";
@@ -58,12 +60,21 @@ const MyCollection = () => {
       setBreedPhotos(session.photos);
       setStep("collection");
       const phone = session.phone;
-      fetch(BREED_PHOTOS_URL)
-        .then((r) => r.json())
-        .then((d) => {
-          const photos = d.photos || {};
-          setBreedPhotos(photos);
-          saveSession(phone, session.data, photos);
+      // Всегда обновляем данные с сервера в фоне (чтобы новые in_transit магниты появлялись сразу)
+      Promise.all([
+        fetch(LOOKUP_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone }) }).then((r) => r.json()),
+        fetch(BREED_PHOTOS_URL).then((r) => r.json()),
+      ])
+        .then(([freshData, photosData]) => {
+          const photos = photosData.photos || {};
+          if (freshData && !freshData.error) {
+            setData(freshData);
+            setBreedPhotos(photos);
+            saveSession(phone, freshData, photos);
+          } else {
+            setBreedPhotos(photos);
+            saveSession(phone, session.data, photos);
+          }
         })
         .catch(() => {});
       if (scanBreed) {
@@ -74,7 +85,6 @@ const MyCollection = () => {
         })
           .then((r) => r.json())
           .then((scanData) => {
-            setScanResult({ result: scanData.result, breed: scanBreed });
             if (scanData.result === "revealed") {
               fetch(LOOKUP_URL, {
                 method: "POST",
@@ -85,6 +95,13 @@ const MyCollection = () => {
                 .then((refreshed) => {
                   setData(refreshed);
                   saveSession(phone, refreshed, session.photos);
+                  const breedInfo = WOOD_BREEDS.find((b) => b.breed === scanBreed);
+                  setRevealModal({
+                    breed: scanBreed,
+                    photoUrl: session.photos[scanBreed],
+                    stars: breedInfo?.stars ?? 1,
+                    category: breedInfo?.category ?? "",
+                  });
                 })
                 .catch(() => {});
             }
@@ -122,7 +139,6 @@ const MyCollection = () => {
             body: JSON.stringify({ phone: searchPhone, breed: scanBreed }),
           });
           const scanData = await scanRes.json();
-          setScanResult({ result: scanData.result, breed: scanBreed });
           if (scanData.result === "revealed") {
             const refreshRes = await fetch(LOOKUP_URL, {
               method: "POST",
@@ -134,6 +150,15 @@ const MyCollection = () => {
               setData(refreshed);
               saveSession(searchPhone, refreshed, photos);
             }
+            const breedInfo = WOOD_BREEDS.find((b) => b.breed === scanBreed);
+            setRevealModal({
+              breed: scanBreed,
+              photoUrl: photos[scanBreed],
+              stars: breedInfo?.stars ?? 1,
+              category: breedInfo?.category ?? "",
+            });
+          } else {
+            setScanResult({ result: scanData.result, breed: scanBreed });
           }
         } catch { /* non-critical */ }
       }
@@ -258,6 +283,7 @@ const MyCollection = () => {
     : visibleBreeds;
 
   return (
+    <>
     <div className="min-h-screen bg-white px-4 py-8">
       <div className="w-full max-w-lg mx-auto space-y-6">
         <div className="text-center space-y-3">
@@ -360,7 +386,19 @@ const MyCollection = () => {
         )}
       </div>
     </div>
+
+    {revealModal && (
+      <MagnetRevealModal
+        breed={revealModal.breed}
+        photoUrl={revealModal.photoUrl}
+        stars={revealModal.stars}
+        category={revealModal.category}
+        onClose={() => setRevealModal(null)}
+      />
+    )}
+    </>
   );
 };
+
 
 export default MyCollection;
