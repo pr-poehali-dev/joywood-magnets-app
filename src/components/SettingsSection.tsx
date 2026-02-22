@@ -1,14 +1,18 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { toast as sonerToast } from "sonner";
 import Icon from "@/components/ui/icon";
+import { RACCOON_LEVELS } from "@/lib/raccoon";
+import LevelUpModal from "@/components/LevelUpModal";
 
 const SETTINGS_URL = "https://functions.poehali.dev/8d9bf70e-b9a7-466a-a2e0-7e510754dde1";
 const UPLOAD_POLICY_URL = "https://functions.poehali.dev/a3dfac54-994c-4651-8b8f-e2191da2f608";
 const GET_CONSENTS_URL = "https://functions.poehali.dev/4abcb4ec-79d8-4bfa-8e66-1285f23e5eac";
+const RACCOON_ASSETS_URL = "https://functions.poehali.dev/81103f27-f9fd-48ca-87c2-027ad46a7df8";
 
 interface ConsentItem {
   id: number; phone: string; name: string; policy_version: string; ip: string; created_at: string;
@@ -47,6 +51,14 @@ const SettingRow = ({ label, description, descriptionOff, checked, loading, fetc
   </div>
 );
 
+const toBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
 const SettingsSection = () => {
   const [verificationEnabled, setVerificationEnabled] = useState(true);
   const [showRegister, setShowRegister] = useState(false);
@@ -59,6 +71,15 @@ const SettingsSection = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  // Енот
+  const [raccoonAssets, setRaccoonAssets] = useState<Record<string, { photo?: string; video?: string }>>({});
+  const [raccoonLoading, setRaccoonLoading] = useState(true);
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const [previewLevel, setPreviewLevel] = useState<number | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const pendingUpload = useRef<{ level: number; type: "photo" | "video" } | null>(null);
+
   useEffect(() => {
     fetch(SETTINGS_URL)
       .then((r) => r.json())
@@ -69,6 +90,12 @@ const SettingsSection = () => {
       })
       .catch(() => {})
       .finally(() => setFetching(false));
+
+    fetch(RACCOON_ASSETS_URL)
+      .then((r) => r.json())
+      .then((data) => setRaccoonAssets(data))
+      .catch(() => {})
+      .finally(() => setRaccoonLoading(false));
   }, []);
 
   const loadConsents = () => {
@@ -127,152 +154,261 @@ const SettingsSection = () => {
     }
   };
 
+  const handleRaccoonFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const pending = pendingUpload.current;
+    if (!file || !pending) return;
+    e.target.value = "";
+    const key = `${pending.level}-${pending.type}`;
+    setUploadingKey(key);
+    try {
+      const b64 = await toBase64(file);
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const res = await fetch(RACCOON_ASSETS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ level: pending.level, type: pending.type, data: b64, ext }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Ошибка загрузки");
+      setRaccoonAssets((prev) => ({
+        ...prev,
+        [String(pending.level)]: { ...prev[String(pending.level)], [pending.type]: data.url + "?t=" + Date.now() },
+      }));
+      sonerToast.success(`Уровень ${pending.level}: ${pending.type === "photo" ? "фото" : "видео"} загружено`);
+    } catch (err) {
+      sonerToast.error(err instanceof Error ? err.message : "Ошибка загрузки");
+    } finally {
+      setUploadingKey(null);
+      pendingUpload.current = null;
+    }
+  }, []);
+
+  const triggerUpload = (level: number, type: "photo" | "video") => {
+    pendingUpload.current = { level, type };
+    if (type === "photo") photoInputRef.current?.click();
+    else videoInputRef.current?.click();
+  };
+
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6">
+      <div className="max-w-2xl space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Icon name="ShieldCheck" size={18} className="text-orange-500" />
+              Безопасность и доступ
+            </CardTitle>
+            <CardDescription>Управление входом и регистрацией клиентов</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SettingRow
+              label="SMS-верификация телефона"
+              description="Клиент подтверждает номер через SMS-код перед просмотром коллекции"
+              descriptionOff="Клиент вводит телефон и сразу видит коллекцию без SMS"
+              checked={verificationEnabled}
+              loading={loadingKey === "phone_verification_enabled"}
+              fetching={fetching}
+              onToggle={(v) => saveSetting(
+                "phone_verification_enabled", v,
+                setVerificationEnabled,
+                ["Верификация включена", "Верификация выключена"]
+              )}
+            />
+            <SettingRow
+              label="Страница самостоятельной регистрации"
+              description="На странице входа видна ссылка на регистрацию (/register)"
+              descriptionOff="Ссылка на регистрацию скрыта. Клиенты с Ozon регистрируются через форму на странице входа"
+              checked={showRegister}
+              loading={loadingKey === "show_register_page"}
+              fetching={fetching}
+              onToggle={(v) => saveSetting(
+                "show_register_page", v,
+                setShowRegister,
+                ["Страница регистрации включена", "Страница регистрации скрыта"]
+              )}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Icon name="FileText" size={18} className="text-orange-500" />
+              Политика конфиденциальности
+            </CardTitle>
+            <CardDescription>Документ, который клиент подтверждает при входе в коллекцию</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {policyUrl ? (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 border border-green-200">
+                <Icon name="FileCheck" size={18} className="text-green-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-green-800">Документ загружен</p>
+                  <a href={policyUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 underline truncate block">
+                    Открыть PDF
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                <Icon name="AlertCircle" size={18} className="text-amber-600 shrink-0" />
+                <p className="text-sm text-amber-800">Документ ещё не загружен. Клиенты не видят чекбокс согласия.</p>
+              </div>
+            )}
+            <div>
+              <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={handleUploadPolicy} />
+              <Button variant="outline" size="sm" className="gap-2" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
+                {uploading
+                  ? <><Icon name="Loader2" size={14} className="animate-spin" />Загрузка...</>
+                  : <><Icon name="Upload" size={14} />{policyUrl ? "Заменить документ" : "Загрузить PDF"}</>}
+              </Button>
+              <p className="text-xs text-muted-foreground mt-1.5">Только PDF-файл</p>
+            </div>
+
+            {policyUrl && (
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <Icon name="Users" size={15} className="text-slate-500" />
+                    Согласия клиентов
+                    <span className="text-xs text-muted-foreground font-normal">({consents.length})</span>
+                  </p>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={loadConsents} disabled={consentsLoading}>
+                    <Icon name={consentsLoading ? "Loader2" : "RefreshCw"} size={12} className={consentsLoading ? "animate-spin" : ""} />
+                    Обновить
+                  </Button>
+                </div>
+                {consents.length === 0 && !consentsLoading ? (
+                  <p className="text-xs text-muted-foreground">Согласий пока нет</p>
+                ) : (
+                  <div className="rounded-md border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Клиент</TableHead>
+                          <TableHead className="text-xs">Версия политики</TableHead>
+                          <TableHead className="text-xs">IP-адрес</TableHead>
+                          <TableHead className="text-xs">Дата и время</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {consentsLoading && (
+                          <TableRow><TableCell colSpan={4} className="text-center py-6"><Icon name="Loader2" size={20} className="mx-auto animate-spin opacity-40" /></TableCell></TableRow>
+                        )}
+                        {!consentsLoading && consents.map((c) => (
+                          <TableRow key={c.id}>
+                            <TableCell className="text-xs">
+                              <p className="font-medium">{c.name}</p>
+                              <p className="text-muted-foreground">{c.phone}</p>
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{c.policy_version}</TableCell>
+                            <TableCell className="text-xs font-mono text-muted-foreground">{c.ip}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                              {new Date(c.created_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Енот-мастер */}
+      <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handleRaccoonFile} />
+      <input ref={videoInputRef} type="file" accept="video/mp4,video/*" className="hidden" onChange={handleRaccoonFile} />
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Icon name="ShieldCheck" size={18} className="text-orange-500" />
-            Безопасность и доступ
+            <span className="text-lg leading-none">🦝</span>
+            Енот-мастер — медиафайлы
           </CardTitle>
-          <CardDescription>Управление входом и регистрацией клиентов</CardDescription>
+          <CardDescription>Фото показывается в профиле клиента. Видео воспроизводится при повышении уровня.</CardDescription>
         </CardHeader>
         <CardContent>
-          <SettingRow
-            label="SMS-верификация телефона"
-            description="Клиент подтверждает номер через SMS-код перед просмотром коллекции"
-            descriptionOff="Клиент вводит телефон и сразу видит коллекцию без SMS"
-            checked={verificationEnabled}
-            loading={loadingKey === "phone_verification_enabled"}
-            fetching={fetching}
-            onToggle={(v) => saveSetting(
-              "phone_verification_enabled", v,
-              setVerificationEnabled,
-              ["Верификация включена", "Верификация выключена"]
-            )}
-          />
-          <SettingRow
-            label="Страница самостоятельной регистрации"
-            description="На странице входа видна ссылка на регистрацию (/register)"
-            descriptionOff="Ссылка на регистрацию скрыта. Клиенты с Ozon регистрируются через форму на странице входа"
-            checked={showRegister}
-            loading={loadingKey === "show_register_page"}
-            fetching={fetching}
-            onToggle={(v) => saveSetting(
-              "show_register_page", v,
-              setShowRegister,
-              ["Страница регистрации включена", "Страница регистрации скрыта"]
-            )}
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Icon name="FileText" size={18} className="text-orange-500" />
-            Политика конфиденциальности
-          </CardTitle>
-          <CardDescription>Документ, который клиент подтверждает при входе в коллекцию</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {policyUrl ? (
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 border border-green-200">
-              <Icon name="FileCheck" size={18} className="text-green-600 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-green-800">Документ загружен</p>
-                <a
-                  href={policyUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-green-700 underline truncate block"
-                >
-                  Открыть PDF
-                </a>
-              </div>
+          {raccoonLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
+              <Icon name="Loader2" size={18} className="animate-spin" />
+              Загрузка...
             </div>
           ) : (
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
-              <Icon name="AlertCircle" size={18} className="text-amber-600 shrink-0" />
-              <p className="text-sm text-amber-800">Документ ещё не загружен. Клиенты не видят чекбокс согласия.</p>
-            </div>
-          )}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {RACCOON_LEVELS.map((lvl) => {
+                const saved = raccoonAssets[String(lvl.level)] || {};
+                const isUploadingPhoto = uploadingKey === `${lvl.level}-photo`;
+                const isUploadingVideo = uploadingKey === `${lvl.level}-video`;
 
-          <div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              onChange={handleUploadPolicy}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              disabled={uploading}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {uploading ? (
-                <><Icon name="Loader2" size={14} className="animate-spin" />Загрузка...</>
-              ) : (
-                <><Icon name="Upload" size={14} />{policyUrl ? "Заменить документ" : "Загрузить PDF"}</>
-              )}
-            </Button>
-            <p className="text-xs text-muted-foreground mt-1.5">Только PDF-файл</p>
-          </div>
-
-          {policyUrl && (
-            <div className="pt-2">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <Icon name="Users" size={15} className="text-slate-500" />
-                  Согласия клиентов
-                  <span className="text-xs text-muted-foreground font-normal">({consents.length})</span>
-                </p>
-                <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={loadConsents} disabled={consentsLoading}>
-                  <Icon name={consentsLoading ? "Loader2" : "RefreshCw"} size={12} className={consentsLoading ? "animate-spin" : ""} />
-                  Обновить
-                </Button>
-              </div>
-              {consents.length === 0 && !consentsLoading ? (
-                <p className="text-xs text-muted-foreground">Согласий пока нет</p>
-              ) : (
-                <div className="rounded-md border overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-xs">Клиент</TableHead>
-                        <TableHead className="text-xs">Версия политики</TableHead>
-                        <TableHead className="text-xs">IP-адрес</TableHead>
-                        <TableHead className="text-xs">Дата и время</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {consentsLoading && (
-                        <TableRow><TableCell colSpan={4} className="text-center py-6"><Icon name="Loader2" size={20} className="mx-auto animate-spin opacity-40" /></TableCell></TableRow>
+                return (
+                  <div key={lvl.level} className="border rounded-lg overflow-hidden bg-white">
+                    {/* Фото */}
+                    <div className="aspect-square relative bg-slate-100">
+                      {saved.photo ? (
+                        <img src={saved.photo} alt={`Ур.${lvl.level}`} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-300 text-3xl">🦝</div>
                       )}
-                      {!consentsLoading && consents.map((c) => (
-                        <TableRow key={c.id}>
-                          <TableCell className="text-xs">
-                            <p className="font-medium">{c.name}</p>
-                            <p className="text-muted-foreground">{c.phone}</p>
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{c.policy_version}</TableCell>
-                          <TableCell className="text-xs font-mono text-muted-foreground">{c.ip}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                            {new Date(c.created_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+                    </div>
+
+                    <div className="p-2 space-y-1.5">
+                      <div>
+                        <p className="text-xs font-semibold truncate">Ур.{lvl.level} {lvl.name}</p>
+                        <p className="text-[10px] text-muted-foreground">от {lvl.xpMin} XP</p>
+                      </div>
+
+                      {/* Кнопка загрузки фото */}
+                      <button
+                        className="w-full text-xs flex items-center justify-center gap-1 py-1 rounded border border-dashed border-slate-300 hover:border-orange-400 hover:text-orange-600 text-slate-400 transition-colors disabled:opacity-50"
+                        disabled={isUploadingPhoto}
+                        onClick={() => triggerUpload(lvl.level, "photo")}
+                      >
+                        {isUploadingPhoto
+                          ? <><Icon name="Loader2" size={12} className="animate-spin" />Загрузка...</>
+                          : <><Icon name="Image" size={12} />{saved.photo ? "Фото" : "+ Фото"}</>}
+                      </button>
+
+                      {/* Видео — статус + загрузка */}
+                      <button
+                        className={`w-full text-xs flex items-center justify-center gap-1 py-1 rounded border border-dashed transition-colors disabled:opacity-50 ${
+                          saved.video
+                            ? "border-green-300 text-green-600 hover:border-orange-400 hover:text-orange-600"
+                            : "border-slate-300 text-slate-400 hover:border-orange-400 hover:text-orange-600"
+                        }`}
+                        disabled={isUploadingVideo}
+                        onClick={() => triggerUpload(lvl.level, "video")}
+                      >
+                        {isUploadingVideo
+                          ? <><Icon name="Loader2" size={12} className="animate-spin" />Загрузка...</>
+                          : saved.video
+                          ? <><Icon name="Video" size={12} />Видео ✓</>
+                          : <><Icon name="Video" size={12} />+ Видео</>}
+                      </button>
+
+                      {/* Превью анимации */}
+                      <button
+                        className="w-full text-xs flex items-center justify-center gap-1 py-1 rounded border border-dashed border-amber-300 text-amber-600 hover:border-amber-400 hover:bg-amber-50 transition-colors"
+                        onClick={() => setPreviewLevel(lvl.level)}
+                      >
+                        <Icon name="Play" size={12} />
+                        Превью
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {previewLevel !== null && (
+        <LevelUpModal newLevel={previewLevel} onClose={() => setPreviewLevel(null)} />
+      )}
     </div>
   );
 };
