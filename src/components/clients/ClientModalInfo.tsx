@@ -69,6 +69,13 @@ const ClientModalInfo = ({
         </div>
       )}
       <div className="flex gap-1.5 ml-auto">
+        {client.phone && (
+          <a href={`/my-collection?phone=${encodeURIComponent(client.phone)}`} target="_blank" rel="noopener noreferrer">
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-orange-500 hover:text-orange-700 hover:bg-orange-50 gap-1">
+              <Icon name="Eye" size={12} />Коллекция
+            </Button>
+          </a>
+        )}
         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1" onClick={onStartEdit}>
           <Icon name="Pencil" size={12} />Редактировать
         </Button>
