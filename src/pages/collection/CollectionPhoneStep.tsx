@@ -78,6 +78,9 @@ const CollectionPhoneStep = ({
               <div className="space-y-2">
                 <Label htmlFor="phone">Номер телефона</Label>
                 <PhoneInput id="phone" phoneHook={phoneHook} />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  По номеру телефона мы находим ваши магниты и показываем прогресс в акции
+                </p>
               </div>
               <Button
                 type="submit"
