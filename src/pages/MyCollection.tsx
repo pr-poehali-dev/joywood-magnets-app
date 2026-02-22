@@ -30,6 +30,7 @@ const MyCollection = () => {
   const phone = usePhoneInput();
   const [verificationEnabled, setVerificationEnabled] = useState(true);
   const [showRegister, setShowRegister] = useState(false);
+  const [policyUrl, setPolicyUrl] = useState("");
 
   useEffect(() => {
     fetch(SETTINGS_URL)
@@ -37,6 +38,7 @@ const MyCollection = () => {
       .then((s) => {
         setVerificationEnabled(s.phone_verification_enabled !== "false");
         setShowRegister(s.show_register_page === "true");
+        setPolicyUrl(s.privacy_policy_url || "");
       })
       .catch(() => {});
   }, []);
@@ -185,6 +187,7 @@ const MyCollection = () => {
             notFoundRef={notFoundRef}
             phoneHook={phone}
             showRegister={showRegister}
+            policyUrl={policyUrl}
             onPhoneSubmit={handlePhoneSubmit}
             onVerifySuccess={() => doSearch(verifiedPhone)}
             onVerifyBack={() => setStep("phone")}

@@ -18,6 +18,7 @@ interface Props {
   notFoundRef: RefObject<HTMLDivElement>;
   phoneHook: ReturnType<typeof usePhoneInput>;
   showRegister?: boolean;
+  policyUrl?: string;
   onPhoneSubmit: (e: React.FormEvent) => void;
   onVerifySuccess: () => void;
   onVerifyBack: () => void;
@@ -32,6 +33,7 @@ const CollectionPhoneStep = ({
   notFoundRef,
   phoneHook,
   showRegister = false,
+  policyUrl = "",
   onPhoneSubmit,
   onVerifySuccess,
   onVerifyBack,
@@ -41,6 +43,7 @@ const CollectionPhoneStep = ({
   const [ozonCode, setOzonCode] = useState("");
   const [registering, setRegistering] = useState(false);
   const [regError, setRegError] = useState("");
+  const [policyAccepted, setPolicyAccepted] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,10 +85,28 @@ const CollectionPhoneStep = ({
                   По номеру телефона мы находим ваши магниты и показываем прогресс в акции
                 </p>
               </div>
+              {policyUrl && (
+                <div className="flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    id="policy-accept"
+                    checked={policyAccepted}
+                    onChange={(e) => setPolicyAccepted(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-amber-600 shrink-0"
+                  />
+                  <label htmlFor="policy-accept" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+                    Выражаю своё согласие с{" "}
+                    <a href={policyUrl} target="_blank" rel="noopener noreferrer" className="text-amber-600 underline hover:text-amber-700">
+                      политикой конфиденциальности
+                    </a>{" "}
+                    в отношении пользовательских данных и даю своё согласие на обработку персональных данных
+                  </label>
+                </div>
+              )}
               <Button
                 type="submit"
                 className="w-full bg-gold-500 hover:bg-gold-600"
-                disabled={!phoneHook.isValid || loading}
+                disabled={!phoneHook.isValid || loading || (!!policyUrl && !policyAccepted)}
               >
                 {loading ? (
                   <span className="flex items-center gap-2">
@@ -176,6 +197,25 @@ const CollectionPhoneStep = ({
                 <PhoneInput id="ozon-phone" phoneHook={phoneHook} />
               </div>
 
+              {policyUrl && (
+                <div className="flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    id="policy-accept-reg"
+                    checked={policyAccepted}
+                    onChange={(e) => setPolicyAccepted(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-blue-300 accent-blue-600 shrink-0"
+                  />
+                  <label htmlFor="policy-accept-reg" className="text-xs text-blue-800 leading-relaxed cursor-pointer">
+                    Выражаю своё согласие с{" "}
+                    <a href={policyUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-900">
+                      политикой конфиденциальности
+                    </a>{" "}
+                    в отношении пользовательских данных и даю своё согласие на обработку персональных данных
+                  </label>
+                </div>
+              )}
+
               {regError && (
                 <p className="text-sm text-red-600 flex items-center gap-1.5">
                   <Icon name="AlertCircle" size={14} />
@@ -186,7 +226,7 @@ const CollectionPhoneStep = ({
               <Button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2"
-                disabled={registering}
+                disabled={registering || (!!policyUrl && !policyAccepted)}
               >
                 {registering ? (
                   <><Icon name="Loader2" size={16} className="animate-spin" />Регистрация...</>
