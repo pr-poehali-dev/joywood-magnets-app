@@ -155,11 +155,16 @@ const MyCollection = () => {
 
   useEffect(() => {
     const urlPhone = searchParams.get("phone");
+    const isAdmin = searchParams.get("admin") === "1";
     if (urlPhone && !autoSearched.current) {
       autoSearched.current = true;
-      checkExists(urlPhone);
+      if (isAdmin) {
+        doSearch(urlPhone);
+      } else {
+        checkExists(urlPhone);
+      }
     }
-  }, [searchParams, checkExists]);
+  }, [searchParams, checkExists, doSearch]);
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
