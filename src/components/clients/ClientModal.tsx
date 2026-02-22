@@ -164,9 +164,9 @@ const ClientModal = ({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка");
-      toast.success(`${breed.breed} ${STAR_LABELS[breed.stars]} выдан`);
+      toast.success(`${breed.breed} ${STAR_LABELS[breed.stars]} отправлен`);
       setSelectedBreed("");
-      onMagnetGiven(client.id, { id: data.id, breed: breed.breed, stars: breed.stars, category: breed.category, given_at: data.given_at }, breed.breed, data.stock_after ?? null);
+      onMagnetGiven(client.id, { id: data.id, breed: breed.breed, stars: breed.stars, category: breed.category, given_at: data.given_at, status: data.status ?? 'in_transit' }, breed.breed, data.stock_after ?? null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось выдать магнит");
     } finally { setGivingMagnet(false); }
