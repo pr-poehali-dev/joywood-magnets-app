@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Register from "./pages/Register";
 import MyCollection from "./pages/MyCollection";
 import Promo from "./pages/Promo";
+import ScanMagnet from "./pages/ScanMagnet";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/register" element={<Register />} />
           <Route path="/promo" element={<Promo />} />
           <Route path="/admin" element={<Index />} />
+          <Route path="/scan/:breed" element={<ScanMagnet />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

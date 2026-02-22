@@ -4,6 +4,14 @@ export interface Magnet {
   stars: number;
   category: string;
   given_at: string;
+  status?: string;
+}
+
+export interface InTransitMagnet {
+  id: number;
+  stars: number;
+  category: string;
+  given_at: string;
 }
 
 export interface BonusRecord {
@@ -35,6 +43,8 @@ export interface CollectionData {
   magnets: Magnet[];
   total_magnets: number;
   unique_breeds: number;
+  in_transit?: InTransitMagnet[];
+  total_in_transit?: number;
   bonuses: BonusRecord[];
   rating?: Rating;
   inactive_breeds?: string[];

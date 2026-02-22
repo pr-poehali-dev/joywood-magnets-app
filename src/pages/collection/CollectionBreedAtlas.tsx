@@ -3,7 +3,6 @@ import Icon from "@/components/ui/icon";
 import { STAR_LABELS, WOOD_BREEDS } from "@/lib/store";
 import { CollectionData } from "./types";
 
-// Используется только как запасное значение, реальный total передаётся через props
 const TOTAL_BREEDS = WOOD_BREEDS.length;
 
 const STAR_BG: Record<number, string> = {
@@ -22,15 +21,49 @@ interface Props {
 
 const CollectionBreedAtlas = ({ data, sortedBreeds, collectedBreeds, breedPhotos, totalVisible }: Props) => {
   const total = totalVisible ?? TOTAL_BREEDS;
+  const inTransitCount = data.in_transit?.length ?? 0;
+
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Icon name="Map" size={18} className="text-orange-500" />
           Атлас пород — {data.unique_breeds}/{total}
+          {inTransitCount > 0 && (
+            <span className="ml-auto text-xs font-normal text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+              {inTransitCount} в пути
+            </span>
+          )}
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
+        {inTransitCount > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground font-medium">Едут к вам</p>
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {(data.in_transit ?? []).map((m) => (
+                <div
+                  key={m.id}
+                  className="rounded-xl border border-amber-300 overflow-hidden flex flex-col shadow-sm"
+                >
+                  <div className="relative aspect-square w-full bg-amber-50 flex items-center justify-center">
+                    <div className="text-3xl animate-pulse">📦</div>
+                    <div className="absolute top-1 right-1 text-xs leading-none bg-white/80 rounded-full px-1 py-0.5">
+                      {STAR_LABELS[m.stars] ?? "⭐"}
+                    </div>
+                  </div>
+                  <div className="px-1.5 py-1.5 text-center text-xs bg-amber-50">
+                    <div className="font-medium leading-tight text-amber-800">В пути...</div>
+                    <div className="text-[10px] text-amber-600 mt-0.5">
+                      Сканируй QR магнита
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
           {sortedBreeds.map((breed) => {
             const collected = collectedBreeds.has(breed.breed);

@@ -59,12 +59,17 @@ def handler(event, context):
             return ok({'exists': True, 'needs_consent': needs_consent, 'policy_url': policy_url, 'policy_version': policy_version})
 
         cur.execute(
-            "SELECT id, breed, stars, category, given_at FROM client_magnets "
+            "SELECT id, breed, stars, category, given_at, status FROM client_magnets "
             "WHERE registration_id = %d ORDER BY given_at DESC" % reg[0]
         )
+        all_rows = cur.fetchall()
         magnets = [
-            {'id': r[0], 'breed': r[1], 'stars': r[2], 'category': r[3], 'given_at': str(r[4])}
-            for r in cur.fetchall()
+            {'id': r[0], 'breed': r[1], 'stars': r[2], 'category': r[3], 'given_at': str(r[4]), 'status': r[5]}
+            for r in all_rows if r[5] != 'in_transit'
+        ]
+        in_transit = [
+            {'id': r[0], 'stars': r[2], 'category': r[3], 'given_at': str(r[4])}
+            for r in all_rows if r[5] == 'in_transit'
         ]
 
         cur.execute("SELECT breed FROM magnet_inventory WHERE active = false")
@@ -81,6 +86,7 @@ def handler(event, context):
 
         total_magnets = len(magnets)
         unique_breeds = len(set(m['breed'] for m in magnets))
+        total_in_transit = len(in_transit)
 
         cv_formula = "COALESCE(SUM(CASE cm2.stars WHEN 1 THEN 150 WHEN 2 THEN 350 WHEN 3 THEN 700 ELSE 0 END), 0)"
 
@@ -138,6 +144,7 @@ def handler(event, context):
             'client_name': reg[1], 'phone': reg[2],
             'magnets': magnets, 'total_magnets': total_magnets,
             'unique_breeds': unique_breeds,
+            'in_transit': in_transit, 'total_in_transit': total_in_transit,
             'bonuses': bonuses,
             'inactive_breeds': list(inactive_breeds),
             'rating': {

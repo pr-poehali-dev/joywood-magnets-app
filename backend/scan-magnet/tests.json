@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Unknown phone returns 404",
+      "method": "POST",
+      "path": "/",
+      "body": {"phone": "+7 (999) 000-00-00", "breed": "Дуб"},
+      "expectedStatus": 404,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Missing breed returns 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"phone": "+7 (999) 000-00-01"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

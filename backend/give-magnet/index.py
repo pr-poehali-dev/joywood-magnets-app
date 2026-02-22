@@ -148,6 +148,8 @@ def handler(event, context):
         breed = (body.get('breed') or '').strip()
         stars = body.get('stars')
         category = (body.get('category') or '').strip()
+        in_transit = bool(body.get('in_transit', False))
+        magnet_status = 'in_transit' if in_transit else 'revealed'
 
         if not registration_id or not breed or not stars or not category:
             return err('Укажите registration_id, breed, stars и category')
@@ -185,12 +187,13 @@ def handler(event, context):
             order_id_sql = str(last_order_id) if last_order_id else 'NULL'
 
             cur.execute(
-                "INSERT INTO client_magnets (registration_id, phone, breed, stars, category, order_id) "
-                "VALUES (%d, '%s', '%s', %d, '%s', %s) RETURNING id, given_at"
+                "INSERT INTO client_magnets (registration_id, phone, breed, stars, category, order_id, status) "
+                "VALUES (%d, '%s', '%s', %d, '%s', %s, '%s') RETURNING id, given_at"
                 % (
                     int(registration_id), phone.replace("'", "''"),
                     breed.replace("'", "''"), int(stars),
                     category.replace("'", "''"), order_id_sql,
+                    magnet_status,
                 )
             )
             row = cur.fetchone()
@@ -204,6 +207,7 @@ def handler(event, context):
             return ok({
                 'id': row[0], 'given_at': str(row[1]), 'breed': breed,
                 'stars': int(stars), 'stock_after': max(inv_row[0] - 1, 0) if inv_row else None,
+                'status': magnet_status,
             })
         finally:
             conn.close()
