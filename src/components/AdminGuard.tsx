@@ -31,6 +31,7 @@ const AdminGuard = ({ children }: Props) => {
       const data = await res.json();
       if (data.ok) {
         sessionStorage.setItem(SESSION_KEY, "ok");
+        sessionStorage.setItem("jw_admin_password", password);
         setAuthenticated(true);
       } else {
         setError("Неверный пароль");

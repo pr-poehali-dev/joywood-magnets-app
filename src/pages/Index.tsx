@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Icon from "@/components/ui/icon";
 import ClientsSection from "@/components/ClientsSection";
@@ -7,6 +7,9 @@ import OrdersSection from "@/components/OrdersSection";
 import RecentRegistrations from "@/components/RecentRegistrations";
 import AdminGuard from "@/components/AdminGuard";
 import AnalyticsSection from "@/components/AnalyticsSection";
+import { Switch } from "@/components/ui/switch";
+import { API_URLS } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 const tabsList = [
   { value: "orders", label: "Заказы", icon: "ShoppingCart" },
@@ -16,11 +19,54 @@ const tabsList = [
   { value: "analytics", label: "Аналитика", icon: "TrendingUp" },
 ];
 
+const SESSION_KEY = "jw_admin_auth";
+
 const Index = () => {
   const [activeTab, setActiveTab] = useState("orders");
   const [focusClientId, setFocusClientId] = useState<number | null>(null);
   const [newRegsCount, setNewRegsCount] = useState(0);
   const [clientsReloadKey, setClientsReloadKey] = useState(0);
+  const [verificationEnabled, setVerificationEnabled] = useState(true);
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetch(API_URLS.SETTINGS)
+      .then((r) => r.json())
+      .then((data) => {
+        setVerificationEnabled(data.phone_verification_enabled !== "false");
+      })
+      .catch(() => {});
+  }, []);
+
+  const toggleVerification = async (checked: boolean) => {
+    setVerificationLoading(true);
+    try {
+      const res = await fetch(API_URLS.SETTINGS, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Password": sessionStorage.getItem("jw_admin_password") || "",
+        },
+        body: JSON.stringify({ key: "phone_verification_enabled", value: String(checked) }),
+      });
+      if (res.ok) {
+        setVerificationEnabled(checked);
+        toast({
+          title: checked ? "Верификация включена" : "Верификация выключена",
+          description: checked
+            ? "Клиенты снова должны подтверждать телефон"
+            : "Клиенты входят без SMS-кода",
+        });
+      } else {
+        toast({ title: "Ошибка", description: "Не удалось сохранить настройку", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Ошибка", description: "Нет соединения", variant: "destructive" });
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
 
   const navigateToClient = useCallback((clientId: number) => {
     setFocusClientId(clientId);
@@ -47,7 +93,22 @@ const Index = () => {
                 Панель управления акцией
               </p>
             </div>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="verification-toggle"
+                  checked={verificationEnabled}
+                  onCheckedChange={toggleVerification}
+                  disabled={verificationLoading}
+                />
+                <label
+                  htmlFor="verification-toggle"
+                  className="text-sm text-muted-foreground cursor-pointer select-none flex items-center gap-1"
+                >
+                  <Icon name="ShieldCheck" size={14} />
+                  SMS-верификация
+                </label>
+              </div>
               <a
                 href="/"
                 target="_blank"

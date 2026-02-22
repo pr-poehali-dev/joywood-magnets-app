@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "GET settings returns phone_verification_enabled",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"phone_verification_enabled": "true"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

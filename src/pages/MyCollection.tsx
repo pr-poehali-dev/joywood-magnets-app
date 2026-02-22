@@ -9,6 +9,7 @@ import CollectionPhoneStep from "./collection/CollectionPhoneStep";
 import CollectionDashboard from "./collection/CollectionDashboard";
 import CollectionBonusProgress from "./collection/CollectionBonusProgress";
 import CollectionBreedAtlas from "./collection/CollectionBreedAtlas";
+import { API_URLS } from "@/lib/api";
 
 const LOOKUP_URL = "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6f26ec4";
 const BREED_PHOTOS_URL = "https://functions.poehali.dev/264a19bd-40c8-4203-a8cd-9f3709bedcee";
@@ -25,6 +26,16 @@ const MyCollection = () => {
   const autoSearched = useRef(false);
 
   const phone = usePhoneInput();
+  const [verificationEnabled, setVerificationEnabled] = useState(true);
+
+  useEffect(() => {
+    fetch(API_URLS.SETTINGS)
+      .then((r) => r.json())
+      .then((data) => {
+        setVerificationEnabled(data.phone_verification_enabled !== "false");
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const session = loadSession();
@@ -85,6 +96,10 @@ const MyCollection = () => {
         return;
       }
       if (!res.ok) throw new Error("Ошибка проверки");
+      if (!verificationEnabled) {
+        await doSearch(searchPhone);
+        return;
+      }
       await loadWidgetAssets();
       setVerifiedPhone(searchPhone);
       setStep("verify");
@@ -93,7 +108,7 @@ const MyCollection = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [verificationEnabled, doSearch]);
 
   useEffect(() => {
     const urlPhone = searchParams.get("phone");
