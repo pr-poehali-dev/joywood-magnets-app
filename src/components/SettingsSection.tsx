@@ -201,8 +201,9 @@ const SettingsSection = () => {
         }));
         sonerToast.success(`Уровень ${pending.level}: фото загружено`);
       } else {
-        // Видео — чанки по 3MB через /tmp на бэкенде, затем сборка и PUT в S3
-        const CHUNK = 3 * 1024 * 1024;
+        // Видео — чанки по 700KB через /tmp на бэкенде, затем сборка и PUT в S3
+        // base64 увеличивает размер на ~33%, поэтому бинарный чанк = 700KB → JSON ~950KB < 1MB лимита
+        const CHUNK = 700 * 1024;
         const totalChunks = Math.ceil(file.size / CHUNK);
 
         // Грузим чанки последовательно
