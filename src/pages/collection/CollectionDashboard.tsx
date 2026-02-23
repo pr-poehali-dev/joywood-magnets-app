@@ -69,7 +69,7 @@ const CollectionDashboard = ({ data, onReset }: Props) => {
               {raccoonLevel != null ? (
                 <>
                   <div className="text-2xl font-bold text-amber-500">{raccoonLevel}</div>
-                  <div className="text-xs text-muted-foreground truncate" title={raccoonLevelName ?? ""}>
+                  <div className="text-xs text-muted-foreground leading-tight mt-0.5" style={{ wordBreak: "break-word" }}>
                     {raccoonLevelName ?? "Уровень"}
                   </div>
                 </>

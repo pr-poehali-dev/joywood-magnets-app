@@ -21,6 +21,8 @@ interface Props {
   breedNotes: Record<string, string>;
   visibleBreeds: MagnetType[];
   animateXp: boolean;
+  playRaccoonVideo?: boolean;
+  onRaccoonVideoEnd?: () => void;
 }
 
 const ScanResultBanner = ({
@@ -84,6 +86,8 @@ const RaccoonRatingBlock = ({
   animateXp,
   collectedBreeds,
   breedNotes,
+  playVideo,
+  onVideoEnd,
 }: {
   raccoon: CollectionData["raccoon"];
   rating: Rating | undefined;
@@ -91,6 +95,8 @@ const RaccoonRatingBlock = ({
   animateXp: boolean;
   collectedBreeds: Set<string>;
   breedNotes: Record<string, string>;
+  playVideo?: boolean;
+  onVideoEnd?: () => void;
 }) => {
   const raccoonRef = useRef<HTMLDivElement>(null);
   const rightColRef = useRef<HTMLDivElement>(null);
@@ -130,7 +136,12 @@ const RaccoonRatingBlock = ({
         )}
         {raccoon && (
           <div ref={raccoonRef}>
-            <CollectionRaccoon raccoon={raccoon} animateXp={animateXp} />
+            <CollectionRaccoon
+              raccoon={raccoon}
+              animateXp={animateXp}
+              playVideo={playVideo}
+              onVideoEnd={onVideoEnd}
+            />
           </div>
         )}
       </div>
@@ -171,6 +182,8 @@ const CollectionView = ({
   breedNotes,
   visibleBreeds,
   animateXp,
+  playRaccoonVideo,
+  onRaccoonVideoEnd,
 }: Props) => (
   <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-300">
     {justRegistered && (
@@ -208,6 +221,8 @@ const CollectionView = ({
           animateXp={animateXp}
           collectedBreeds={collectedBreeds}
           breedNotes={breedNotes}
+          playVideo={playRaccoonVideo}
+          onVideoEnd={onRaccoonVideoEnd}
         />
       </div>
     )}

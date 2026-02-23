@@ -60,6 +60,8 @@ const MyCollection = () => {
               breedNotes={breedNotes}
               visibleBreeds={visibleBreeds}
               animateXp={animateXp}
+              playRaccoonVideo={!!levelUpModal}
+              onRaccoonVideoEnd={handleLevelUpClose}
             />
           )}
 
@@ -72,6 +74,7 @@ const MyCollection = () => {
         </div>
       </div>
 
+      {/* LevelUpModal — только конфетти + кнопка, видео теперь в карточке енота */}
       {levelUpModal && (
         <LevelUpModal
           newLevel={levelUpModal}

@@ -375,9 +375,18 @@ export function useCollectionData() {
     setRevealModal(state);
   };
 
-  const openLevelUpModal = (lvl: number) => {
+  const openLevelUpModal = (breed: string, lvl: number) => {
+    // Сначала скроллим к еноту, потом открываем LevelUpModal — видео уже в viewport
     modalOpenRef.current = true;
-    setLevelUpModal(lvl);
+    welcomeBreed.current = breed;
+    if (breed) scrollToBreed(breed);
+    setTimeout(() => {
+      const raccoonEl = document.querySelector("[data-raccoon-card]");
+      if (raccoonEl) raccoonEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, breed ? 1600 : 200);
+    setTimeout(() => {
+      setLevelUpModal(lvl);
+    }, breed ? 2200 : 500);
   };
 
   const handleRevealClose = () => {
@@ -388,11 +397,9 @@ export function useCollectionData() {
     pendingWelcome.current = false;
     setRevealModal(null);
     if (isWelcome) {
-      welcomeBreed.current = breed;
-      openLevelUpModal(1);
+      openLevelUpModal(breed, 1);
     } else if (lvl) {
-      welcomeBreed.current = breed;
-      openLevelUpModal(lvl);
+      openLevelUpModal(breed, lvl);
     } else {
       runPostRevealFlow(breed, null);
     }
@@ -407,11 +414,9 @@ export function useCollectionData() {
     pendingWelcome.current = false;
     setRevealModal(null);
     if (isWelcome) {
-      welcomeBreed.current = breed;
-      openLevelUpModal(1);
+      openLevelUpModal(breed, 1);
     } else if (lvl) {
-      welcomeBreed.current = breed;
-      openLevelUpModal(lvl);
+      openLevelUpModal(breed, lvl);
     } else {
       runPostRevealFlow(breed, null);
     }
@@ -428,7 +433,7 @@ export function useCollectionData() {
     // state
     step, loading, data, notFound, verifiedPhone, breedPhotos, breedNotes,
     justRegistered, scanResult, setScanResult,
-    revealModal, levelUpModal, setLevelUpModal, animateXp,
+    revealModal, levelUpModal, animateXp,
     // phone form
     phone, showRegister, policyUrl, needsConsent, pendingPhone, pendingPolicyVersion,
     // refs
