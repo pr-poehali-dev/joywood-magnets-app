@@ -94,9 +94,16 @@ def handler(event: dict, context) -> dict:
         # --- Начало multipart upload ---
         if action == 'multipart_start':
             key = f'raccoon/level-{level}-video.mp4'
-            resp = s3.create_multipart_upload(Bucket=BUCKET, Key=key, ContentType='video/mp4')
+            try:
+                resp = s3.create_multipart_upload(Bucket=BUCKET, Key=key, ContentType='video/mp4')
+                upload_id = resp['UploadId']
+                print(f"[multipart_start] OK upload_id={upload_id}")
+            except Exception as e:
+                print(f"[multipart_start] FAIL: {e}")
+                return {'statusCode': 500, 'headers': {**CORS, 'Content-Type': 'application/json'},
+                        'body': json.dumps({'ok': False, 'error': str(e)})}
             return {'statusCode': 200, 'headers': {**CORS, 'Content-Type': 'application/json'},
-                    'body': json.dumps({'ok': True, 'upload_id': resp['UploadId'], 'key': key})}
+                    'body': json.dumps({'ok': True, 'upload_id': upload_id, 'key': key})}
 
         # --- Загрузка одного чанка ---
         if action == 'multipart_chunk':
@@ -110,27 +117,40 @@ def handler(event: dict, context) -> dict:
             if ',' in data_b64:
                 data_b64 = data_b64.split(',', 1)[1]
             chunk_bytes = base64.b64decode(data_b64)
-            resp = s3.upload_part(
-                Bucket=BUCKET, Key=key,
-                UploadId=upload_id,
-                PartNumber=int(part_number),
-                Body=chunk_bytes,
-            )
+            try:
+                resp = s3.upload_part(
+                    Bucket=BUCKET, Key=key,
+                    UploadId=upload_id,
+                    PartNumber=int(part_number),
+                    Body=chunk_bytes,
+                )
+                etag = resp['ETag']
+                print(f"[multipart_chunk] part={part_number} etag={etag}")
+            except Exception as e:
+                print(f"[multipart_chunk] FAIL part={part_number}: {e}")
+                return {'statusCode': 500, 'headers': {**CORS, 'Content-Type': 'application/json'},
+                        'body': json.dumps({'ok': False, 'error': str(e)})}
             return {'statusCode': 200, 'headers': {**CORS, 'Content-Type': 'application/json'},
-                    'body': json.dumps({'ok': True, 'etag': resp['ETag']})}
+                    'body': json.dumps({'ok': True, 'etag': etag})}
 
         # --- Завершение multipart upload ---
         if action == 'multipart_complete':
             upload_id = body.get('upload_id')
-            parts = body.get('parts')  # [{"part_number": 1, "etag": "..."}, ...]
+            parts = body.get('parts')
             key = f'raccoon/level-{level}-video.mp4'
             if not upload_id or not parts:
                 return {'statusCode': 400, 'headers': {**CORS, 'Content-Type': 'application/json'},
                         'body': json.dumps({'error': 'upload_id, parts обязательны'})}
-            s3.complete_multipart_upload(
-                Bucket=BUCKET, Key=key, UploadId=upload_id,
-                MultipartUpload={'Parts': [{'PartNumber': p['part_number'], 'ETag': p['etag']} for p in parts]},
-            )
+            try:
+                s3.complete_multipart_upload(
+                    Bucket=BUCKET, Key=key, UploadId=upload_id,
+                    MultipartUpload={'Parts': [{'PartNumber': p['part_number'], 'ETag': p['etag']} for p in parts]},
+                )
+                print(f"[multipart_complete] OK key={key}")
+            except Exception as e:
+                print(f"[multipart_complete] FAIL: {e}")
+                return {'statusCode': 500, 'headers': {**CORS, 'Content-Type': 'application/json'},
+                        'body': json.dumps({'ok': False, 'error': str(e)})}
             url = cdn(key)
             index = load_index(s3)
             level_key = str(level)
@@ -146,7 +166,10 @@ def handler(event: dict, context) -> dict:
             upload_id = body.get('upload_id')
             key = f'raccoon/level-{level}-video.mp4'
             if upload_id:
-                s3.abort_multipart_upload(Bucket=BUCKET, Key=key, UploadId=upload_id)
+                try:
+                    s3.abort_multipart_upload(Bucket=BUCKET, Key=key, UploadId=upload_id)
+                except Exception as e:
+                    print(f"[multipart_abort] FAIL: {e}")
             return {'statusCode': 200, 'headers': {**CORS, 'Content-Type': 'application/json'},
                     'body': json.dumps({'ok': True})}
 
