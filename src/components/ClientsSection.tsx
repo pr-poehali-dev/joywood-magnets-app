@@ -82,9 +82,9 @@ const ClientsSection = ({ focusClientId, onFocusHandled, reloadKey }: ClientsSec
 
   const handleOpen = useCallback((id: number) => {
     setSelectedId(id);
-    if (!clientMagnets[id] || !clientBonuses[id]) loadClientMagnets(id);
+    loadClientMagnets(id);
     loadBonusStock();
-  }, [clientMagnets, clientBonuses, loadClientMagnets, loadBonusStock]);
+  }, [loadClientMagnets, loadBonusStock]);
 
   const selectedClient = clients.find((c) => c.id === selectedId) ?? null;
 

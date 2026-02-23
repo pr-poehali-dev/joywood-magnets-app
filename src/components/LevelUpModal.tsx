@@ -111,10 +111,13 @@ export default function LevelUpModal({ newLevel, onClose }: Props) {
             className="p-6 flex flex-col items-center gap-4 text-center"
             style={{ animation: "lvlscale 0.5s ease both" }}
           >
-            {/* Фото Енота нового уровня */}
+            {/* Фото Енота нового уровня 3:4 */}
             <div
-              className="w-32 h-32 rounded-full overflow-hidden border-4 border-amber-400 bg-amber-50 flex items-center justify-center"
-              style={{ animation: phase === "done" ? "lvlglow 2s ease infinite" : undefined }}
+              className="w-40 overflow-hidden rounded-xl border-4 border-amber-400 bg-amber-50"
+              style={{
+                aspectRatio: "3/4",
+                animation: phase === "done" ? "lvlglow 2s ease infinite" : undefined,
+              }}
             >
               {levelData.photoUrl ? (
                 <img
@@ -123,7 +126,9 @@ export default function LevelUpModal({ newLevel, onClose }: Props) {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <span className="text-6xl">🦝</span>
+                <div className="w-full h-full flex items-center justify-center">
+                  <span className="text-6xl">🦝</span>
+                </div>
               )}
             </div>
 

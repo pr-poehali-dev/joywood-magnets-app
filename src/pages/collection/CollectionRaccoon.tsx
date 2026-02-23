@@ -14,28 +14,26 @@ const CollectionRaccoon = ({ raccoon, animateXp }: Props) => {
     : Math.min(100, Math.round((raccoon.xp_for_level / raccoon.xp_needed) * 100));
 
   const [displayPct, setDisplayPct] = useState(animateXp ? 0 : targetPct);
+  const [animating, setAnimating] = useState(false);
   const [xpGlow, setXpGlow] = useState(false);
   const prevXpRef = useRef(raccoon.xp);
 
-  // Анимация нарастания XP-полоски
+  // Анимация нарастания XP-полоски через CSS transition
   useEffect(() => {
     if (raccoon.xp !== prevXpRef.current || animateXp) {
       prevXpRef.current = raccoon.xp;
+      // Сначала сбрасываем в 0 без transition, потом плавно до цели
+      setAnimating(false);
       setDisplayPct(0);
       setXpGlow(true);
-      const start = performance.now();
-      const duration = 900;
-      const animate = (now: number) => {
-        const t = Math.min((now - start) / duration, 1);
-        const ease = 1 - Math.pow(1 - t, 3);
-        setDisplayPct(Math.round(ease * targetPct));
-        if (t < 1) requestAnimationFrame(animate);
-        else setDisplayPct(targetPct);
-      };
-      requestAnimationFrame(animate);
-      const glowTimer = setTimeout(() => setXpGlow(false), 1500);
-      return () => clearTimeout(glowTimer);
+      const t1 = setTimeout(() => {
+        setAnimating(true);
+        setDisplayPct(targetPct);
+      }, 50);
+      const t2 = setTimeout(() => setXpGlow(false), 1800);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
     } else {
+      setAnimating(false);
       setDisplayPct(targetPct);
     }
   }, [raccoon.xp, targetPct, animateXp]);
@@ -85,7 +83,10 @@ const CollectionRaccoon = ({ raccoon, animateXp }: Props) => {
           >
             <div
               className="h-full bg-amber-500 rounded-full"
-              style={{ width: `${displayPct}%`, transition: "box-shadow 0.3s" }}
+              style={{
+                width: `${displayPct}%`,
+                transition: animating ? "width 1.1s cubic-bezier(0.22, 1, 0.36, 1)" : "none",
+              }}
             />
           </div>
         </div>
