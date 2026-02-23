@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getRaccoonLevel, reloadRaccoonAssets } from "@/lib/raccoon";
+import { getRaccoonLevel } from "@/lib/raccoon";
 
 interface Props {
   newLevel: number;
@@ -32,24 +32,39 @@ const Particle = ({ index }: { index: number }) => {
 };
 
 export default function LevelUpModal({ newLevel, onClose }: Props) {
-  const levelData = getRaccoonLevel(newLevel);
+  // Читаем ассеты в useEffect чтобы гарантированно получить актуальные данные
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string>("");
+  const [levelName, setLevelName] = useState<string>("");
+  const [assetsReady, setAssetsReady] = useState(false);
 
-  const handleClose = () => {
-    reloadRaccoonAssets().finally(onClose);
-  };
-  const [phase, setPhase] = useState<"video" | "reveal" | "done">(
-    levelData.videoUrl ? "video" : "reveal"
-  );
+  // phase: "loading" → "video" → "reveal" → "done"
+  const [phase, setPhase] = useState<"loading" | "video" | "reveal" | "done">("loading");
   const videoRef = useRef<HTMLVideoElement>(null);
   const fallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Запускаем видео после монтирования
+  // Шаг 1: загружаем ассеты, потом решаем фазу
   useEffect(() => {
-    if (!levelData.videoUrl) {
-      setPhase("reveal");
-      return;
-    }
+    const data = getRaccoonLevel(newLevel);
+    setVideoUrl(data.videoUrl || null);
+    setPhotoUrl(data.photoUrl || "");
+    setLevelName(data.name || "");
+    setAssetsReady(true);
+  }, [newLevel]);
 
+  // Шаг 2: как только ассеты готовы — переходим в video или reveal
+  useEffect(() => {
+    if (!assetsReady) return;
+    if (videoUrl) {
+      setPhase("video");
+    } else {
+      setPhase("reveal");
+    }
+  }, [assetsReady, videoUrl]);
+
+  // Шаг 3: когда phase стало "video" — ждём буферизации, потом запускаем
+  useEffect(() => {
+    if (phase !== "video") return;
     const vid = videoRef.current;
     if (!vid) return;
 
@@ -58,25 +73,38 @@ export default function LevelUpModal({ newLevel, onClose }: Props) {
       setPhase("reveal");
     };
 
-    vid.addEventListener("ended", goReveal);
-    // Fallback на случай если видео не загрузится
-    fallbackRef.current = setTimeout(goReveal, 10000);
+    const tryPlay = () => {
+      vid.play().catch(goReveal);
+    };
 
-    vid.play().catch(goReveal);
+    vid.addEventListener("ended", goReveal);
+    // Fallback если видео не загрузилось за 20 сек
+    fallbackRef.current = setTimeout(goReveal, 20000);
+
+    // Ждём достаточного буфера перед воспроизведением
+    if (vid.readyState >= 3) {
+      tryPlay();
+    } else {
+      vid.addEventListener("canplay", tryPlay, { once: true });
+    }
 
     return () => {
       vid.removeEventListener("ended", goReveal);
+      vid.removeEventListener("canplay", tryPlay);
       if (fallbackRef.current) clearTimeout(fallbackRef.current);
     };
-  }, [levelData.videoUrl]);
-
-  // reveal → done через 600ms
-  useEffect(() => {
-    if (phase === "reveal") {
-      const t = setTimeout(() => setPhase("done"), 600);
-      return () => clearTimeout(t);
-    }
   }, [phase]);
+
+  // Шаг 4: reveal → done через 600ms (анимация появления)
+  useEffect(() => {
+    if (phase !== "reveal") return;
+    const t = setTimeout(() => setPhase("done"), 600);
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  const handleClose = () => {
+    onClose();
+  };
 
   return (
     <div
@@ -108,15 +136,21 @@ export default function LevelUpModal({ newLevel, onClose }: Props) {
 
       <div className="relative mx-4 w-full max-w-sm rounded-2xl bg-white overflow-hidden shadow-2xl">
 
-        {/* Видео — всегда в DOM если есть URL, скрываем через display */}
-        {levelData.videoUrl && (
+        {/* Загрузка ассетов */}
+        {phase === "loading" && (
+          <div className="flex items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-amber-400 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+
+        {/* Видео — монтируется только когда phase=video */}
+        {phase === "video" && videoUrl && (
           <video
             ref={videoRef}
-            src={levelData.videoUrl}
+            src={videoUrl}
             className="w-full"
-            style={{ display: phase === "video" ? "block" : "none" }}
-            autoPlay
             playsInline
+            preload="auto"
           />
         )}
 
@@ -126,7 +160,6 @@ export default function LevelUpModal({ newLevel, onClose }: Props) {
             className="p-6 flex flex-col items-center gap-4 text-center"
             style={{ animation: "lvlscale 0.5s ease both" }}
           >
-            {/* Фото Енота 3:4 */}
             <div
               className="w-40 overflow-hidden rounded-xl border-4 border-amber-400 bg-amber-50"
               style={{
@@ -134,10 +167,10 @@ export default function LevelUpModal({ newLevel, onClose }: Props) {
                 animation: phase === "done" ? "lvlglow 2s ease infinite" : undefined,
               }}
             >
-              {levelData.photoUrl ? (
+              {photoUrl ? (
                 <img
-                  src={levelData.photoUrl}
-                  alt={levelData.name}
+                  src={photoUrl}
+                  alt={levelName}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -149,19 +182,21 @@ export default function LevelUpModal({ newLevel, onClose }: Props) {
 
             <div className="space-y-1">
               <div className="text-xs font-semibold text-amber-500 uppercase tracking-widest">
-                Новый уровень!
+                {newLevel === 1 ? "Добро пожаловать!" : "Новый уровень!"}
               </div>
               <div className="text-2xl font-bold text-gray-900">
                 Уровень {newLevel}
               </div>
               <div className="text-lg font-semibold text-amber-700">
-                {levelData.name}
+                {levelName}
               </div>
             </div>
 
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 w-full">
               <div className="text-sm font-medium text-amber-900">
-                Теперь доступны новые слоты под магниты
+                {newLevel === 1
+                  ? "Коллекция началась — каждый новый магнит приносит опыт еноту"
+                  : "Теперь доступны новые слоты под магниты"}
               </div>
             </div>
 
