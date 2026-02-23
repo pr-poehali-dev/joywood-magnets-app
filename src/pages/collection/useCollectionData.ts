@@ -322,14 +322,11 @@ export function useCollectionData() {
   useEffect(() => {
     const newLevel = data?.raccoon?.level ?? null;
     if (newLevel !== null && prevLevelRef.current !== null && newLevel > prevLevelRef.current) {
-      if (revealModal) {
-        pendingLevelUp.current = newLevel;
-      } else {
-        setLevelUpModal(newLevel);
-      }
+      // Откладываем — модалки раскрытия и уровня управляются через handleRevealClose/handleLevelUpClose
+      pendingLevelUp.current = newLevel;
     }
     prevLevelRef.current = newLevel;
-  }, [data?.raccoon?.level, revealModal]);
+  }, [data?.raccoon?.level]);
 
   const collectedBreeds = useMemo(
     () => data ? new Set(data.magnets.map((m) => m.breed)) : new Set<string>(),
@@ -357,10 +354,9 @@ export function useCollectionData() {
     ];
   }, [data, visibleBreeds, collectedBreeds, collectedOrder]);
 
-  const runPostRevealFlow = (breed: string, lvl: number | null) => {
-    // 0ms   — скролл к слоту с магнитом
-    // 1800ms — скролл к Еноту (XP-анимация запустится автоматически когда карточка войдёт в viewport)
-    // 4000ms — открывается модалка повышения уровня (если есть)
+  const runPostRevealFlow = (breed: string, _lvl: number | null) => {
+    // 0ms   — подсветка слота с магнитом
+    // 1800ms — скролл к Еноту (XP-анимация запустится автоматически по IntersectionObserver)
     if (breed) scrollToBreed(breed);
     setTimeout(() => {
       const raccoonEl = document.querySelector("[data-raccoon-card]");
@@ -368,9 +364,6 @@ export function useCollectionData() {
     }, breed ? 1800 : 300);
     setAnimateXp(true);
     setTimeout(() => setAnimateXp(false), breed ? 4000 : 2000);
-    if (lvl) {
-      setTimeout(() => setLevelUpModal(lvl), breed ? 4000 : 2000);
-    }
   };
 
   const handleRevealClose = () => {
@@ -381,10 +374,16 @@ export function useCollectionData() {
     pendingWelcome.current = false;
     setRevealModal(null);
     if (isWelcome) {
+      // Падук: сначала LevelUpModal с видео, потом уже скролл и XP
       welcomeBreed.current = breed;
       setLevelUpModal(1);
+    } else if (lvl) {
+      // Есть повышение уровня: сначала LevelUpModal, потом скролл и XP
+      welcomeBreed.current = breed;
+      setLevelUpModal(lvl);
     } else {
-      runPostRevealFlow(breed, lvl);
+      // Нет видео и нет уровня — сразу скролл и XP
+      runPostRevealFlow(breed, null);
     }
   };
 
@@ -399,8 +398,11 @@ export function useCollectionData() {
     if (isWelcome) {
       welcomeBreed.current = breed;
       setLevelUpModal(1);
+    } else if (lvl) {
+      welcomeBreed.current = breed;
+      setLevelUpModal(lvl);
     } else {
-      runPostRevealFlow(breed, lvl);
+      runPostRevealFlow(breed, null);
     }
   };
 
@@ -408,9 +410,8 @@ export function useCollectionData() {
     const wb = welcomeBreed.current;
     welcomeBreed.current = "";
     setLevelUpModal(null);
-    if (wb) {
-      runPostRevealFlow(wb, null);
-    }
+    // После закрытия любого LevelUpModal — запускаем скролл и XP
+    runPostRevealFlow(wb, null);
   };
 
   return {
