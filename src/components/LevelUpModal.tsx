@@ -33,29 +33,40 @@ const Particle = ({ index }: { index: number }) => {
 
 export default function LevelUpModal({ newLevel, onClose }: Props) {
   const levelData = getRaccoonLevel(newLevel);
-  const prevLevelData = getRaccoonLevel(newLevel - 1);
-  const [phase, setPhase] = useState<"video" | "reveal" | "done">("video");
+  const [phase, setPhase] = useState<"video" | "reveal" | "done">(
+    levelData.videoUrl ? "video" : "reveal"
+  );
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Запускаем видео после монтирования
   useEffect(() => {
-    if (levelData.videoUrl) {
-      // Видео есть — ждём его конца, потом переходим в reveal
-      const vid = videoRef.current;
-      if (!vid) return;
-      const onEnd = () => setPhase("reveal");
-      vid.addEventListener("ended", onEnd);
-      vid.play().catch(() => setPhase("reveal"));
-      const fallback = setTimeout(() => setPhase("reveal"), 8000);
-      return () => {
-        vid.removeEventListener("ended", onEnd);
-        clearTimeout(fallback);
-      };
-    } else {
-      // Видео нет — сразу показываем reveal
+    if (!levelData.videoUrl) {
       setPhase("reveal");
+      return;
     }
+
+    const vid = videoRef.current;
+    if (!vid) return;
+
+    const goReveal = () => {
+      if (fallbackRef.current) clearTimeout(fallbackRef.current);
+      setPhase("reveal");
+    };
+
+    vid.addEventListener("ended", goReveal);
+    // Fallback на случай если видео не загрузится
+    fallbackRef.current = setTimeout(goReveal, 10000);
+
+    vid.play().catch(goReveal);
+
+    return () => {
+      vid.removeEventListener("ended", goReveal);
+      if (fallbackRef.current) clearTimeout(fallbackRef.current);
+    };
   }, [levelData.videoUrl]);
 
+  // reveal → done через 600ms
   useEffect(() => {
     if (phase === "reveal") {
       const t = setTimeout(() => setPhase("done"), 600);
@@ -93,14 +104,14 @@ export default function LevelUpModal({ newLevel, onClose }: Props) {
 
       <div className="relative mx-4 w-full max-w-sm rounded-2xl bg-white overflow-hidden shadow-2xl">
 
-        {/* Видео повышения уровня */}
-        {phase === "video" && levelData.videoUrl && (
+        {/* Видео — всегда в DOM если есть URL, скрываем через display */}
+        {levelData.videoUrl && (
           <video
             ref={videoRef}
             src={levelData.videoUrl}
             className="w-full"
+            style={{ display: phase === "video" ? "block" : "none" }}
             autoPlay
-            muted={false}
             playsInline
           />
         )}
@@ -111,7 +122,7 @@ export default function LevelUpModal({ newLevel, onClose }: Props) {
             className="p-6 flex flex-col items-center gap-4 text-center"
             style={{ animation: "lvlscale 0.5s ease both" }}
           >
-            {/* Фото Енота нового уровня 3:4 */}
+            {/* Фото Енота 3:4 */}
             <div
               className="w-40 overflow-hidden rounded-xl border-4 border-amber-400 bg-amber-50"
               style={{
@@ -146,10 +157,7 @@ export default function LevelUpModal({ newLevel, onClose }: Props) {
 
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 w-full">
               <div className="text-sm font-medium text-amber-900">
-                Открыто {levelData.emptySlots} новых слотов
-              </div>
-              <div className="text-xs text-amber-700 mt-0.5">
-                Было {prevLevelData.emptySlots} → стало {levelData.emptySlots}
+                Теперь доступны новые слоты под магниты
               </div>
             </div>
 
