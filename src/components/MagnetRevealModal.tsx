@@ -213,7 +213,6 @@ export default function MagnetRevealModal({ breed, photoUrl, stars, category, on
           <p className="text-amber-300/80 text-xs font-semibold uppercase tracking-widest">Новая порода в коллекции!</p>
           <p className="text-white text-3xl font-black drop-shadow-lg">{breed}</p>
           <p className="text-amber-300 text-base">{STAR_LABELS[stars]} {STAR_NAMES[stars]}</p>
-          <p className="text-white/50 text-sm">{category}</p>
         </div>
 
         {phase === "done" && (
