@@ -1,10 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
-import { WOOD_BREEDS, BONUS_MILESTONES } from "@/lib/store";
+import { BONUS_MILESTONES } from "@/lib/store";
 import { CollectionData } from "./types";
-
-const TOTAL_BREEDS = WOOD_BREEDS.length;
 
 interface Props {
   data: CollectionData;
@@ -33,6 +31,10 @@ const CollectionDashboard = ({ data, onReset }: Props) => {
       return cur >= m.count;
     });
 
+  const rankMagnets = data.rating?.rank_magnets;
+  const raccoonLevel = data.raccoon?.level;
+  const raccoonLevelName = data.raccoon?.level_name;
+
   return (
     <>
       <Card className="border-gold-200">
@@ -60,16 +62,36 @@ const CollectionDashboard = ({ data, onReset }: Props) => {
 
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="bg-slate-50 rounded-lg p-3">
-              <div className="text-2xl font-bold text-gold-600">{data.total_magnets}</div>
-              <div className="text-xs text-muted-foreground">Всего магнитов</div>
-            </div>
-            <div className="bg-slate-50 rounded-lg p-3">
               <div className="text-2xl font-bold text-gold-600">{data.unique_breeds}</div>
               <div className="text-xs text-muted-foreground">Уникальных пород</div>
             </div>
             <div className="bg-slate-50 rounded-lg p-3">
-              <div className="text-2xl font-bold text-gold-600">{TOTAL_BREEDS - data.unique_breeds}</div>
-              <div className="text-xs text-muted-foreground">Осталось собрать</div>
+              {raccoonLevel != null ? (
+                <>
+                  <div className="text-2xl font-bold text-amber-500">{raccoonLevel}</div>
+                  <div className="text-xs text-muted-foreground truncate" title={raccoonLevelName ?? ""}>
+                    {raccoonLevelName ?? "Уровень"}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-gold-600">—</div>
+                  <div className="text-xs text-muted-foreground">Уровень</div>
+                </>
+              )}
+            </div>
+            <div className="bg-slate-50 rounded-lg p-3">
+              {rankMagnets != null ? (
+                <>
+                  <div className="text-2xl font-bold text-gold-600">#{rankMagnets}</div>
+                  <div className="text-xs text-muted-foreground">Место в рейтинге</div>
+                </>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-gold-600">—</div>
+                  <div className="text-xs text-muted-foreground">Место в рейтинге</div>
+                </>
+              )}
             </div>
           </div>
         </CardContent>

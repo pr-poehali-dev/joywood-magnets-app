@@ -297,7 +297,16 @@ const CollectionBreedAtlas = ({
               ))}
             </div>
             <p className="text-[11px] text-center text-muted-foreground/70 pt-1">
-              Каждый новый заказ Joywood открывает редкую породу
+              Каждый{" "}
+              <a
+                href="https://joywood.store/shop"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-[11px] font-semibold rounded-full px-2.5 py-0.5 leading-tight transition-all"
+              >
+                новый заказ
+              </a>
+              {" "}открывает следующую породу
             </p>
           </div>
         )}
