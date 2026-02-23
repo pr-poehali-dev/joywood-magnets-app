@@ -35,12 +35,38 @@ const Particle = ({ index }: { index: number }) => {
   );
 };
 
+const playRevealSound = () => {
+  try {
+    const AudioCtx = window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const start = ctx.currentTime + i * 0.1;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.18, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+      osc.start(start);
+      osc.stop(start + 0.4);
+    });
+  } catch { /* silent fail */ }
+};
+
 export default function MagnetRevealModal({ breed, photoUrl, stars, category, onClose, onMagnetClick }: Props) {
   const [phase, setPhase] = useState<"box" | "opening" | "rising" | "revealed" | "done">("box");
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase("opening"), 600);
-    const t2 = setTimeout(() => setPhase("rising"), 1400);
+    const t2 = setTimeout(() => {
+      setPhase("rising");
+      playRevealSound();
+    }, 1400);
     const t3 = setTimeout(() => setPhase("revealed"), 2400);
     const t4 = setTimeout(() => setPhase("done"), 3000);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };

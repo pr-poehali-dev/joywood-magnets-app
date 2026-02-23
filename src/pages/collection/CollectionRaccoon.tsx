@@ -18,30 +18,74 @@ const CollectionRaccoon = ({ raccoon, animateXp }: Props) => {
   const [animating, setAnimating] = useState(false);
   const [xpGlow, setXpGlow] = useState(false);
   const prevXpRef = useRef(raccoon.xp);
+  const cardRef = useRef<HTMLDivElement>(null);
+  // Флаг: анимация ожидает попадания в viewport
+  const pendingAnimRef = useRef(false);
+
+  const triggerXpAnim = (fromPct: number) => {
+    setAnimating(false);
+    setDisplayPct(fromPct);
+    setXpGlow(true);
+    const t1 = setTimeout(() => {
+      setAnimating(true);
+      setDisplayPct(targetPct);
+    }, 50);
+    const t2 = setTimeout(() => setXpGlow(false), 1800);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  };
 
   useEffect(() => {
-    if (raccoon.xp !== prevXpRef.current || animateXp) {
-      prevXpRef.current = raccoon.xp;
-      const fromPct = prevTargetPctRef.current;
-      prevTargetPctRef.current = targetPct;
-      setAnimating(false);
-      setDisplayPct(fromPct);
-      setXpGlow(true);
-      const t1 = setTimeout(() => {
-        setAnimating(true);
-        setDisplayPct(targetPct);
-      }, 50);
-      const t2 = setTimeout(() => setXpGlow(false), 1800);
-      return () => { clearTimeout(t1); clearTimeout(t2); };
-    } else {
-      prevTargetPctRef.current = targetPct;
+    const xpChanged = raccoon.xp !== prevXpRef.current;
+    prevXpRef.current = raccoon.xp;
+    const fromPct = prevTargetPctRef.current;
+    prevTargetPctRef.current = targetPct;
+
+    if (!xpChanged && !animateXp) {
       setAnimating(false);
       setDisplayPct(targetPct);
+      return;
     }
+
+    // Если карточка уже видна — сразу анимируем
+    const card = cardRef.current;
+    if (!card) {
+      triggerXpAnim(fromPct);
+      return;
+    }
+
+    const rect = card.getBoundingClientRect();
+    const inView = rect.top < window.innerHeight * 0.85 && rect.bottom > window.innerHeight * 0.15;
+
+    if (inView) {
+      triggerXpAnim(fromPct);
+      return;
+    }
+
+    // Карточка не видна — помечаем pending, ждём попадания в viewport
+    pendingAnimRef.current = true;
+    const savedFrom = fromPct;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && pendingAnimRef.current) {
+          pendingAnimRef.current = false;
+          observer.disconnect();
+          triggerXpAnim(savedFrom);
+        }
+      },
+      { threshold: 0.5 }
+    );
+    observer.observe(card);
+
+    return () => observer.disconnect();
   }, [raccoon.xp, targetPct, animateXp]);
 
   return (
-    <div className="bg-gradient-to-b from-amber-50 to-orange-50 border border-amber-200 rounded-2xl overflow-hidden flex flex-col">
+    <div
+      ref={cardRef}
+      data-raccoon-card
+      className="bg-gradient-to-b from-amber-50 to-orange-50 border border-amber-200 rounded-2xl overflow-hidden flex flex-col"
+    >
       {/* Фото 3:4 */}
       <div className="relative w-full" style={{ aspectRatio: "3/4" }}>
         {raccoonLevel.photoUrl ? (

@@ -359,19 +359,17 @@ export function useCollectionData() {
 
   const runPostRevealFlow = (breed: string, lvl: number | null) => {
     // 0ms   — скролл к слоту с магнитом
-    // 1800ms — скролл к Еноту
-    // 2600ms — XP-анимация начинается
-    // 4500ms — XP-анимация заканчивается (пауза для наблюдения)
-    // 5200ms — открывается видео повышения уровня (если есть)
+    // 1800ms — скролл к Еноту (XP-анимация запустится автоматически когда карточка войдёт в viewport)
+    // 4000ms — открывается модалка повышения уровня (если есть)
     if (breed) scrollToBreed(breed);
     setTimeout(() => {
       const raccoonEl = document.querySelector("[data-raccoon-card]");
       if (raccoonEl) raccoonEl.scrollIntoView({ behavior: "smooth", block: "center" });
     }, breed ? 1800 : 300);
-    setTimeout(() => setAnimateXp(true),  breed ? 2600 : 600);
-    setTimeout(() => setAnimateXp(false), breed ? 4500 : 2500);
+    setAnimateXp(true);
+    setTimeout(() => setAnimateXp(false), breed ? 4000 : 2000);
     if (lvl) {
-      setTimeout(() => setLevelUpModal(lvl), breed ? 5200 : 3000);
+      setTimeout(() => setLevelUpModal(lvl), breed ? 4000 : 2000);
     }
   };
 
