@@ -168,12 +168,12 @@ const CollectionRaccoon = ({ raccoon, animateXp, videoLevel, onVideoEnd }: Props
         <div>
           <div className="flex justify-between text-[11px] text-amber-700 mb-1">
             <span className="transition-all duration-300" style={xpGlow ? { color: "#d97706", fontWeight: 700 } : {}}>
-              {raccoon.xp} XP
+              {raccoon.xp_for_level}/{raccoon.xp_needed} XP
             </span>
             {raccoon.is_max_level ? (
               <span className="text-amber-500 font-semibold">Макс. уровень!</span>
             ) : (
-              <span>{raccoon.xp_for_level}/{raccoon.xp_needed}</span>
+              <span>ещё {raccoon.xp_needed - raccoon.xp_for_level} XP</span>
             )}
           </div>
           <div className="h-1.5 bg-amber-200 rounded-full overflow-hidden" style={xpGlow ? { boxShadow: "0 0 8px 2px #fbbf24aa" } : {}}>
