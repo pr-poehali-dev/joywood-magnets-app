@@ -7,7 +7,7 @@ import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import MagnetRevealModal from "@/components/MagnetRevealModal";
+import MagnetRevealModal, { primeAudio } from "@/components/MagnetRevealModal";
 import LevelUpModal from "@/components/LevelUpModal";
 import { loadRaccoonAssets } from "@/lib/raccoon";
 
@@ -117,6 +117,7 @@ export default function ScanMagnet() {
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone.isValid) return;
+    primeAudio(); // разогреваем AudioContext по user gesture
     if (verificationEnabled) {
       await loadWidgetAssets();
       setVerifiedPhone(phone.fullPhone);

@@ -35,11 +35,29 @@ const Particle = ({ index }: { index: number }) => {
   );
 };
 
+// Синглтон AudioContext — создаётся один раз и остаётся живым
+let _audioCtx: AudioContext | null = null;
+const getAudioCtx = (): AudioContext | null => {
+  try {
+    if (!_audioCtx) {
+      const AudioCtx = window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return null;
+      _audioCtx = new AudioCtx();
+    }
+    if (_audioCtx.state === "suspended") {
+      _audioCtx.resume().catch(() => {});
+    }
+    return _audioCtx;
+  } catch { return null; }
+};
+
+// Разогреваем контекст по первому тапу (до анимации) — вызывается снаружи
+export const primeAudio = () => { getAudioCtx(); };
+
 const playRevealSound = () => {
   try {
-    const AudioCtx = window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
+    const ctx = getAudioCtx();
+    if (!ctx || ctx.state !== "running") return;
     const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
     notes.forEach((freq, i) => {
       const osc = ctx.createOscillator();

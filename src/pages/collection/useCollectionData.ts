@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { primeAudio } from "@/components/MagnetRevealModal";
 import { useSearchParams } from "react-router-dom";
 import { loadWidgetAssets } from "@/components/ui/phone-verify-widget";
 import { WOOD_BREEDS } from "@/lib/store";
@@ -62,6 +63,8 @@ export function useCollectionData() {
   const pendingLevelUp = useRef<number | null>(null);
   const pendingWelcome = useRef(false);
   const welcomeBreed = useRef("");
+  // Флаг: любая модалка открыта — скролл и фоновые обновления заблокированы
+  const modalOpenRef = useRef(false);
   const notFoundRef = useRef<HTMLDivElement>(null);
   const autoSearched = useRef(false);
   const scanBreed = searchParams.get("scan") || "";
@@ -140,7 +143,7 @@ export function useCollectionData() {
                   saveSession(sessionPhone, refreshed, session.photos);
                   const breedInfo = WOOD_BREEDS.find((b) => b.breed === scanBreed);
                   if (scanData.is_welcome) pendingWelcome.current = true;
-                  setRevealModal({
+                  openRevealModal({
                     breed: scanBreed,
                     photoUrl: session.photos[scanBreed],
                     stars: breedInfo?.stars ?? 1,
@@ -193,7 +196,7 @@ export function useCollectionData() {
             }
             const breedInfo = WOOD_BREEDS.find((b) => b.breed === scanBreed);
             if (scanData.is_welcome) pendingWelcome.current = true;
-            setRevealModal({
+            openRevealModal({
               breed: scanBreed,
               photoUrl: photos[scanBreed],
               stars: breedInfo?.stars ?? 1,
@@ -289,6 +292,7 @@ export function useCollectionData() {
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone.isValid) return;
+    primeAudio(); // разогреваем AudioContext по user gesture
     await checkExists(phone.fullPhone);
   };
 
@@ -355,15 +359,25 @@ export function useCollectionData() {
   }, [data, visibleBreeds, collectedBreeds, collectedOrder]);
 
   const runPostRevealFlow = (breed: string, _lvl: number | null) => {
-    // 0ms   — подсветка слота с магнитом
-    // 1800ms — скролл к Еноту (XP-анимация запустится автоматически по IntersectionObserver)
+    modalOpenRef.current = false;
     if (breed) scrollToBreed(breed);
     setTimeout(() => {
+      if (modalOpenRef.current) return; // модалка снова открылась — не скроллим
       const raccoonEl = document.querySelector("[data-raccoon-card]");
       if (raccoonEl) raccoonEl.scrollIntoView({ behavior: "smooth", block: "center" });
     }, breed ? 1800 : 300);
     setAnimateXp(true);
     setTimeout(() => setAnimateXp(false), breed ? 4000 : 2000);
+  };
+
+  const openRevealModal = (state: RevealModalState) => {
+    modalOpenRef.current = true;
+    setRevealModal(state);
+  };
+
+  const openLevelUpModal = (lvl: number) => {
+    modalOpenRef.current = true;
+    setLevelUpModal(lvl);
   };
 
   const handleRevealClose = () => {
@@ -374,15 +388,12 @@ export function useCollectionData() {
     pendingWelcome.current = false;
     setRevealModal(null);
     if (isWelcome) {
-      // Падук: сначала LevelUpModal с видео, потом уже скролл и XP
       welcomeBreed.current = breed;
-      setLevelUpModal(1);
+      openLevelUpModal(1);
     } else if (lvl) {
-      // Есть повышение уровня: сначала LevelUpModal, потом скролл и XP
       welcomeBreed.current = breed;
-      setLevelUpModal(lvl);
+      openLevelUpModal(lvl);
     } else {
-      // Нет видео и нет уровня — сразу скролл и XP
       runPostRevealFlow(breed, null);
     }
   };
@@ -397,10 +408,10 @@ export function useCollectionData() {
     setRevealModal(null);
     if (isWelcome) {
       welcomeBreed.current = breed;
-      setLevelUpModal(1);
+      openLevelUpModal(1);
     } else if (lvl) {
       welcomeBreed.current = breed;
-      setLevelUpModal(lvl);
+      openLevelUpModal(lvl);
     } else {
       runPostRevealFlow(breed, null);
     }
@@ -410,7 +421,6 @@ export function useCollectionData() {
     const wb = welcomeBreed.current;
     welcomeBreed.current = "";
     setLevelUpModal(null);
-    // После закрытия любого LevelUpModal — запускаем скролл и XP
     runPostRevealFlow(wb, null);
   };
 
