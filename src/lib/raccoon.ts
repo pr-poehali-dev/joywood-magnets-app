@@ -67,16 +67,27 @@ export const XP_BY_STARS: Record<number, number> = { 1: 10, 2: 25, 3: 50 };
 const RACCOON_ASSETS_URL = "https://functions.poehali.dev/81103f27-f9fd-48ca-87c2-027ad46a7df8";
 let assetsLoaded = false;
 
+const fetchAndApplyAssets = async (): Promise<void> => {
+  const res = await fetch(RACCOON_ASSETS_URL);
+  const index: Record<string, { photo?: string; video?: string }> = await res.json();
+  for (const lvl of RACCOON_LEVELS) {
+    const saved = index[String(lvl.level)];
+    if (saved?.photo) lvl.photoUrl = saved.photo;
+    if (saved?.video) lvl.videoUrl = saved.video;
+  }
+};
+
 export const loadRaccoonAssets = async (): Promise<void> => {
   if (assetsLoaded) return;
   try {
-    const res = await fetch(RACCOON_ASSETS_URL);
-    const index: Record<string, { photo?: string; video?: string }> = await res.json();
-    for (const lvl of RACCOON_LEVELS) {
-      const saved = index[String(lvl.level)];
-      if (saved?.photo) lvl.photoUrl = saved.photo;
-      if (saved?.video) lvl.videoUrl = saved.video;
-    }
+    await fetchAndApplyAssets();
+    assetsLoaded = true;
+  } catch { /* non-critical */ }
+};
+
+export const reloadRaccoonAssets = async (): Promise<void> => {
+  try {
+    await fetchAndApplyAssets();
     assetsLoaded = true;
   } catch { /* non-critical */ }
 };

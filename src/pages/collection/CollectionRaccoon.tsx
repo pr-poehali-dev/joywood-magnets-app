@@ -13,18 +13,21 @@ const CollectionRaccoon = ({ raccoon, animateXp }: Props) => {
     ? 100
     : Math.min(100, Math.round((raccoon.xp_for_level / raccoon.xp_needed) * 100));
 
-  const [displayPct, setDisplayPct] = useState(animateXp ? 0 : targetPct);
+  const prevTargetPctRef = useRef(targetPct);
+  const [displayPct, setDisplayPct] = useState(targetPct);
   const [animating, setAnimating] = useState(false);
   const [xpGlow, setXpGlow] = useState(false);
   const prevXpRef = useRef(raccoon.xp);
 
-  // Анимация нарастания XP-полоски через CSS transition
+  // Анимация нарастания XP-полоски через CSS transition (от предыдущего значения до нового)
   useEffect(() => {
     if (raccoon.xp !== prevXpRef.current || animateXp) {
       prevXpRef.current = raccoon.xp;
-      // Сначала сбрасываем в 0 без transition, потом плавно до цели
+      const fromPct = prevTargetPctRef.current;
+      prevTargetPctRef.current = targetPct;
+      // Устанавливаем стартовую точку без анимации, потом плавно до цели
       setAnimating(false);
-      setDisplayPct(0);
+      setDisplayPct(fromPct);
       setXpGlow(true);
       const t1 = setTimeout(() => {
         setAnimating(true);
@@ -33,6 +36,7 @@ const CollectionRaccoon = ({ raccoon, animateXp }: Props) => {
       const t2 = setTimeout(() => setXpGlow(false), 1800);
       return () => { clearTimeout(t1); clearTimeout(t2); };
     } else {
+      prevTargetPctRef.current = targetPct;
       setAnimating(false);
       setDisplayPct(targetPct);
     }

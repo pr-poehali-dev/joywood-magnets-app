@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getRaccoonLevel } from "@/lib/raccoon";
+import { getRaccoonLevel, reloadRaccoonAssets } from "@/lib/raccoon";
 
 interface Props {
   newLevel: number;
@@ -33,6 +33,10 @@ const Particle = ({ index }: { index: number }) => {
 
 export default function LevelUpModal({ newLevel, onClose }: Props) {
   const levelData = getRaccoonLevel(newLevel);
+
+  const handleClose = () => {
+    reloadRaccoonAssets().finally(onClose);
+  };
   const [phase, setPhase] = useState<"video" | "reveal" | "done">(
     levelData.videoUrl ? "video" : "reveal"
   );
@@ -77,7 +81,7 @@ export default function LevelUpModal({ newLevel, onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-      onClick={phase === "done" ? onClose : undefined}
+      onClick={phase === "done" ? handleClose : undefined}
     >
       <style>{`
         @keyframes lvlfall {
@@ -164,7 +168,7 @@ export default function LevelUpModal({ newLevel, onClose }: Props) {
             {phase === "done" && (
               <Button
                 className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold"
-                onClick={onClose}
+                onClick={handleClose}
               >
                 Отлично!
               </Button>
