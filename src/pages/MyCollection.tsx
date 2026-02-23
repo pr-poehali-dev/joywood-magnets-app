@@ -44,7 +44,9 @@ const MyCollection = () => {
   const [scanResult, setScanResult] = useState<{ result: string; breed: string } | null>(null);
   const [revealModal, setRevealModal] = useState<{ breed: string; photoUrl?: string; stars: number; category: string } | null>(null);
   const [levelUpModal, setLevelUpModal] = useState<number | null>(null);
+  const [animateXp, setAnimateXp] = useState(false);
   const prevLevelRef = useRef<number | null>(null);
+  const pendingLevelUp = useRef<number | null>(null);
   const notFoundRef = useRef<HTMLDivElement>(null);
   const autoSearched = useRef(false);
   const scanBreed = searchParams.get("scan") || "";
@@ -302,14 +304,19 @@ const MyCollection = () => {
     }, 100);
   };
 
-  // Детектор повышения уровня
+  // Детектор повышения уровня — откладываем до закрытия RevealModal
   useEffect(() => {
     const newLevel = data?.raccoon?.level ?? null;
     if (newLevel !== null && prevLevelRef.current !== null && newLevel > prevLevelRef.current) {
-      setLevelUpModal(newLevel);
+      if (revealModal) {
+        // RevealModal ещё открыт — запомним, покажем после его закрытия
+        pendingLevelUp.current = newLevel;
+      } else {
+        setLevelUpModal(newLevel);
+      }
     }
     prevLevelRef.current = newLevel;
-  }, [data?.raccoon?.level]);
+  }, [data?.raccoon?.level, revealModal]);
 
   // Мемоизируем тяжёлые вычисления — пересчитываются только при изменении data
   const collectedBreeds = useMemo(
@@ -434,7 +441,7 @@ const MyCollection = () => {
               <div className="grid grid-cols-2 gap-4 items-start">
                 <div>
                   {data.raccoon
-                    ? <CollectionRaccoon raccoon={data.raccoon} />
+                    ? <CollectionRaccoon raccoon={data.raccoon} animateXp={animateXp} />
                     : <div />}
                 </div>
                 <div>
@@ -470,11 +477,27 @@ const MyCollection = () => {
         photoUrl={revealModal.photoUrl}
         stars={revealModal.stars}
         category={revealModal.category}
-        onClose={() => setRevealModal(null)}
+        onClose={() => {
+          setRevealModal(null);
+          if (pendingLevelUp.current) {
+            const lvl = pendingLevelUp.current;
+            pendingLevelUp.current = null;
+            setTimeout(() => setLevelUpModal(lvl), 300);
+          }
+        }}
         onMagnetClick={() => {
           const breed = revealModal.breed;
+          const lvl = pendingLevelUp.current;
+          pendingLevelUp.current = null;
           setRevealModal(null);
           scrollToBreed(breed);
+          // Анимируем XP-полоску через небольшую паузу после скролла
+          setTimeout(() => setAnimateXp(true), 600);
+          setTimeout(() => setAnimateXp(false), 2000);
+          if (lvl) {
+            // После XP-анимации — показываем видео повышения уровня
+            setTimeout(() => setLevelUpModal(lvl), 1800);
+          }
         }}
       />
     )}
