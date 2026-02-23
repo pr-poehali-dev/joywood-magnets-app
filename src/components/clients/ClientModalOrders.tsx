@@ -76,11 +76,18 @@ const ClientModalOrders = ({
                     </div>
                     {(orderMagnets.length > 0 || orderBonuses.length > 0) && (
                       <div className="flex flex-wrap gap-1 ml-2">
-                        {orderMagnets.map((m) => (
-                          <span key={m.id} className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${starBg[m.stars] ?? ""}`}>
-                            {m.breed} {STAR_LABELS[m.stars]}
-                          </span>
-                        ))}
+                        {orderMagnets.map((m) => {
+                          const isTransit = m.status === "in_transit";
+                          return (
+                            <span
+                              key={m.id}
+                              title={isTransit ? "Не отсканирован клиентом" : undefined}
+                              className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${starBg[m.stars] ?? ""} ${isTransit ? "opacity-50 border-dashed" : ""}`}
+                            >
+                              {m.breed} {STAR_LABELS[m.stars]}
+                            </span>
+                          );
+                        })}
                         {orderBonuses.map((b) => (
                           <span key={b.id} className="text-[10px] px-1.5 py-0.5 rounded-full border font-medium bg-green-50 border-green-300 text-green-800">
                             {bonusLabel(b.milestone_count, b.milestone_type)}

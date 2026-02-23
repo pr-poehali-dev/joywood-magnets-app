@@ -46,10 +46,34 @@ const MagnetsPhotos = ({
   const [copiedBreed, setCopiedBreed] = useState<string | null>(null);
 
   const handleCopy = (breed: string) => {
-    navigator.clipboard.writeText(getScanUrl(breed));
-    setCopiedBreed(breed);
-    toast.success("Ссылка скопирована");
-    setTimeout(() => setCopiedBreed(null), 2000);
+    const url = getScanUrl(breed);
+    const tryFallback = () => {
+      const el = document.createElement("textarea");
+      el.value = url;
+      el.style.cssText = "position:fixed;top:-9999px;left:-9999px;opacity:0";
+      document.body.appendChild(el);
+      el.focus();
+      el.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(el);
+      if (ok) {
+        setCopiedBreed(breed);
+        toast.success("Ссылка скопирована");
+        setTimeout(() => setCopiedBreed(null), 2000);
+      } else {
+        toast.error("Не удалось скопировать — выделите ссылку вручную");
+      }
+    };
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopiedBreed(breed);
+        toast.success("Ссылка скопирована");
+        setTimeout(() => setCopiedBreed(null), 2000);
+      }).catch(tryFallback);
+    } else {
+      tryFallback();
+    }
   };
 
   const grouped = [1, 2, 3].map((stars) => ({

@@ -341,23 +341,30 @@ export function useCollectionData() {
     ];
   }, [data, visibleBreeds, collectedBreeds, collectedOrder]);
 
-  const handleRevealClose = () => {
-    // onClose вызывается при закрытии без нажатия на магнит/кнопку —
-    // в этом случае тоже запускаем полный флоу (без скролла к слоту, но со скроллом к Еноту и XP)
-    const breed = revealModal?.breed ?? "";
-    const lvl = pendingLevelUp.current;
-    pendingLevelUp.current = null;
-    setRevealModal(null);
+  const runPostRevealFlow = (breed: string, lvl: number | null) => {
+    // 0ms   — скролл к слоту с магнитом
+    // 1800ms — скролл к Еноту
+    // 2600ms — XP-анимация начинается
+    // 4500ms — XP-анимация заканчивается (пауза для наблюдения)
+    // 5200ms — открывается видео повышения уровня (если есть)
     if (breed) scrollToBreed(breed);
     setTimeout(() => {
       const raccoonEl = document.querySelector("[data-raccoon-card]");
       if (raccoonEl) raccoonEl.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, breed ? 1000 : 100);
-    setTimeout(() => setAnimateXp(true), breed ? 1400 : 200);
-    setTimeout(() => setAnimateXp(false), breed ? 2800 : 1600);
+    }, breed ? 1800 : 300);
+    setTimeout(() => setAnimateXp(true),  breed ? 2600 : 600);
+    setTimeout(() => setAnimateXp(false), breed ? 4500 : 2500);
     if (lvl) {
-      setTimeout(() => setLevelUpModal(lvl), breed ? 3000 : 1800);
+      setTimeout(() => setLevelUpModal(lvl), breed ? 5200 : 3000);
     }
+  };
+
+  const handleRevealClose = () => {
+    const breed = revealModal?.breed ?? "";
+    const lvl = pendingLevelUp.current;
+    pendingLevelUp.current = null;
+    setRevealModal(null);
+    runPostRevealFlow(breed, lvl);
   };
 
   const handleMagnetClick = () => {
@@ -366,17 +373,7 @@ export function useCollectionData() {
     const lvl = pendingLevelUp.current;
     pendingLevelUp.current = null;
     setRevealModal(null);
-    scrollToBreed(breed);
-    // После скролла к слоту — скроллим к карточке Енота для XP-анимации
-    setTimeout(() => {
-      const raccoonEl = document.querySelector("[data-raccoon-card]");
-      if (raccoonEl) raccoonEl.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 1000);
-    setTimeout(() => setAnimateXp(true), 1400);
-    setTimeout(() => setAnimateXp(false), 2800);
-    if (lvl) {
-      setTimeout(() => setLevelUpModal(lvl), 3000);
-    }
+    runPostRevealFlow(breed, lvl);
   };
 
   return {
