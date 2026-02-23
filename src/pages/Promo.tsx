@@ -4,12 +4,6 @@ import Icon from "@/components/ui/icon";
 
 const PROMO_STATS_URL = "https://functions.poehali.dev/50db6681-a72d-448a-a473-d9806f371a7d";
 
-const BONUS_MILESTONES = [
-  { count: 5, icon: "🎁", label: "5 магнитов" },
-  { count: 10, icon: "🎁", label: "10 пород" },
-  { count: 30, icon: "🏆", label: "30 пород" },
-  { count: 50, icon: "👑", label: "50 пород" },
-];
 
 const STAR_TIERS = [
   {
@@ -174,9 +168,9 @@ const Promo = () => {
               <p className="text-xs text-muted-foreground leading-relaxed">Смотрите, кто из мастеров впереди, и соревнуйтесь за первые места в таблице лидеров</p>
             </div>
             <div className="bg-white rounded-2xl border border-gold-200 p-5 space-y-2">
-              <div className="text-2xl">🎁</div>
-              <p className="font-semibold text-sm text-foreground">Бонус за репост</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">Поделитесь своим прогрессом в соцсетях — получите дополнительный подарок от Joywood</p>
+              <div className="text-2xl">📖</div>
+              <p className="font-semibold text-sm text-foreground">Узнайте о каждой породе</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">К каждому магниту — заметки о породе: откуда, как выглядит срез, для каких изделий подходит</p>
             </div>
           </div>
         </div>
@@ -221,27 +215,16 @@ const Promo = () => {
       </div>
 
       {/* Bonuses */}
-      <div className="max-w-2xl mx-auto px-4 py-12 space-y-8">
-        <div className="text-center space-y-2">
-          <h2 className="text-2xl font-bold text-foreground">Призы за коллекцию</h2>
-          <p className="text-muted-foreground text-sm">Чем больше пород — тем ценнее подарок. Всё пригодится в работе мастера</p>
+      <div className="max-w-2xl mx-auto px-4 py-10">
+        <div className="flex items-start gap-4 bg-gold-50 border border-gold-200 rounded-2xl px-6 py-5">
+          <span className="text-2xl leading-none mt-0.5">🎁</span>
+          <div>
+            <p className="font-semibold text-sm text-foreground">Призы за коллекцию</p>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              На рубежах 5, 10, 30 и 50 магнитов — полезные инструменты и расходники для мастера. Конкретные призы раскрываются в приложении после второго магнита.
+            </p>
+          </div>
         </div>
-        <div className="space-y-3">
-          {BONUS_MILESTONES.map((m, i) => (
-            <div key={i} className="flex items-center gap-4 p-4 rounded-2xl border border-stone-100 bg-white shadow-sm">
-              <div className="text-2xl leading-none">{m.icon}</div>
-              <div className="flex-1">
-                <div className="h-3 w-32 bg-stone-200 rounded-full blur-sm" />
-                <div className="h-2.5 w-20 bg-stone-100 rounded-full blur-sm mt-1.5" />
-                <p className="text-[10px] text-muted-foreground mt-1.5 italic">полезный инструмент/расходник для мастера</p>
-              </div>
-              <div className="bg-gold-50 border border-gold-200 rounded-full px-3 py-1 text-xs font-bold text-gold-700">
-                {m.label}
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="text-center text-xs text-muted-foreground">Конкретные призы откроются после второго магнита 🎁</p>
       </div>
 
       {/* CTA bottom */}
