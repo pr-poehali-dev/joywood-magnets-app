@@ -158,8 +158,8 @@ const Promo = () => {
       <div className="bg-gradient-to-r from-gold-50 to-amber-50 border-y border-gold-100 py-10">
         <div className="max-w-2xl mx-auto px-4 space-y-6">
           <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold text-foreground">Соревнуйтесь и делитесь</h2>
-            <p className="text-muted-foreground text-sm">Кто соберёт больше — тот и в лидерах</p>
+            <h2 className="text-2xl font-bold text-foreground">Больше, чем просто магниты</h2>
+            <p className="text-muted-foreground text-sm">Коллекционируйте, узнавайте, соревнуйтесь</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-white rounded-2xl border border-gold-200 p-5 space-y-2">
@@ -171,6 +171,11 @@ const Promo = () => {
               <div className="text-2xl">📖</div>
               <p className="font-semibold text-sm text-foreground">Узнайте о каждой породе</p>
               <p className="text-xs text-muted-foreground leading-relaxed">К каждому магниту — заметки о породе: откуда, как выглядит срез, для каких изделий подходит</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gold-200 p-5 space-y-2 sm:col-span-2">
+              <div className="text-2xl">🦝</div>
+              <p className="font-semibold text-sm text-foreground">Мастер-енот растёт вместе с коллекцией</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">Каждый новый магнит приносит опыт вашему еноту — он прокачивается, меняет облик и открывает новые слоты под породы</p>
             </div>
           </div>
         </div>
