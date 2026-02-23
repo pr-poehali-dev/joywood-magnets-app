@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { WOOD_BREEDS, BONUS_MILESTONES } from "@/lib/store";
-import { CollectionData, RatingEntry } from "./types";
+import { CollectionData } from "./types";
 
 const TOTAL_BREEDS = WOOD_BREEDS.length;
 
@@ -24,55 +24,6 @@ const CollectionDashboard = ({ data, onReset }: Props) => {
       : nextMilestone
       ? { emoji: "🏅", title: "Вы на пути к награде", text: `До следующего приза — «${nextMilestone.reward}» — осталось совсем немного. Продолжайте покупать!` }
       : { emoji: "👑", title: "Невероятная коллекция!", text: "Вы собрали редчайшие породы дерева. Вы — настоящий знаток Joywood." };
-
-  const medals = ["🥇", "🥈", "🥉"];
-
-  const renderTop = (
-    list: RatingEntry[],
-    myRank: number,
-    valueKey: "total_magnets" | "collection_value",
-    label: string,
-    myValue: number
-  ) => {
-    const isTop = myRank <= 3;
-    return (
-      <div className="space-y-2">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
-        <div className="space-y-1.5">
-          {list.map((entry, i) => {
-            const isMe = isTop && i + 1 === myRank;
-            return (
-              <div
-                key={i}
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                  isMe ? "bg-gold-100 border border-gold-300 font-semibold" : "bg-slate-50 border border-slate-200"
-                }`}
-              >
-                <span className="text-base w-6 text-center">{medals[i]}</span>
-                <span className="flex-1 truncate">{isMe ? "Вы" : entry.name.replace(/^\d+\s+/, "")}</span>
-                <span className="text-xs text-muted-foreground shrink-0">
-                  {valueKey === "total_magnets"
-                    ? `${entry.total_magnets} магн.`
-                    : `${(entry.collection_value ?? 0).toLocaleString("ru-RU")} ₽`}
-                </span>
-              </div>
-            );
-          })}
-          {!isTop && (
-            <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm bg-gold-100 border border-gold-300 font-semibold">
-              <span className="text-base w-6 text-center">#{myRank}</span>
-              <span className="flex-1">Вы</span>
-              <span className="text-xs text-muted-foreground shrink-0">
-                {valueKey === "total_magnets"
-                  ? `${myValue} магн.`
-                  : `${myValue.toLocaleString("ru-RU")} ₽`}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
 
   const anyBonusReached =
     data.total_magnets > 0 &&
@@ -131,24 +82,6 @@ const CollectionDashboard = ({ data, onReset }: Props) => {
           <div className="text-sm text-gold-700 mt-0.5 leading-relaxed">{motivation.text}</div>
         </div>
       </div>
-
-      {data.rating && (() => {
-        const { rank_magnets, rank_value, total_participants, my_collection_value, top_magnets = [], top_value = [] } = data.rating;
-        return (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Icon name="Trophy" size={18} className="text-gold-500" />
-                Рейтинг среди {total_participants} участников
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {renderTop(top_magnets, rank_magnets, "total_magnets", "По количеству магнитов", data.total_magnets)}
-              {renderTop(top_value, rank_value, "collection_value", "По стоимости коллекции", my_collection_value)}
-            </CardContent>
-          </Card>
-        );
-      })()}
 
       {anyBonusReached && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 items-start">

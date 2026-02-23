@@ -11,6 +11,7 @@ import CollectionDashboard from "./collection/CollectionDashboard";
 import CollectionBonusProgress from "./collection/CollectionBonusProgress";
 import CollectionBreedAtlas from "./collection/CollectionBreedAtlas";
 import CollectionRaccoon from "./collection/CollectionRaccoon";
+import CollectionRating from "./collection/CollectionRating";
 import MagnetRevealModal from "@/components/MagnetRevealModal";
 import LevelUpModal from "@/components/LevelUpModal";
 import Icon from "@/components/ui/icon";
@@ -429,7 +430,20 @@ const MyCollection = () => {
               breedPhotos={breedPhotos}
               totalVisible={visibleBreeds.length}
             />
-            {data.raccoon && <CollectionRaccoon raccoon={data.raccoon} />}
+            {(data.raccoon || data.rating) && (
+              <div className="grid grid-cols-2 gap-4 items-start">
+                <div>
+                  {data.raccoon
+                    ? <CollectionRaccoon raccoon={data.raccoon} />
+                    : <div />}
+                </div>
+                <div>
+                  {data.rating
+                    ? <CollectionRating rating={data.rating} totalMagnets={data.total_magnets} />
+                    : <div />}
+                </div>
+              </div>
+            )}
             <CollectionBonusProgress data={data} />
           </div>
         )}
