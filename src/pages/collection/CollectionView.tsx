@@ -23,6 +23,7 @@ interface Props {
   animateXp: boolean;
   videoLevel?: number | null;
   onRaccoonVideoEnd?: () => void;
+  newBreeds?: string[];
 }
 
 const ScanResultBanner = ({
@@ -88,6 +89,7 @@ const RaccoonRatingBlock = ({
   breedNotes,
   videoLevel,
   onVideoEnd,
+  newBreeds,
 }: {
   raccoon: CollectionData["raccoon"];
   rating: Rating | undefined;
@@ -97,6 +99,7 @@ const RaccoonRatingBlock = ({
   breedNotes: Record<string, string>;
   videoLevel?: number | null;
   onVideoEnd?: () => void;
+  newBreeds?: string[];
 }) => {
   const raccoonRef = useRef<HTMLDivElement>(null);
   const rightColRef = useRef<HTMLDivElement>(null);
@@ -132,6 +135,7 @@ const RaccoonRatingBlock = ({
             collectedBreeds={collectedBreeds}
             breedNotes={breedNotes}
             height={notesHeight}
+            newBreeds={newBreeds}
           />
         )}
         {raccoon && (
@@ -184,6 +188,7 @@ const CollectionView = ({
   animateXp,
   videoLevel,
   onRaccoonVideoEnd,
+  newBreeds,
 }: Props) => (
   <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-300">
     {justRegistered && (
@@ -223,6 +228,7 @@ const CollectionView = ({
           breedNotes={breedNotes}
           videoLevel={videoLevel}
           onVideoEnd={onRaccoonVideoEnd}
+          newBreeds={newBreeds}
         />
       </div>
     )}

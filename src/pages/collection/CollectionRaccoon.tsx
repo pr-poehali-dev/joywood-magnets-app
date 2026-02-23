@@ -11,7 +11,19 @@ interface Props {
 }
 
 const CollectionRaccoon = ({ raccoon, animateXp, videoLevel, onVideoEnd }: Props) => {
-  const raccoonLevel = getRaccoonLevel(raccoon.level);
+  // Пока видео играет — показываем фото уровня до повышения
+  // После окончания видео переключаемся на текущий уровень raccoon.level
+  const [photoLevel, setPhotoLevel] = useState<number>(raccoon.level);
+
+  useEffect(() => {
+    if (videoLevel != null) {
+      setPhotoLevel(videoLevel > 1 ? videoLevel - 1 : videoLevel);
+    } else {
+      setPhotoLevel(raccoon.level);
+    }
+  }, [videoLevel, raccoon.level]);
+
+  const raccoonLevel = getRaccoonLevel(photoLevel);
   // Видео читаем по videoLevel, а не по raccoon.level
   const videoLevelData = videoLevel != null ? getRaccoonLevel(videoLevel) : null;
   const videoUrl = videoLevelData?.videoUrl || null;

@@ -5,18 +5,28 @@ interface Props {
   breedNotes: Record<string, string>;
   // Высота блока задаётся снаружи — чтобы не сдвигать енота
   height: number;
+  // Новые породы — их заметки показываем первыми
+  newBreeds?: string[];
 }
 
-function buildNotes(collectedBreeds: Set<string>, breedNotes: Record<string, string>) {
-  return Object.entries(breedNotes)
-    .filter(([breed]) => collectedBreeds.has(breed))
-    .flatMap(([breed, text]) =>
-      text
-        .split(/\n\s*\n/)
-        .map((p) => p.trim())
-        .filter(Boolean)
-        .map((para) => ({ breed, para }))
-    );
+function buildNotes(
+  collectedBreeds: Set<string>,
+  breedNotes: Record<string, string>,
+  newBreeds: string[] = []
+) {
+  const newSet = new Set(newBreeds);
+  const entries = Object.entries(breedNotes).filter(([breed]) => collectedBreeds.has(breed));
+  const sorted = [
+    ...entries.filter(([breed]) => newSet.has(breed)),
+    ...entries.filter(([breed]) => !newSet.has(breed)),
+  ];
+  return sorted.flatMap(([breed, text]) =>
+    text
+      .split(/\n\s*\n/)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((para) => ({ breed, para }))
+  );
 }
 
 function highlightBreed(text: string, breed: string) {
@@ -114,10 +124,20 @@ const Typewriter = ({
   );
 };
 
-const CollectionRaccoonNotes = ({ collectedBreeds, breedNotes, height }: Props) => {
-  const allNotes = buildNotes(collectedBreeds, breedNotes);
+const CollectionRaccoonNotes = ({ collectedBreeds, breedNotes, height, newBreeds }: Props) => {
+  const allNotes = buildNotes(collectedBreeds, breedNotes, newBreeds);
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<"typing" | "fade">("typing");
+
+  const prevNewBreedsKey = useRef("");
+  useEffect(() => {
+    const key = (newBreeds ?? []).join(",");
+    if (key && key !== prevNewBreedsKey.current) {
+      prevNewBreedsKey.current = key;
+      setPhase("fade");
+      setTimeout(() => { setIndex(0); setPhase("typing"); }, 500);
+    }
+  }, [newBreeds]);
   const [fontSize, setFontSize] = useState(10);
   const textAreaRef = useRef<HTMLDivElement>(null);
 

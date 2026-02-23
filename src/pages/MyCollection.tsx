@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import CollectionPhoneStep from "./collection/CollectionPhoneStep";
 import CollectionHeader from "./collection/CollectionHeader";
 import CollectionView from "./collection/CollectionView";
@@ -19,6 +20,11 @@ const MyCollection = () => {
     handleRevealClose, handleMagnetClick, handleLevelUpClose,
     doSearch,
   } = useCollectionData();
+
+  // Запоминаем последнюю раскрытую породу для приоритета в заметках
+  const lastRevealedRef = useRef<string | null>(null);
+  if (revealModal?.breed) lastRevealedRef.current = revealModal.breed;
+  const newBreeds = lastRevealedRef.current ? [lastRevealedRef.current] : undefined;
 
   return (
     <>
@@ -62,6 +68,7 @@ const MyCollection = () => {
               animateXp={animateXp}
               videoLevel={levelUpModal}
               onRaccoonVideoEnd={handleLevelUpClose}
+              newBreeds={newBreeds}
             />
           )}
 
