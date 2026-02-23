@@ -342,11 +342,21 @@ export function useCollectionData() {
   }, [data, visibleBreeds, collectedBreeds, collectedOrder]);
 
   const handleRevealClose = () => {
+    // onClose вызывается при закрытии без нажатия на магнит/кнопку —
+    // в этом случае тоже запускаем полный флоу (без скролла к слоту, но со скроллом к Еноту и XP)
+    const breed = revealModal?.breed ?? "";
+    const lvl = pendingLevelUp.current;
+    pendingLevelUp.current = null;
     setRevealModal(null);
-    if (pendingLevelUp.current) {
-      const lvl = pendingLevelUp.current;
-      pendingLevelUp.current = null;
-      setTimeout(() => setLevelUpModal(lvl), 300);
+    if (breed) scrollToBreed(breed);
+    setTimeout(() => {
+      const raccoonEl = document.querySelector("[data-raccoon-card]");
+      if (raccoonEl) raccoonEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, breed ? 1000 : 100);
+    setTimeout(() => setAnimateXp(true), breed ? 1400 : 200);
+    setTimeout(() => setAnimateXp(false), breed ? 2800 : 1600);
+    if (lvl) {
+      setTimeout(() => setLevelUpModal(lvl), breed ? 3000 : 1800);
     }
   };
 

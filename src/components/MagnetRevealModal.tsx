@@ -94,8 +94,8 @@ export default function MagnetRevealModal({ breed, photoUrl, stars, category, on
               transition: "opacity 0.3s",
               cursor: (phase === "revealed" || phase === "done") && onMagnetClick ? "pointer" : "default",
             }}
-            onClick={(phase === "revealed" || phase === "done") && onMagnetClick ? () => { onMagnetClick(); onClose(); } : undefined}
-            title={(phase === "revealed" || phase === "done") && onMagnetClick ? "Перейти к магниту в коллекции" : undefined}
+            onClick={(phase === "revealed" || phase === "done") ? () => { (onMagnetClick ?? onClose)(); } : undefined}
+            title={undefined}
           >
             <div className={`w-32 h-32 rounded-2xl overflow-hidden shadow-2xl border-4 border-white/90 ring-4 ring-amber-300/70 transition-transform ${(phase === "revealed" || phase === "done") && onMagnetClick ? "hover:scale-105 active:scale-95" : ""}`}>
               {photoUrl ? (
@@ -107,11 +107,7 @@ export default function MagnetRevealModal({ breed, photoUrl, stars, category, on
             {(phase === "revealed" || phase === "done") && (
               <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white animate-ping opacity-75" />
             )}
-            {(phase === "revealed" || phase === "done") && onMagnetClick && (
-              <div className="absolute -bottom-6 left-0 right-0 text-center text-[10px] text-white/60 animate-in fade-in duration-500">
-                нажми, чтобы найти в коллекции
-              </div>
-            )}
+
           </div>
 
           {/* Крышка коробки */}
@@ -196,7 +192,7 @@ export default function MagnetRevealModal({ breed, photoUrl, stars, category, on
 
         {phase === "done" && (
           <Button
-            onClick={onClose}
+            onClick={() => { (onMagnetClick ?? onClose)(); }}
             className="bg-amber-500 hover:bg-amber-400 text-white font-bold px-8 animate-in fade-in duration-500 shadow-xl shadow-amber-600/40"
           >
             <Icon name="Sparkles" size={16} className="mr-2" />
