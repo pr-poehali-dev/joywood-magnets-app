@@ -3,6 +3,7 @@ import CollectionDashboard from "./CollectionDashboard";
 import CollectionBonusProgress from "./CollectionBonusProgress";
 import CollectionBreedAtlas from "./CollectionBreedAtlas";
 import CollectionRaccoon from "./CollectionRaccoon";
+import CollectionRaccoonNotes from "./CollectionRaccoonNotes";
 import CollectionRating from "./CollectionRating";
 import { CollectionData } from "./types";
 import { MagnetType } from "@/lib/store";
@@ -114,16 +115,25 @@ const CollectionView = ({
     />
 
     {(data.raccoon || data.rating) && (
-      <div className="grid grid-cols-2 gap-4 items-start" data-raccoon-card>
-        <div>
-          {data.raccoon
-            ? <CollectionRaccoon raccoon={data.raccoon} animateXp={animateXp} collectedBreeds={collectedBreeds} breedNotes={breedNotes} />
-            : <div />}
-        </div>
-        <div>
-          {data.rating
-            ? <CollectionRating rating={data.rating} totalMagnets={data.total_magnets} />
-            : <div />}
+      <div className="space-y-3" data-raccoon-card>
+        {/* Заметки енота — над блоком, только если есть собранные породы с заметками */}
+        {data.raccoon && collectedBreeds.size > 0 && Object.keys(breedNotes).length > 0 && (
+          <CollectionRaccoonNotes
+            collectedBreeds={collectedBreeds}
+            breedNotes={breedNotes}
+          />
+        )}
+        <div className="grid grid-cols-2 gap-4 items-end">
+          <div>
+            {data.raccoon
+              ? <CollectionRaccoon raccoon={data.raccoon} animateXp={animateXp} />
+              : <div />}
+          </div>
+          <div>
+            {data.rating
+              ? <CollectionRating rating={data.rating} totalMagnets={data.total_magnets} />
+              : <div />}
+          </div>
         </div>
       </div>
     )}

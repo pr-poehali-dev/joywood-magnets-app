@@ -5,76 +5,9 @@ import { RaccoonData } from "./types";
 interface Props {
   raccoon: RaccoonData;
   animateXp?: boolean;
-  collectedBreeds?: Set<string>;
-  breedNotes?: Record<string, string>;
 }
 
-// Блок заметок: показывает абзацы по очереди, каждый — 10-20с в зависимости от длины
-const RaccoonNotes = ({
-  collectedBreeds,
-  breedNotes,
-}: {
-  collectedBreeds: Set<string>;
-  breedNotes: Record<string, string>;
-}) => {
-  // Собираем все абзацы только от собранных пород
-  const allNotes = Object.entries(breedNotes)
-    .filter(([breed]) => collectedBreeds.has(breed))
-    .flatMap(([breed, text]) =>
-      text
-        .split(/\n\s*\n/)
-        .map((p) => p.trim())
-        .filter(Boolean)
-        .map((para) => ({ breed, para }))
-    );
-
-  const [index, setIndex] = useState(0);
-  const [visible, setVisible] = useState(true);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (!allNotes.length) return;
-    const para = allNotes[index % allNotes.length].para;
-    // 10s base + 1s per 40 chars, max 20s
-    const duration = Math.min(20000, 10000 + Math.floor(para.length / 40) * 1000);
-
-    timerRef.current = setTimeout(() => {
-      setVisible(false);
-      setTimeout(() => {
-        setIndex((i) => (i + 1) % allNotes.length);
-        setVisible(true);
-      }, 500);
-    }, duration);
-
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [index, allNotes.length]);
-
-  if (!allNotes.length) return null;
-
-  const current = allNotes[index % allNotes.length];
-
-  return (
-    <div className="px-3 pb-3">
-      <div
-        className="bg-white/70 rounded-xl px-3 py-2.5 border border-amber-100"
-        style={{
-          opacity: visible ? 1 : 0,
-          transition: "opacity 0.5s ease",
-          minHeight: "3.5rem",
-        }}
-      >
-        <p className="text-[10px] font-semibold text-amber-500 uppercase tracking-wide mb-1">
-          {current.breed}
-        </p>
-        <p className="text-[11px] text-amber-900 leading-relaxed">
-          {current.para}
-        </p>
-      </div>
-    </div>
-  );
-};
-
-const CollectionRaccoon = ({ raccoon, animateXp, collectedBreeds, breedNotes }: Props) => {
+const CollectionRaccoon = ({ raccoon, animateXp }: Props) => {
   const raccoonLevel = getRaccoonLevel(raccoon.level);
   const targetPct = raccoon.is_max_level
     ? 100
@@ -85,10 +18,6 @@ const CollectionRaccoon = ({ raccoon, animateXp, collectedBreeds, breedNotes }: 
   const [animating, setAnimating] = useState(false);
   const [xpGlow, setXpGlow] = useState(false);
   const prevXpRef = useRef(raccoon.xp);
-
-  const hasNotes = !!(collectedBreeds && breedNotes && Object.entries(breedNotes).some(
-    ([breed, text]) => collectedBreeds.has(breed) && text.trim()
-  ));
 
   useEffect(() => {
     if (raccoon.xp !== prevXpRef.current || animateXp) {
@@ -113,11 +42,6 @@ const CollectionRaccoon = ({ raccoon, animateXp, collectedBreeds, breedNotes }: 
 
   return (
     <div className="bg-gradient-to-b from-amber-50 to-orange-50 border border-amber-200 rounded-2xl overflow-hidden flex flex-col">
-      {/* Заметки енота — показываются только когда есть заметки */}
-      {hasNotes && collectedBreeds && breedNotes && (
-        <RaccoonNotes collectedBreeds={collectedBreeds} breedNotes={breedNotes} />
-      )}
-
       {/* Фото 3:4 */}
       <div className="relative w-full" style={{ aspectRatio: "3/4" }}>
         {raccoonLevel.photoUrl ? (
@@ -131,7 +55,6 @@ const CollectionRaccoon = ({ raccoon, animateXp, collectedBreeds, breedNotes }: 
             <span className="text-7xl">🦝</span>
           </div>
         )}
-        {/* Бейдж уровня */}
         <div className="absolute top-2 left-2 bg-amber-500 text-white text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full">
           Ур.{raccoon.level}
         </div>
