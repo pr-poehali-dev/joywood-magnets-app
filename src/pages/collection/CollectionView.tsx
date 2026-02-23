@@ -21,7 +21,7 @@ interface Props {
   breedNotes: Record<string, string>;
   visibleBreeds: MagnetType[];
   animateXp: boolean;
-  playRaccoonVideo?: boolean;
+  videoLevel?: number | null;
   onRaccoonVideoEnd?: () => void;
 }
 
@@ -86,7 +86,7 @@ const RaccoonRatingBlock = ({
   animateXp,
   collectedBreeds,
   breedNotes,
-  playVideo,
+  videoLevel,
   onVideoEnd,
 }: {
   raccoon: CollectionData["raccoon"];
@@ -95,7 +95,7 @@ const RaccoonRatingBlock = ({
   animateXp: boolean;
   collectedBreeds: Set<string>;
   breedNotes: Record<string, string>;
-  playVideo?: boolean;
+  videoLevel?: number | null;
   onVideoEnd?: () => void;
 }) => {
   const raccoonRef = useRef<HTMLDivElement>(null);
@@ -139,7 +139,7 @@ const RaccoonRatingBlock = ({
             <CollectionRaccoon
               raccoon={raccoon}
               animateXp={animateXp}
-              playVideo={playVideo}
+              videoLevel={videoLevel}
               onVideoEnd={onVideoEnd}
             />
           </div>
@@ -182,7 +182,7 @@ const CollectionView = ({
   breedNotes,
   visibleBreeds,
   animateXp,
-  playRaccoonVideo,
+  videoLevel,
   onRaccoonVideoEnd,
 }: Props) => (
   <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -221,7 +221,7 @@ const CollectionView = ({
           animateXp={animateXp}
           collectedBreeds={collectedBreeds}
           breedNotes={breedNotes}
-          playVideo={playRaccoonVideo}
+          videoLevel={videoLevel}
           onVideoEnd={onRaccoonVideoEnd}
         />
       </div>

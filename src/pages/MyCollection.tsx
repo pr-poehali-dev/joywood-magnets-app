@@ -60,7 +60,7 @@ const MyCollection = () => {
               breedNotes={breedNotes}
               visibleBreeds={visibleBreeds}
               animateXp={animateXp}
-              playRaccoonVideo={!!levelUpModal}
+              videoLevel={levelUpModal}
               onRaccoonVideoEnd={handleLevelUpClose}
             />
           )}
