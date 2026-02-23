@@ -45,8 +45,10 @@ def handler(event: dict, context) -> dict:
     """Управление фото и видео уровней Енота-мастера.
     GET — индекс.
     POST action=upload_photo — загрузка фото (base64).
-    POST action=presign_video — получить presigned URL для прямой загрузки видео в S3.
-    POST action=confirm_video — подтвердить загрузку видео, обновить индекс.
+    POST action=multipart_start — начать multipart upload видео, вернуть upload_id.
+    POST action=multipart_chunk — загрузить чанк видео (base64), вернуть ETag.
+    POST action=multipart_complete — завершить multipart upload, обновить индекс.
+    POST action=multipart_abort — отменить multipart upload.
     """
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': {**CORS, 'Access-Control-Max-Age': '86400'}, 'body': ''}
@@ -66,7 +68,7 @@ def handler(event: dict, context) -> dict:
             return {'statusCode': 400, 'headers': {**CORS, 'Content-Type': 'application/json'},
                     'body': json.dumps({'error': 'level обязателен'})}
 
-        # --- Загрузка фото (base64, маленький размер) ---
+        # --- Загрузка фото (base64) ---
         if action == 'upload_photo':
             data_b64 = body.get('data')
             if not data_b64:
@@ -89,20 +91,46 @@ def handler(event: dict, context) -> dict:
             return {'statusCode': 200, 'headers': {**CORS, 'Content-Type': 'application/json'},
                     'body': json.dumps({'ok': True, 'url': url})}
 
-        # --- Presigned URL для загрузки видео напрямую в S3 ---
-        if action == 'presign_video':
+        # --- Начало multipart upload ---
+        if action == 'multipart_start':
             key = f'raccoon/level-{level}-video.mp4'
-            presigned = s3.generate_presigned_url(
-                'put_object',
-                Params={'Bucket': BUCKET, 'Key': key, 'ContentType': 'video/mp4'},
-                ExpiresIn=600,
+            resp = s3.create_multipart_upload(Bucket=BUCKET, Key=key, ContentType='video/mp4')
+            return {'statusCode': 200, 'headers': {**CORS, 'Content-Type': 'application/json'},
+                    'body': json.dumps({'ok': True, 'upload_id': resp['UploadId'], 'key': key})}
+
+        # --- Загрузка одного чанка ---
+        if action == 'multipart_chunk':
+            upload_id = body.get('upload_id')
+            part_number = body.get('part_number')
+            data_b64 = body.get('data')
+            key = f'raccoon/level-{level}-video.mp4'
+            if not upload_id or not part_number or not data_b64:
+                return {'statusCode': 400, 'headers': {**CORS, 'Content-Type': 'application/json'},
+                        'body': json.dumps({'error': 'upload_id, part_number, data обязательны'})}
+            if ',' in data_b64:
+                data_b64 = data_b64.split(',', 1)[1]
+            chunk_bytes = base64.b64decode(data_b64)
+            resp = s3.upload_part(
+                Bucket=BUCKET, Key=key,
+                UploadId=upload_id,
+                PartNumber=int(part_number),
+                Body=chunk_bytes,
             )
             return {'statusCode': 200, 'headers': {**CORS, 'Content-Type': 'application/json'},
-                    'body': json.dumps({'ok': True, 'upload_url': presigned, 'key': key})}
+                    'body': json.dumps({'ok': True, 'etag': resp['ETag']})}
 
-        # --- Подтверждение видео после прямой загрузки ---
-        if action == 'confirm_video':
+        # --- Завершение multipart upload ---
+        if action == 'multipart_complete':
+            upload_id = body.get('upload_id')
+            parts = body.get('parts')  # [{"part_number": 1, "etag": "..."}, ...]
             key = f'raccoon/level-{level}-video.mp4'
+            if not upload_id or not parts:
+                return {'statusCode': 400, 'headers': {**CORS, 'Content-Type': 'application/json'},
+                        'body': json.dumps({'error': 'upload_id, parts обязательны'})}
+            s3.complete_multipart_upload(
+                Bucket=BUCKET, Key=key, UploadId=upload_id,
+                MultipartUpload={'Parts': [{'PartNumber': p['part_number'], 'ETag': p['etag']} for p in parts]},
+            )
             url = cdn(key)
             index = load_index(s3)
             level_key = str(level)
@@ -112,5 +140,14 @@ def handler(event: dict, context) -> dict:
             save_index(s3, index)
             return {'statusCode': 200, 'headers': {**CORS, 'Content-Type': 'application/json'},
                     'body': json.dumps({'ok': True, 'url': url})}
+
+        # --- Отмена multipart upload ---
+        if action == 'multipart_abort':
+            upload_id = body.get('upload_id')
+            key = f'raccoon/level-{level}-video.mp4'
+            if upload_id:
+                s3.abort_multipart_upload(Bucket=BUCKET, Key=key, UploadId=upload_id)
+            return {'statusCode': 200, 'headers': {**CORS, 'Content-Type': 'application/json'},
+                    'body': json.dumps({'ok': True})}
 
     return {'statusCode': 405, 'headers': CORS, 'body': ''}

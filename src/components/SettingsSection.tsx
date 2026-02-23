@@ -200,35 +200,52 @@ const SettingsSection = () => {
         }));
         sonerToast.success(`Уровень ${pending.level}: фото загружено`);
       } else {
-        // Видео — получаем presigned URL, грузим напрямую в S3
-        const presignRes = await fetch(RACCOON_ASSETS_URL, {
+        // Видео — multipart upload через бэкенд, чанки по 4MB
+        const CHUNK = 4 * 1024 * 1024;
+        const totalChunks = Math.ceil(file.size / CHUNK);
+
+        // 1. Начинаем multipart
+        const startRes = await fetch(RACCOON_ASSETS_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "presign_video", level: pending.level }),
+          body: JSON.stringify({ action: "multipart_start", level: pending.level }),
         });
-        const presignData = await presignRes.json();
-        if (!presignData.ok) throw new Error(presignData.error || "Ошибка получения URL загрузки");
+        const startData = await startRes.json();
+        if (!startData.ok) throw new Error(startData.error || "Ошибка начала загрузки");
+        const uploadId = startData.upload_id;
 
-        // Прямая загрузка в S3 через PUT
-        const uploadRes = await fetch(presignData.upload_url, {
-          method: "PUT",
-          headers: { "Content-Type": "video/mp4" },
-          body: file,
-        });
-        if (!uploadRes.ok) throw new Error("Ошибка загрузки видео в хранилище");
+        // 2. Грузим чанки последовательно
+        const parts: { part_number: number; etag: string }[] = [];
+        for (let i = 0; i < totalChunks; i++) {
+          const chunk = file.slice(i * CHUNK, (i + 1) * CHUNK);
+          const arrayBuf = await chunk.arrayBuffer();
+          const b64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuf)));
+          const chunkRes = await fetch(RACCOON_ASSETS_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "multipart_chunk", level: pending.level, upload_id: uploadId, part_number: i + 1, data: b64 }),
+          });
+          const chunkData = await chunkRes.json();
+          if (!chunkData.ok) {
+            await fetch(RACCOON_ASSETS_URL, { method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "multipart_abort", level: pending.level, upload_id: uploadId }) });
+            throw new Error(`Ошибка загрузки части ${i + 1}`);
+          }
+          parts.push({ part_number: i + 1, etag: chunkData.etag });
+        }
 
-        // Подтверждаем — обновляем индекс
-        const confirmRes = await fetch(RACCOON_ASSETS_URL, {
+        // 3. Завершаем
+        const completeRes = await fetch(RACCOON_ASSETS_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "confirm_video", level: pending.level }),
+          body: JSON.stringify({ action: "multipart_complete", level: pending.level, upload_id: uploadId, parts }),
         });
-        const confirmData = await confirmRes.json();
-        if (!confirmData.ok) throw new Error("Ошибка подтверждения загрузки");
+        const completeData = await completeRes.json();
+        if (!completeData.ok) throw new Error("Ошибка завершения загрузки");
 
         setRaccoonAssets((prev) => ({
           ...prev,
-          [String(pending.level)]: { ...prev[String(pending.level)], video: confirmData.url + "?t=" + Date.now() },
+          [String(pending.level)]: { ...prev[String(pending.level)], video: completeData.url + "?t=" + Date.now() },
         }));
         sonerToast.success(`Уровень ${pending.level}: видео загружено`);
       }
