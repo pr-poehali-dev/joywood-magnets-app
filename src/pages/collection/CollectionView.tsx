@@ -1,11 +1,12 @@
+import { useEffect, useRef, useState } from "react";
 import Icon from "@/components/ui/icon";
 import CollectionDashboard from "./CollectionDashboard";
 import CollectionBonusProgress from "./CollectionBonusProgress";
 import CollectionBreedAtlas from "./CollectionBreedAtlas";
 import CollectionRaccoon from "./CollectionRaccoon";
 import CollectionRaccoonNotes from "./CollectionRaccoonNotes";
-import CollectionRating, { renderTop } from "./CollectionRating";
-import { CollectionData } from "./types";
+import { renderTop } from "./CollectionRating";
+import { CollectionData, Rating } from "./types";
 import { MagnetType } from "@/lib/store";
 
 interface Props {
@@ -74,6 +75,90 @@ const ScanResultBanner = ({
   );
 };
 
+// Блок: заметки + енот слева, рейтинг справа
+// Заметки занимают фиксированное пространство над еnotом — измеряется через refs
+const RaccoonRatingBlock = ({
+  raccoon,
+  rating,
+  totalMagnets,
+  animateXp,
+  collectedBreeds,
+  breedNotes,
+}: {
+  raccoon: CollectionData["raccoon"];
+  rating: Rating | undefined;
+  totalMagnets: number;
+  animateXp: boolean;
+  collectedBreeds: Set<string>;
+  breedNotes: Record<string, string>;
+}) => {
+  const raccoonRef = useRef<HTMLDivElement>(null);
+  const rightColRef = useRef<HTMLDivElement>(null);
+  const [notesHeight, setNotesHeight] = useState(0);
+
+  const hasNotes = collectedBreeds.size > 0 && Object.keys(breedNotes).some(
+    (b) => collectedBreeds.has(b)
+  );
+
+  // Вычисляем высоту для блока заметок = высота правой колонки - высота енота - gap(12px)
+  useEffect(() => {
+    if (!hasNotes) return;
+    const recalc = () => {
+      const rightH = rightColRef.current?.offsetHeight ?? 0;
+      const raccoonH = raccoonRef.current?.offsetHeight ?? 0;
+      const gap = 12;
+      const h = rightH - raccoonH - gap;
+      setNotesHeight(h > 60 ? h : 0);
+    };
+    recalc();
+    const ro = new ResizeObserver(recalc);
+    if (rightColRef.current) ro.observe(rightColRef.current);
+    if (raccoonRef.current) ro.observe(raccoonRef.current);
+    return () => ro.disconnect();
+  }, [hasNotes]);
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {/* Левая колонка */}
+      <div className="flex flex-col gap-3 justify-end">
+        {raccoon && hasNotes && notesHeight > 0 && (
+          <CollectionRaccoonNotes
+            collectedBreeds={collectedBreeds}
+            breedNotes={breedNotes}
+            height={notesHeight}
+          />
+        )}
+        {raccoon && (
+          <div ref={raccoonRef}>
+            <CollectionRaccoon raccoon={raccoon} animateXp={animateXp} />
+          </div>
+        )}
+      </div>
+
+      {/* Правая колонка */}
+      {rating && (
+        <div ref={rightColRef} className="flex flex-col gap-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+              🏅 По магнитам
+            </p>
+            {renderTop(rating.top_magnets ?? [], rating.rank_magnets, "total_magnets", "", totalMagnets)}
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+              💎 По стоимости
+            </p>
+            {renderTop(rating.top_value ?? [], rating.rank_value, "collection_value", "", rating.my_collection_value)}
+          </div>
+          <p className="text-[10px] text-center text-muted-foreground/60">
+            Среди {rating.total_participants} участников
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const CollectionView = ({
   data,
   justRegistered,
@@ -116,50 +201,14 @@ const CollectionView = ({
 
     {(data.raccoon || data.rating) && (
       <div data-raccoon-card>
-        {/* Строка: енот + рейтинг */}
-        <div className="grid grid-cols-2 gap-3 items-stretch">
-          {/* Левая колонка: заметки flex-1 + енот снизу */}
-          <div className="flex flex-col gap-3 h-full">
-            {data.raccoon && collectedBreeds.size > 0 && Object.keys(breedNotes).length > 0 && (
-              <CollectionRaccoonNotes
-                collectedBreeds={collectedBreeds}
-                breedNotes={breedNotes}
-                className="flex-1 min-h-0"
-              />
-            )}
-            {data.raccoon && (
-              <div className="mt-auto">
-                <CollectionRaccoon raccoon={data.raccoon} animateXp={animateXp} />
-              </div>
-            )}
-          </div>
-
-          {/* Правая колонка: два рейтинга */}
-          {data.rating && (() => {
-            const { rank_magnets, rank_value, total_participants, my_collection_value, top_magnets = [], top_value = [] } = data.rating;
-            return (
-              <div className="flex flex-col gap-3 h-full">
-                {/* Рейтинг по магнитам */}
-                <div className="rounded-xl border border-slate-200 bg-white p-3">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
-                    🏅 По магнитам
-                  </p>
-                  {renderTop(top_magnets, rank_magnets, "total_magnets", "", data.total_magnets)}
-                </div>
-                {/* Рейтинг по стоимости */}
-                <div className="rounded-xl border border-slate-200 bg-white p-3">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
-                    💎 По стоимости
-                  </p>
-                  {renderTop(top_value, rank_value, "collection_value", "", my_collection_value)}
-                </div>
-                <p className="text-[10px] text-center text-muted-foreground/60">
-                  Среди {total_participants} участников
-                </p>
-              </div>
-            );
-          })()}
-        </div>
+        <RaccoonRatingBlock
+          raccoon={data.raccoon}
+          rating={data.rating}
+          totalMagnets={data.total_magnets}
+          animateXp={animateXp}
+          collectedBreeds={collectedBreeds}
+          breedNotes={breedNotes}
+        />
       </div>
     )}
 
