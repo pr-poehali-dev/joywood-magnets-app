@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import CollectionPhoneStep from "./collection/CollectionPhoneStep";
 import CollectionHeader from "./collection/CollectionHeader";
 import CollectionView from "./collection/CollectionView";
@@ -6,8 +6,25 @@ import MagnetRevealModal from "@/components/MagnetRevealModal";
 import LevelUpModal from "@/components/LevelUpModal";
 import Icon from "@/components/ui/icon";
 import { useCollectionData } from "./collection/useCollectionData";
+import { primeAudio } from "@/components/MagnetRevealModal";
 
 const MyCollection = () => {
+  // Прогреваем AudioContext при первом тапе/клике на странице
+  // Это нужно для пользователей, которые входят через сессию (минуя форму телефона)
+  useEffect(() => {
+    const prime = () => {
+      primeAudio();
+      document.removeEventListener("touchstart", prime, true);
+      document.removeEventListener("mousedown", prime, true);
+    };
+    document.addEventListener("touchstart", prime, { capture: true, once: true });
+    document.addEventListener("mousedown", prime, { capture: true, once: true });
+    return () => {
+      document.removeEventListener("touchstart", prime, true);
+      document.removeEventListener("mousedown", prime, true);
+    };
+  }, []);
+
   const {
     step, loading, data, notFound, verifiedPhone, breedPhotos, breedNotes,
     justRegistered, scanResult, setScanResult,

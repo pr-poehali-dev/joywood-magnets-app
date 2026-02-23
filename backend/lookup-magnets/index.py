@@ -1,6 +1,78 @@
 import json
 import re
+import time
 from utils import OPTIONS_RESPONSE, ok, err, db
+
+# Кэш рейтинга: обновляется не чаще раза в 5 минут
+_rating_cache = None
+_rating_cache_ts = 0
+_RATING_TTL = 300  # секунд
+
+
+def _get_rating(cur, reg_id):
+    global _rating_cache, _rating_cache_ts
+    now = time.time()
+    if _rating_cache is None or (now - _rating_cache_ts) > _RATING_TTL:
+        cv_formula = "COALESCE(SUM(CASE cm2.stars WHEN 1 THEN 150 WHEN 2 THEN 350 WHEN 3 THEN 700 ELSE 0 END), 0)"
+        cur.execute("""
+            SELECT r2.id, COUNT(cm2.id) AS total_magnets, %s AS collection_value
+            FROM t_p65563100_joywood_magnets_app.registrations r2
+            LEFT JOIN t_p65563100_joywood_magnets_app.client_magnets cm2
+                ON cm2.registration_id = r2.id AND cm2.status = 'revealed'
+            WHERE r2.registered = true
+            GROUP BY r2.id
+        """ % cv_formula)
+        all_stats = cur.fetchall()
+
+        sorted_by_magnets = sorted(all_stats, key=lambda x: x[1], reverse=True)
+        sorted_by_value = sorted(all_stats, key=lambda x: float(x[2]), reverse=True)
+
+        cur.execute("""
+            SELECT r2.name, COUNT(cm2.id) AS total_magnets, %s AS collection_value
+            FROM t_p65563100_joywood_magnets_app.registrations r2
+            LEFT JOIN t_p65563100_joywood_magnets_app.client_magnets cm2
+                ON cm2.registration_id = r2.id AND cm2.status = 'revealed'
+            WHERE r2.registered = true
+            GROUP BY r2.id, r2.name
+            ORDER BY total_magnets DESC LIMIT 3
+        """ % cv_formula)
+        top_magnets = [{'name': r[0], 'total_magnets': r[1], 'collection_value': int(r[2])} for r in cur.fetchall()]
+
+        cur.execute("""
+            SELECT r2.name, COUNT(cm2.id) AS total_magnets, %s AS collection_value
+            FROM t_p65563100_joywood_magnets_app.registrations r2
+            LEFT JOIN t_p65563100_joywood_magnets_app.client_magnets cm2
+                ON cm2.registration_id = r2.id AND cm2.status = 'revealed'
+            WHERE r2.registered = true
+            GROUP BY r2.id, r2.name
+            ORDER BY collection_value DESC LIMIT 3
+        """ % cv_formula)
+        top_value = [{'name': r[0], 'total_magnets': r[1], 'collection_value': int(r[2])} for r in cur.fetchall()]
+
+        _rating_cache = {
+            'all_stats': all_stats,
+            'sorted_by_magnets': sorted_by_magnets,
+            'sorted_by_value': sorted_by_value,
+            'top_magnets': top_magnets,
+            'top_value': top_value,
+            'total_participants': len(all_stats),
+        }
+        _rating_cache_ts = now
+
+    c = _rating_cache
+    rank_magnets = next((i + 1 for i, x in enumerate(c['sorted_by_magnets']) if x[0] == reg_id), None)
+    rank_value = next((i + 1 for i, x in enumerate(c['sorted_by_value']) if x[0] == reg_id), None)
+    my_stats = next((x for x in c['all_stats'] if x[0] == reg_id), None)
+    my_collection_value = int(my_stats[2]) if my_stats else 0
+
+    return {
+        'rank_magnets': rank_magnets,
+        'rank_value': rank_value,
+        'total_participants': c['total_participants'],
+        'my_collection_value': my_collection_value,
+        'top_magnets': c['top_magnets'],
+        'top_value': c['top_value'],
+    }
 
 
 def handler(event, context):
@@ -117,57 +189,7 @@ def handler(event, context):
         # Слоты = собрано + пустые (никогда меньше пустых по уровню)
         total_slots = unique_breeds + empty_slots
 
-        cv_formula = "COALESCE(SUM(CASE cm2.stars WHEN 1 THEN 150 WHEN 2 THEN 350 WHEN 3 THEN 700 ELSE 0 END), 0)"
-
-        cur.execute("""
-            SELECT
-                r2.id,
-                COUNT(cm2.id) AS total_magnets,
-                %s AS collection_value
-            FROM t_p65563100_joywood_magnets_app.registrations r2
-            LEFT JOIN t_p65563100_joywood_magnets_app.client_magnets cm2 ON cm2.registration_id = r2.id
-            WHERE r2.registered = true
-            GROUP BY r2.id
-        """ % cv_formula)
-        all_stats = cur.fetchall()
-
-        sorted_by_magnets = sorted(all_stats, key=lambda x: x[1], reverse=True)
-        sorted_by_value = sorted(all_stats, key=lambda x: float(x[2]), reverse=True)
-
-        rank_magnets = next((i + 1 for i, x in enumerate(sorted_by_magnets) if x[0] == reg[0]), None)
-        rank_value = next((i + 1 for i, x in enumerate(sorted_by_value) if x[0] == reg[0]), None)
-        total_participants = len(all_stats)
-
-        cur.execute("""
-            SELECT r2.name, COUNT(cm2.id) AS total_magnets, %s AS collection_value
-            FROM t_p65563100_joywood_magnets_app.registrations r2
-            LEFT JOIN t_p65563100_joywood_magnets_app.client_magnets cm2 ON cm2.registration_id = r2.id
-            WHERE r2.registered = true
-            GROUP BY r2.id, r2.name
-            ORDER BY total_magnets DESC
-            LIMIT 3
-        """ % cv_formula)
-        top_magnets = [
-            {'name': r[0], 'total_magnets': r[1], 'collection_value': int(r[2])}
-            for r in cur.fetchall()
-        ]
-
-        cur.execute("""
-            SELECT r2.name, COUNT(cm2.id) AS total_magnets, %s AS collection_value
-            FROM t_p65563100_joywood_magnets_app.registrations r2
-            LEFT JOIN t_p65563100_joywood_magnets_app.client_magnets cm2 ON cm2.registration_id = r2.id
-            WHERE r2.registered = true
-            GROUP BY r2.id, r2.name
-            ORDER BY collection_value DESC
-            LIMIT 3
-        """ % cv_formula)
-        top_value = [
-            {'name': r[0], 'total_magnets': r[1], 'collection_value': int(r[2])}
-            for r in cur.fetchall()
-        ]
-
-        my_stats = next((x for x in all_stats if x[0] == reg[0]), None)
-        my_collection_value = int(my_stats[2]) if my_stats else 0
+        rating = _get_rating(cur, reg[0])
 
         return ok({
             'client_name': reg[1], 'phone': reg[2],
@@ -186,14 +208,7 @@ def handler(event, context):
                 'total_slots': total_slots,
                 'is_max_level': next_level_data is None,
             },
-            'rating': {
-                'rank_magnets': rank_magnets,
-                'rank_value': rank_value,
-                'total_participants': total_participants,
-                'my_collection_value': my_collection_value,
-                'top_magnets': top_magnets,
-                'top_value': top_value,
-            },
+            'rating': rating,
         })
     finally:
         conn.close()
