@@ -18,79 +18,71 @@ interface Props {
   totalVisible?: number;
 }
 
-// Один слот карусели — независимо анимирует фото → ? → фото → ?
-const CarouselSlot = ({
+// Слот волновой карусели: показывает цветное фото с blur, меняет по сигналу onDone
+const WaveSlot = ({
   photos,
-  delay,
+  playing,
+  onDone,
 }: {
   photos: string[];
-  delay: number;
+  playing: boolean;
+  onDone: () => void;
 }) => {
   const [photoIndex, setPhotoIndex] = useState(0);
   const [visible, setVisible] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
 
   useEffect(() => {
-    if (!photos.length) return;
-
-    const cycle = () => {
-      // Показываем фото
-      setVisible(true);
-      timerRef.current = setTimeout(() => {
-        // Прячем фото
-        setVisible(false);
-        timerRef.current = setTimeout(() => {
-          // Меняем на следующее
-          setPhotoIndex((i) => (i + 1) % photos.length);
-          cycle();
-        }, 800);
-      }, 2000);
-    };
-
-    const initial = setTimeout(cycle, delay);
-    return () => {
-      clearTimeout(initial);
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [photos, delay]);
+    if (!playing || !photos.length) return;
+    // fade-in
+    setVisible(true);
+    const t1 = setTimeout(() => {
+      // fade-out
+      setVisible(false);
+      const t2 = setTimeout(() => {
+        setPhotoIndex((i) => (i + 1) % photos.length);
+        doneRef.current();
+      }, 600);
+      return () => clearTimeout(t2);
+    }, 1800);
+    return () => clearTimeout(t1);
+  }, [playing, photos]);
 
   const photo = photos[photoIndex];
 
   return (
-    <div className="rounded-xl border border-dashed border-gray-300 overflow-hidden flex flex-col bg-gray-50">
-      <div className="relative aspect-square w-full bg-gray-100 overflow-hidden">
+    <div className="rounded-xl border border-dashed border-amber-200 overflow-hidden flex flex-col bg-amber-50/30">
+      <div className="relative aspect-square w-full bg-amber-50 overflow-hidden">
         {photo && (
           <img
             src={photo}
-            alt="?"
+            alt=""
             loading="lazy"
             decoding="async"
-            className="w-full h-full object-cover grayscale"
+            className="w-full h-full object-cover"
             style={{
-              opacity: visible ? 0.45 : 0,
+              opacity: visible ? 1 : 0,
+              filter: "blur(5px)",
               transition: "opacity 0.6s ease",
-              filter: "grayscale(1) blur(1px)",
             }}
           />
         )}
-        <div
-          className="absolute inset-0 flex items-center justify-center text-3xl select-none"
-          style={{
-            opacity: visible ? 0.4 : 1,
-            transition: "opacity 0.6s ease",
-          }}
-        >
-          ❓
-        </div>
-      </div>
-      <div className="px-1.5 py-1.5 text-center text-xs bg-gray-50">
-        <div className="font-medium leading-tight text-gray-400 blur-[3px] select-none">
-          Порода
-        </div>
+        {!visible && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full border-2 border-dashed border-amber-300" />
+          </div>
+        )}
       </div>
     </div>
   );
 };
+
+const WAVE_SLOTS = 3;
+// Пауза между завершением одного слота и стартом следующего (мс)
+const WAVE_GAP = 600;
+// Пауза после последнего слота перед повтором волны (мс)
+const WAVE_PAUSE = 1200;
 
 const CollectionBreedAtlas = ({
   data,
@@ -110,11 +102,35 @@ const CollectionBreedAtlas = ({
       .sort(() => Math.random() - 0.5);
   }, [collectedBreeds, breedPhotos]);
 
-  // Делим фото карусели между слотами равномерно
-  const getSlotPhotos = (slotIndex: number) => {
-    if (!carouselPhotos.length) return [];
-    const chunk = Math.ceil(carouselPhotos.length / emptySlots);
-    return carouselPhotos.slice(slotIndex * chunk, (slotIndex + 1) * chunk);
+  // Делим фото между 3 слотами равномерно
+  const slotPhotos = useMemo(() => {
+    if (!carouselPhotos.length) return [[], [], []] as string[][];
+    const chunk = Math.ceil(carouselPhotos.length / WAVE_SLOTS);
+    return Array.from({ length: WAVE_SLOTS }, (_, i) =>
+      carouselPhotos.slice(i * chunk, (i + 1) * chunk)
+    );
+  }, [carouselPhotos]);
+
+  // activeSlot: -1 = ничего, 0/1/2 = играет соответствующий слот
+  const [activeSlot, setActiveSlot] = useState(-1);
+  const waveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Запускаем волну как только есть фото
+  useEffect(() => {
+    if (!carouselPhotos.length) return;
+    waveTimer.current = setTimeout(() => setActiveSlot(0), 800);
+    return () => { if (waveTimer.current) clearTimeout(waveTimer.current); };
+  }, [carouselPhotos.length]);
+
+  const handleSlotDone = (slotIndex: number) => {
+    setActiveSlot(-1);
+    const next = slotIndex + 1;
+    if (next < WAVE_SLOTS) {
+      waveTimer.current = setTimeout(() => setActiveSlot(next), WAVE_GAP);
+    } else {
+      // Пауза и новая волна
+      waveTimer.current = setTimeout(() => setActiveSlot(0), WAVE_PAUSE);
+    }
   };
 
   return (
@@ -238,20 +254,21 @@ const CollectionBreedAtlas = ({
           </div>
         )}
 
-        {/* Карусель — что тебя ждёт */}
+        {/* Карусель — что тебя ждёт в следующий раз */}
         {carouselPhotos.length > 0 && (
           <div className="space-y-2 pt-1">
             <div className="flex items-center gap-2">
               <div className="h-px flex-1 bg-gray-100" />
-              <p className="text-xs text-muted-foreground font-medium px-2">Что тебя ждёт</p>
+              <p className="text-xs text-muted-foreground font-medium px-2">Что тебя ждёт в следующий раз?</p>
               <div className="h-px flex-1 bg-gray-100" />
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {Array.from({ length: Math.min(emptySlots, 8) }).map((_, i) => (
-                <CarouselSlot
+            <div className="grid grid-cols-3 gap-2">
+              {Array.from({ length: WAVE_SLOTS }).map((_, i) => (
+                <WaveSlot
                   key={i}
-                  photos={getSlotPhotos(i)}
-                  delay={i * 500}
+                  photos={slotPhotos[i] ?? []}
+                  playing={activeSlot === i}
+                  onDone={() => handleSlotDone(i)}
                 />
               ))}
             </div>
