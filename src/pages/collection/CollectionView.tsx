@@ -112,7 +112,7 @@ const CollectionView = ({
     />
 
     {(data.raccoon || data.rating) && (
-      <div className="grid grid-cols-2 gap-4 items-start">
+      <div className="grid grid-cols-2 gap-4 items-start" data-raccoon-card>
         <div>
           {data.raccoon
             ? <CollectionRaccoon raccoon={data.raccoon} animateXp={animateXp} />

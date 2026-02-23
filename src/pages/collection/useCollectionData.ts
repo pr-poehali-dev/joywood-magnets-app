@@ -357,10 +357,15 @@ export function useCollectionData() {
     pendingLevelUp.current = null;
     setRevealModal(null);
     scrollToBreed(breed);
-    setTimeout(() => setAnimateXp(true), 600);
-    setTimeout(() => setAnimateXp(false), 2000);
+    // После скролла к слоту — скроллим к карточке Енота для XP-анимации
+    setTimeout(() => {
+      const raccoonEl = document.querySelector("[data-raccoon-card]");
+      if (raccoonEl) raccoonEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 1000);
+    setTimeout(() => setAnimateXp(true), 1400);
+    setTimeout(() => setAnimateXp(false), 2800);
     if (lvl) {
-      setTimeout(() => setLevelUpModal(lvl), 1800);
+      setTimeout(() => setLevelUpModal(lvl), 3000);
     }
   };
 
