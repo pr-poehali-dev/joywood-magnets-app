@@ -63,7 +63,7 @@ const WaveSlot = ({
             className="w-full h-full object-cover"
             style={{
               opacity: visible ? 1 : 0,
-              filter: "blur(5px)",
+              filter: "blur(2px)",
               transition: "opacity 0.6s ease",
             }}
           />
@@ -232,6 +232,18 @@ const CollectionBreedAtlas = ({
                 </div>
               </div>
             ))}
+
+            {/* Заблокированный слот — открывается с уровнем */}
+            {!data.raccoon?.is_max_level && (
+              <div className="rounded-xl overflow-hidden flex flex-col bg-gray-100 border border-gray-200">
+                <div className="relative aspect-square w-full bg-gray-100 flex items-center justify-center">
+                  <Icon name="Lock" size={22} className="text-gray-300" />
+                </div>
+                <div className="px-1.5 py-1.5 text-center text-[9px] bg-gray-100 leading-tight text-gray-400">
+                  Больше мест со следующим уровнем
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -251,6 +263,18 @@ const CollectionBreedAtlas = ({
                 </div>
               </div>
             ))}
+
+            {/* Заблокированный слот */}
+            {!data.raccoon?.is_max_level && (
+              <div className="rounded-xl overflow-hidden flex flex-col bg-gray-100 border border-gray-200">
+                <div className="relative aspect-square w-full bg-gray-100 flex items-center justify-center">
+                  <Icon name="Lock" size={22} className="text-gray-300" />
+                </div>
+                <div className="px-1.5 py-1.5 text-center text-[9px] bg-gray-100 leading-tight text-gray-400">
+                  Больше мест со следующим уровнем
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -16,6 +16,7 @@ interface Props {
   sortedBreeds: MagnetType[];
   collectedBreeds: Set<string>;
   breedPhotos: Record<string, string>;
+  breedNotes: Record<string, string>;
   visibleBreeds: MagnetType[];
   animateXp: boolean;
 }
@@ -81,6 +82,7 @@ const CollectionView = ({
   sortedBreeds,
   collectedBreeds,
   breedPhotos,
+  breedNotes,
   visibleBreeds,
   animateXp,
 }: Props) => (
@@ -115,7 +117,7 @@ const CollectionView = ({
       <div className="grid grid-cols-2 gap-4 items-start" data-raccoon-card>
         <div>
           {data.raccoon
-            ? <CollectionRaccoon raccoon={data.raccoon} animateXp={animateXp} />
+            ? <CollectionRaccoon raccoon={data.raccoon} animateXp={animateXp} collectedBreeds={collectedBreeds} breedNotes={breedNotes} />
             : <div />}
         </div>
         <div>

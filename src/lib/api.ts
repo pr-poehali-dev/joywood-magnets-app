@@ -8,6 +8,7 @@ export const API_URLS = {
   BREED_PHOTOS: "https://functions.poehali.dev/264a19bd-40c8-4203-a8cd-9f3709bedcee",
   BONUS_STOCK: "https://functions.poehali.dev/5cbee799-0fa3-44e1-8954-66474bf973b0",
   SETTINGS: "https://functions.poehali.dev/8d9bf70e-b9a7-466a-a2e0-7e510754dde1",
+  BREED_NOTES: "https://functions.poehali.dev/01b2a03b-f306-4d41-8210-bda0b419927a",
 };
 
 export const formatPhone = (value: string): string => {

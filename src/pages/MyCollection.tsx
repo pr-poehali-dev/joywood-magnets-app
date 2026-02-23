@@ -8,7 +8,7 @@ import { useCollectionData } from "./collection/useCollectionData";
 
 const MyCollection = () => {
   const {
-    step, loading, data, notFound, verifiedPhone, breedPhotos,
+    step, loading, data, notFound, verifiedPhone, breedPhotos, breedNotes,
     justRegistered, scanResult, setScanResult,
     revealModal, levelUpModal, setLevelUpModal, animateXp,
     phone, showRegister, policyUrl, needsConsent, pendingPhone, pendingPolicyVersion,
@@ -57,6 +57,7 @@ const MyCollection = () => {
               sortedBreeds={sortedBreeds}
               collectedBreeds={collectedBreeds}
               breedPhotos={breedPhotos}
+              breedNotes={breedNotes}
               visibleBreeds={visibleBreeds}
               animateXp={animateXp}
             />

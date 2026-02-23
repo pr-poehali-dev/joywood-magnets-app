@@ -9,6 +9,7 @@ import { CollectionData, Step, saveSession, loadSession } from "./types";
 
 const LOOKUP_URL = "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6f26ec4";
 const BREED_PHOTOS_URL = "https://functions.poehali.dev/264a19bd-40c8-4203-a8cd-9f3709bedcee";
+const BREED_NOTES_URL = "https://functions.poehali.dev/01b2a03b-f306-4d41-8210-bda0b419927a";
 const SETTINGS_URL = "https://functions.poehali.dev/8d9bf70e-b9a7-466a-a2e0-7e510754dde1";
 const SAVE_CONSENT_URL = "https://functions.poehali.dev/abee8bc8-7d35-4fe6-88d2-d62e1faec0c5";
 const SCAN_URL = "https://functions.poehali.dev/a1fcc017-69d2-46bf-95cc-a735deda6c26";
@@ -20,6 +21,15 @@ export const getBreedPhotos = async (): Promise<Record<string, string>> => {
   const data = await res.json();
   photosCache = data.photos || {};
   return photosCache!;
+};
+
+let notesCache: Record<string, string> | null = null;
+export const getBreedNotes = async (): Promise<Record<string, string>> => {
+  if (notesCache) return notesCache;
+  const res = await fetch(BREED_NOTES_URL);
+  const data = await res.json();
+  notesCache = data.notes || {};
+  return notesCache!;
 };
 
 export interface RevealModalState {
@@ -42,6 +52,7 @@ export function useCollectionData() {
   const [notFound, setNotFound] = useState(false);
   const [verifiedPhone, setVerifiedPhone] = useState("");
   const [breedPhotos, setBreedPhotos] = useState<Record<string, string>>({});
+  const [breedNotes, setBreedNotes] = useState<Record<string, string>>({});
   const [justRegistered, setJustRegistered] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResultState | null>(null);
   const [revealModal, setRevealModal] = useState<RevealModalState | null>(null);
@@ -72,6 +83,7 @@ export function useCollectionData() {
       .catch(() => {});
 
     getBreedPhotos().catch(() => {});
+    getBreedNotes().then((n) => setBreedNotes(n)).catch(() => {});
     loadRaccoonAssets().catch(() => {});
   }, []);
 
@@ -378,7 +390,7 @@ export function useCollectionData() {
 
   return {
     // state
-    step, loading, data, notFound, verifiedPhone, breedPhotos,
+    step, loading, data, notFound, verifiedPhone, breedPhotos, breedNotes,
     justRegistered, scanResult, setScanResult,
     revealModal, levelUpModal, setLevelUpModal, animateXp,
     // phone form

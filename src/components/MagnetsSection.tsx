@@ -37,6 +37,10 @@ const MagnetsSection = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingBreedRef = useRef<string | null>(null);
 
+  // Notes
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [savingNoteBreed, setSavingNoteBreed] = useState<string | null>(null);
+
   const { inventory, loading: loadingInv, setStockForBreed } = useInventory();
 
   const loadBonusStats = useCallback(async () => {
@@ -81,13 +85,36 @@ const MagnetsSection = () => {
   const loadPhotos = useCallback(async () => {
     setPhotosLoading(true);
     try {
-      const res = await fetch(API_URLS.BREED_PHOTOS);
-      const data = await res.json();
-      setPhotos(data.photos || {});
+      const [photosRes, notesRes] = await Promise.all([
+        fetch(API_URLS.BREED_PHOTOS),
+        fetch(API_URLS.BREED_NOTES),
+      ]);
+      const photosData = await photosRes.json();
+      const notesData = await notesRes.json();
+      setPhotos(photosData.photos || {});
+      setNotes(notesData.notes || {});
     } catch {
-      toast.error("Не удалось загрузить фото");
+      toast.error("Не удалось загрузить данные");
     } finally {
       setPhotosLoading(false);
+    }
+  }, []);
+
+  const handleSaveNote = useCallback(async (breed: string, text: string) => {
+    setSavingNoteBreed(breed);
+    try {
+      const res = await fetch(API_URLS.BREED_NOTES, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ breed, text }),
+      });
+      if (!res.ok) throw new Error("Ошибка");
+      setNotes((prev) => text ? { ...prev, [breed]: text } : Object.fromEntries(Object.entries(prev).filter(([k]) => k !== breed)));
+      toast.success(`Заметки «${breed}» сохранены`);
+    } catch {
+      toast.error("Не удалось сохранить заметки");
+    } finally {
+      setSavingNoteBreed(null);
     }
   }, []);
 
@@ -254,9 +281,12 @@ const MagnetsSection = () => {
           deletingBreed={deletingBreed}
           togglingBreed={togglingBreed}
           inventory={inventory}
+          notes={notes}
+          savingNoteBreed={savingNoteBreed}
           onUploadClick={(breed) => { pendingBreedRef.current = breed; fileInputRef.current?.click(); }}
           onDeletePhoto={handleDeletePhoto}
           onToggleActive={handleToggleActive}
+          onSaveNote={handleSaveNote}
         />
       )}
 
