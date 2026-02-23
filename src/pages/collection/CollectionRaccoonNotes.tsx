@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useLayoutEffect } from "react";
+import { useEffect, useRef, useState, useLayoutEffect, useMemo } from "react";
 
 interface Props {
   collectedBreeds: Set<string>;
@@ -29,9 +29,20 @@ function buildNotes(
   );
 }
 
+// Кэш скомпилированных regex по породе — не компилируем при каждом символе
+const _regexCache = new Map<string, RegExp>();
+function getBreedRegex(breed: string): RegExp {
+  let re = _regexCache.get(breed);
+  if (!re) {
+    const escaped = breed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    re = new RegExp(`(${escaped})`, "gi");
+    _regexCache.set(breed, re);
+  }
+  return re;
+}
+
 function highlightBreed(text: string, breed: string) {
-  const escaped = breed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const parts = text.split(new RegExp(`(${escaped})`, "gi"));
+  const parts = text.split(getBreedRegex(breed));
   return parts.map((part, i) =>
     part.toLowerCase() === breed.toLowerCase()
       ? <strong key={i} className="font-bold text-amber-800">{part}</strong>
@@ -92,6 +103,7 @@ const Typewriter = ({
   useEffect(() => {
     setCharCount(0);
     let i = 0;
+    let holdTimer: ReturnType<typeof setTimeout> | null = null;
     const speed = text.length > 120 ? 15 : text.length > 60 ? 22 : 30;
     const interval = setInterval(() => {
       i++;
@@ -99,10 +111,13 @@ const Typewriter = ({
       if (i >= text.length) {
         clearInterval(interval);
         const hold = Math.min(18000, 10000 + Math.floor(text.length / 40) * 1000);
-        setTimeout(() => doneRef.current(), hold);
+        holdTimer = setTimeout(() => doneRef.current(), hold);
       }
     }, speed);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (holdTimer) clearTimeout(holdTimer);
+    };
   }, [text]);
 
   const displayed = text.slice(0, charCount);
@@ -125,7 +140,10 @@ const Typewriter = ({
 };
 
 const CollectionRaccoonNotes = ({ collectedBreeds, breedNotes, height, newBreeds }: Props) => {
-  const allNotes = buildNotes(collectedBreeds, breedNotes, newBreeds);
+  const allNotes = useMemo(
+    () => buildNotes(collectedBreeds, breedNotes, newBreeds),
+    [collectedBreeds, breedNotes, newBreeds]
+  );
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<"typing" | "fade">("typing");
 
@@ -135,7 +153,8 @@ const CollectionRaccoonNotes = ({ collectedBreeds, breedNotes, height, newBreeds
     if (key && key !== prevNewBreedsKey.current) {
       prevNewBreedsKey.current = key;
       setPhase("fade");
-      setTimeout(() => { setIndex(0); setPhase("typing"); }, 500);
+      const t = setTimeout(() => { setIndex(0); setPhase("typing"); }, 500);
+      return () => clearTimeout(t);
     }
   }, [newBreeds]);
   const [fontSize, setFontSize] = useState(10);
@@ -150,9 +169,11 @@ const CollectionRaccoonNotes = ({ collectedBreeds, breedNotes, height, newBreeds
     setFontSize(size);
   }, [currentNote?.para, height]);
 
+  const fadeSwitchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleDone = () => {
     setPhase("fade");
-    setTimeout(() => {
+    if (fadeSwitchRef.current) clearTimeout(fadeSwitchRef.current);
+    fadeSwitchRef.current = setTimeout(() => {
       setIndex((i) => (i + 1) % allNotes.length);
       setPhase("typing");
     }, 500);

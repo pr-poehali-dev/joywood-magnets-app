@@ -94,12 +94,21 @@ const CollectionBreedAtlas = ({
   const inTransitCount = data.in_transit?.length ?? 0;
   const emptySlots = data.raccoon?.empty_slots ?? 3;
 
-  // Фото для карусели — только несобранные породы у которых есть фото
+  // Разовое перемешивание — фиксируем порядок при первом рендере
+  // и не меняем при обновлениях collectedBreeds/breedPhotos
+  const shuffledOrderRef = useRef<string[] | null>(null);
   const carouselPhotos = useMemo(() => {
-    return WOOD_BREEDS
+    const photos = WOOD_BREEDS
       .filter((b) => !collectedBreeds.has(b.breed) && breedPhotos[b.breed])
-      .map((b) => breedPhotos[b.breed])
-      .sort(() => Math.random() - 0.5);
+      .map((b) => b.breed);
+    if (!shuffledOrderRef.current) {
+      shuffledOrderRef.current = [...photos].sort(() => Math.random() - 0.5);
+    }
+    // Применяем зафиксированный порядок, фильтруя актуальные породы
+    const photoSet = new Set(photos);
+    return shuffledOrderRef.current
+      .filter((breed) => photoSet.has(breed))
+      .map((breed) => breedPhotos[breed]);
   }, [collectedBreeds, breedPhotos]);
 
   // Делим фото между 3 слотами равномерно

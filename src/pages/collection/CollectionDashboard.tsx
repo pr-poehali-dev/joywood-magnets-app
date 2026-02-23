@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
@@ -11,25 +12,29 @@ interface Props {
 
 const CollectionDashboard = ({ data, onReset }: Props) => {
   const n = data.total_magnets;
-  const nextMilestone = BONUS_MILESTONES.find((m) =>
-    (m.type === "magnets" ? data.total_magnets : data.unique_breeds) < m.count
-  );
-  const motivation =
-    n === 1
+
+  const motivation = useMemo(() => {
+    const nextMilestone = BONUS_MILESTONES.find((m) =>
+      (m.type === "magnets" ? data.total_magnets : data.unique_breeds) < m.count
+    );
+    return n === 1
       ? { emoji: "🌱", title: "Коллекция началась!", text: "У вас первый магнит — Падук. Каждая новая покупка в Joywood приносит новый образец редкой породы дерева." }
       : n < 5
       ? { emoji: "🌿", title: "Коллекция растёт", text: `Уже ${n} породы в коллекции. Ещё ${5 - n} магнита — и получите первый подарок от Joywood.` }
       : nextMilestone
       ? { emoji: "🏅", title: "Вы на пути к награде", text: `До следующего приза — «${nextMilestone.reward}» — осталось совсем немного. Продолжайте покупать!` }
       : { emoji: "👑", title: "Невероятная коллекция!", text: "Вы собрали редчайшие породы дерева. Вы — настоящий знаток Joywood." };
+  }, [n, data.total_magnets, data.unique_breeds]);
 
-  const anyBonusReached =
+  const anyBonusReached = useMemo(() =>
     data.total_magnets > 0 &&
     (data.bonuses || []).length === 0 &&
     BONUS_MILESTONES.some((m) => {
       const cur = m.type === "magnets" ? data.total_magnets : data.unique_breeds;
       return cur >= m.count;
-    });
+    }),
+    [data.total_magnets, data.unique_breeds, data.bonuses]
+  );
 
   const rankMagnets = data.rating?.rank_magnets;
   const raccoonLevel = data.raccoon?.level;

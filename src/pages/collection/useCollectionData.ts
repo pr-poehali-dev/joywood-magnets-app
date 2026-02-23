@@ -100,25 +100,31 @@ export function useCollectionData() {
       setStep("collection");
       const sessionPhone = session.phone;
 
+      let unmounted = false;
+      const retryTimer = { current: 0 as ReturnType<typeof setTimeout> };
+
       const tryFetchFresh = (attempt = 1): void => {
         Promise.all([
           fetch(LOOKUP_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: sessionPhone }) }).then((r) => r.json()),
           getBreedPhotos(),
         ])
           .then(([freshData, photos]) => {
+            if (unmounted) return;
             if (freshData && !freshData.error) {
               setData(freshData);
               setBreedPhotos(photos);
               saveSession(sessionPhone, freshData, photos);
             } else if (attempt < 3) {
-              setTimeout(() => tryFetchFresh(attempt + 1), 1000);
+              retryTimer.current = setTimeout(() => tryFetchFresh(attempt + 1), 1000);
             } else {
               setBreedPhotos(photos);
               saveSession(sessionPhone, session.data, photos);
             }
           })
           .catch(() => {
-            if (attempt < 3) setTimeout(() => tryFetchFresh(attempt + 1), 1000);
+            if (!unmounted && attempt < 3) {
+              retryTimer.current = setTimeout(() => tryFetchFresh(attempt + 1), 1000);
+            }
           });
       };
       tryFetchFresh();
@@ -131,6 +137,7 @@ export function useCollectionData() {
         })
           .then((r) => r.json())
           .then((scanData) => {
+            if (unmounted) return;
             if (scanData.result === "revealed") {
               fetch(LOOKUP_URL, {
                 method: "POST",
@@ -139,6 +146,7 @@ export function useCollectionData() {
               })
                 .then((r) => r.json())
                 .then((refreshed) => {
+                  if (unmounted) return;
                   setData(refreshed);
                   saveSession(sessionPhone, refreshed, session.photos);
                   const breedInfo = WOOD_BREEDS.find((b) => b.breed === scanBreed);
@@ -155,6 +163,11 @@ export function useCollectionData() {
           })
           .catch(() => {});
       }
+
+      return () => {
+        unmounted = true;
+        clearTimeout(retryTimer.current);
+      };
     }
   }, []);
 

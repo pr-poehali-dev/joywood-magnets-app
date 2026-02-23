@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getRaccoonLevel } from "@/lib/raccoon";
 import { RaccoonData } from "./types";
 
@@ -23,10 +23,12 @@ const CollectionRaccoon = ({ raccoon, animateXp, videoLevel, onVideoEnd }: Props
     }
   }, [videoLevel, raccoon.level]);
 
-  const raccoonLevel = getRaccoonLevel(photoLevel);
+  const raccoonLevel = useMemo(() => getRaccoonLevel(photoLevel), [photoLevel]);
   // Видео читаем по videoLevel, а не по raccoon.level
-  const videoLevelData = videoLevel != null ? getRaccoonLevel(videoLevel) : null;
-  const videoUrl = videoLevelData?.videoUrl || null;
+  const videoUrl = useMemo(
+    () => (videoLevel != null ? getRaccoonLevel(videoLevel)?.videoUrl : null) || null,
+    [videoLevel]
+  );
 
   const targetPct = raccoon.is_max_level
     ? 100
