@@ -9,7 +9,7 @@ interface Props {
 
 const medals = ["🥇", "🥈", "🥉"];
 
-const renderTop = (
+export const renderTop = (
   list: RatingEntry[],
   myRank: number,
   valueKey: "total_magnets" | "collection_value",
@@ -19,7 +19,7 @@ const renderTop = (
   const isTop = myRank <= 3;
   return (
     <div className="space-y-2">
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
+      {label && <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>}
       <div className="space-y-1.5">
         {list.map((entry, i) => {
           const isMe = isTop && i + 1 === myRank;
