@@ -161,7 +161,7 @@ const CollectionRaccoonNotes = ({ collectedBreeds, breedNotes, height, newBreeds
   if (!allNotes.length || !currentNote) return null;
 
   // Заголовочная секция (фиксированная)
-  const HEADER_H = 30;
+  const HEADER_H = 20;
   const textH = height - HEADER_H;
 
   return (
@@ -178,17 +178,17 @@ const CollectionRaccoonNotes = ({ collectedBreeds, breedNotes, height, newBreeds
 
       {/* Заголовок — фиксированная высота */}
       <div
-        className="flex items-center gap-1.5 px-3"
-        style={{ height: HEADER_H, paddingTop: 10 }}
+        className="flex items-center gap-1 px-2"
+        style={{ height: HEADER_H, paddingTop: 5 }}
       >
-        <span className="text-sm leading-none">🦝</span>
-        <span className="text-[10px] font-semibold text-amber-500 uppercase tracking-wider">Заметки</span>
+        <span className="text-[10px] leading-none">🦝</span>
+        <span className="text-[9px] font-semibold text-amber-500 uppercase tracking-wider">Заметки</span>
       </div>
 
       {/* Текстовая область — фиксированная высота, шрифт подобран */}
       <div
         ref={textAreaRef}
-        className="px-3 pb-3 overflow-hidden"
+        className="px-2 pb-2 overflow-hidden"
         style={{ height: textH }}
       >
         {phase !== "fade" && (
