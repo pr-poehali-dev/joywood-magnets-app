@@ -7,6 +7,9 @@ import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import MagnetRevealModal from "@/components/MagnetRevealModal";
+import LevelUpModal from "@/components/LevelUpModal";
+import { loadRaccoonAssets } from "@/lib/raccoon";
 
 const SCAN_URL = "https://functions.poehali.dev/a1fcc017-69d2-46bf-95cc-a735deda6c26";
 const LOOKUP_URL = "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6f26ec4";
@@ -31,6 +34,8 @@ export default function ScanMagnet() {
   const [verifiedPhone, setVerifiedPhone] = useState("");
   const [verificationEnabled, setVerificationEnabled] = useState(true);
   const [showAnimation, setShowAnimation] = useState(false);
+  const [revealModal, setRevealModal] = useState<{ breed: string; photoUrl?: string; stars: number; category: string } | null>(null);
+  const [welcomeLevelUp, setWelcomeLevelUp] = useState(false);
   const widgetRef = useRef<HTMLDivElement>(null);
   const phone = usePhoneInput();
 
@@ -76,7 +81,7 @@ export default function ScanMagnet() {
       setStep("result");
 
       if (data.result === "revealed") {
-        setShowAnimation(true);
+        await loadRaccoonAssets();
         const lookupRes = await fetch(LOOKUP_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -88,6 +93,17 @@ export default function ScanMagnet() {
           if (session) {
             saveSession(session.phone, lookupData, photos);
           }
+        }
+        if (data.is_welcome) {
+          // Падук: показываем MagnetRevealModal, после него — LevelUpModal(1) с видео приветствия
+          setRevealModal({
+            breed: data.breed,
+            photoUrl: photos[data.breed] || undefined,
+            stars: data.stars ?? 2,
+            category: data.category ?? 'Особенный',
+          });
+        } else {
+          setShowAnimation(true);
         }
       }
     } catch {
@@ -137,6 +153,27 @@ export default function ScanMagnet() {
 
   return (
     <div className="min-h-screen bg-white px-4 py-8">
+      {revealModal && (
+        <MagnetRevealModal
+          breed={revealModal.breed}
+          photoUrl={revealModal.photoUrl}
+          stars={revealModal.stars}
+          category={revealModal.category}
+          onClose={() => {
+            setRevealModal(null);
+            setWelcomeLevelUp(true);
+          }}
+        />
+      )}
+      {welcomeLevelUp && (
+        <LevelUpModal
+          newLevel={1}
+          onClose={() => {
+            setWelcomeLevelUp(false);
+            setShowAnimation(true);
+          }}
+        />
+      )}
       <div className="max-w-sm mx-auto space-y-6">
         <div className="text-center space-y-2">
           <img

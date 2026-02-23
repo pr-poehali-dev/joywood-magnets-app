@@ -10,13 +10,13 @@ const MyCollection = () => {
   const {
     step, loading, data, notFound, verifiedPhone, breedPhotos, breedNotes,
     justRegistered, scanResult, setScanResult,
-    revealModal, levelUpModal, setLevelUpModal, animateXp,
+    revealModal, levelUpModal, animateXp,
     phone, showRegister, policyUrl, needsConsent, pendingPhone, pendingPolicyVersion,
     notFoundRef,
     sortedBreeds, collectedBreeds, visibleBreeds,
     handlePhoneSubmit, handleReset, handleVerifyBack,
     handleRegistered, handleConsentAccepted,
-    handleRevealClose, handleMagnetClick,
+    handleRevealClose, handleMagnetClick, handleLevelUpClose,
     doSearch,
   } = useCollectionData();
 
@@ -75,7 +75,7 @@ const MyCollection = () => {
       {levelUpModal && (
         <LevelUpModal
           newLevel={levelUpModal}
-          onClose={() => setLevelUpModal(null)}
+          onClose={handleLevelUpClose}
         />
       )}
 

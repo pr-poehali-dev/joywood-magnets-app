@@ -60,6 +60,8 @@ export function useCollectionData() {
   const [animateXp, setAnimateXp] = useState(false);
   const prevLevelRef = useRef<number | null>(null);
   const pendingLevelUp = useRef<number | null>(null);
+  const pendingWelcome = useRef(false);
+  const welcomeBreed = useRef("");
   const notFoundRef = useRef<HTMLDivElement>(null);
   const autoSearched = useRef(false);
   const scanBreed = searchParams.get("scan") || "";
@@ -137,6 +139,7 @@ export function useCollectionData() {
                   setData(refreshed);
                   saveSession(sessionPhone, refreshed, session.photos);
                   const breedInfo = WOOD_BREEDS.find((b) => b.breed === scanBreed);
+                  if (scanData.is_welcome) pendingWelcome.current = true;
                   setRevealModal({
                     breed: scanBreed,
                     photoUrl: session.photos[scanBreed],
@@ -189,6 +192,7 @@ export function useCollectionData() {
               saveSession(searchPhone, refreshed, photos);
             }
             const breedInfo = WOOD_BREEDS.find((b) => b.breed === scanBreed);
+            if (scanData.is_welcome) pendingWelcome.current = true;
             setRevealModal({
               breed: scanBreed,
               photoUrl: photos[scanBreed],
@@ -375,8 +379,15 @@ export function useCollectionData() {
     const breed = revealModal?.breed ?? "";
     const lvl = pendingLevelUp.current;
     pendingLevelUp.current = null;
+    const isWelcome = pendingWelcome.current;
+    pendingWelcome.current = false;
     setRevealModal(null);
-    runPostRevealFlow(breed, lvl);
+    if (isWelcome) {
+      welcomeBreed.current = breed;
+      setLevelUpModal(1);
+    } else {
+      runPostRevealFlow(breed, lvl);
+    }
   };
 
   const handleMagnetClick = () => {
@@ -384,8 +395,24 @@ export function useCollectionData() {
     const breed = revealModal.breed;
     const lvl = pendingLevelUp.current;
     pendingLevelUp.current = null;
+    const isWelcome = pendingWelcome.current;
+    pendingWelcome.current = false;
     setRevealModal(null);
-    runPostRevealFlow(breed, lvl);
+    if (isWelcome) {
+      welcomeBreed.current = breed;
+      setLevelUpModal(1);
+    } else {
+      runPostRevealFlow(breed, lvl);
+    }
+  };
+
+  const handleLevelUpClose = () => {
+    const wb = welcomeBreed.current;
+    welcomeBreed.current = "";
+    setLevelUpModal(null);
+    if (wb) {
+      runPostRevealFlow(wb, null);
+    }
   };
 
   return {
@@ -402,7 +429,7 @@ export function useCollectionData() {
     // handlers
     handlePhoneSubmit, handleReset, handleVerifyBack,
     handleRegistered, handleConsentAccepted,
-    handleRevealClose, handleMagnetClick,
+    handleRevealClose, handleMagnetClick, handleLevelUpClose,
     doSearch,
   };
 }

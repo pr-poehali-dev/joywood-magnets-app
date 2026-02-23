@@ -39,7 +39,7 @@ def handler(event, context):
         registration_id = reg[0]
 
         cur.execute(
-            "SELECT id, status FROM client_magnets "
+            "SELECT id, status, stars, category FROM client_magnets "
             "WHERE registration_id = %d AND breed = '%s' LIMIT 1"
             % (registration_id, breed.replace("'", "''"))
         )
@@ -60,22 +60,31 @@ def handler(event, context):
 
         magnet_id = magnet_row[0]
         current_status = magnet_row[1]
+        magnet_stars = magnet_row[2]
+        magnet_category = magnet_row[3]
 
         if current_status == 'in_transit':
             cur.execute(
                 "UPDATE client_magnets SET status = 'revealed' WHERE id = %d" % magnet_id
             )
             conn.commit()
+            # Первый скан Падука = приветствие в программе
+            is_welcome = breed == 'Падук'
             return ok({
                 'result': 'revealed',
                 'breed': breed,
+                'stars': magnet_stars,
+                'category': magnet_category,
                 'client_name': reg[1],
                 'magnet_id': magnet_id,
+                'is_welcome': is_welcome,
             })
 
         return ok({
             'result': 'already_revealed',
             'breed': breed,
+            'stars': magnet_stars,
+            'category': magnet_category,
             'client_name': reg[1],
             'magnet_id': magnet_id,
         })

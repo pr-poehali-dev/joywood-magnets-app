@@ -165,8 +165,8 @@ def _give_paduk(cur, registration_id, phone, order_id):
     if cur.fetchone():
         return
     cur.execute(
-        "INSERT INTO client_magnets (registration_id, phone, breed, stars, category, order_id) "
-        "VALUES (%d, '%s', 'Падук', 2, 'Особенный', %d)"
+        "INSERT INTO client_magnets (registration_id, phone, breed, stars, category, order_id, status) "
+        "VALUES (%d, '%s', 'Падук', 2, 'Особенный', %d, 'in_transit')"
         % (registration_id, (phone or '').replace("'", "''"), order_id)
     )
     cur.execute(
