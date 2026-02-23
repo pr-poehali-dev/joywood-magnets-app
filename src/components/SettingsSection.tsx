@@ -13,6 +13,7 @@ const SETTINGS_URL = "https://functions.poehali.dev/8d9bf70e-b9a7-466a-a2e0-7e51
 const UPLOAD_POLICY_URL = "https://functions.poehali.dev/a3dfac54-994c-4651-8b8f-e2191da2f608";
 const GET_CONSENTS_URL = "https://functions.poehali.dev/4abcb4ec-79d8-4bfa-8e66-1285f23e5eac";
 const RACCOON_ASSETS_URL = "https://functions.poehali.dev/81103f27-f9fd-48ca-87c2-027ad46a7df8";
+const UPLOAD_VIDEO_URL = "https://functions.poehali.dev/23b79142-e8eb-4386-8362-4029358a7c25";
 
 interface ConsentItem {
   id: number; phone: string; name: string; policy_version: string; ip: string; created_at: string;
@@ -200,52 +201,42 @@ const SettingsSection = () => {
         }));
         sonerToast.success(`Уровень ${pending.level}: фото загружено`);
       } else {
-        // Видео — multipart upload через бэкенд, чанки по 4MB
-        const CHUNK = 4 * 1024 * 1024;
+        // Видео — чанки по 3MB через /tmp на бэкенде, затем сборка и PUT в S3
+        const CHUNK = 3 * 1024 * 1024;
         const totalChunks = Math.ceil(file.size / CHUNK);
 
-        // 1. Начинаем multipart
-        const startRes = await fetch(RACCOON_ASSETS_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "multipart_start", level: pending.level }),
-        });
-        const startData = await startRes.json();
-        if (!startData.ok) throw new Error(startData.error || "Ошибка начала загрузки");
-        const uploadId = startData.upload_id;
-
-        // 2. Грузим чанки последовательно
-        const parts: { part_number: number; etag: string }[] = [];
+        // Грузим чанки последовательно
         for (let i = 0; i < totalChunks; i++) {
           const chunk = file.slice(i * CHUNK, (i + 1) * CHUNK);
           const arrayBuf = await chunk.arrayBuffer();
-          const b64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuf)));
-          const chunkRes = await fetch(RACCOON_ASSETS_URL, {
+          // btoa безопасно для бинарных данных через Uint8Array
+          const bytes = new Uint8Array(arrayBuf);
+          let b64 = "";
+          for (let j = 0; j < bytes.length; j += 8192) {
+            b64 += String.fromCharCode(...bytes.subarray(j, j + 8192));
+          }
+          b64 = btoa(b64);
+          const chunkRes = await fetch(UPLOAD_VIDEO_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "multipart_chunk", level: pending.level, upload_id: uploadId, part_number: i + 1, data: b64 }),
+            body: JSON.stringify({ action: "upload_raccoon_chunk", level: pending.level, chunk_index: i, total_chunks: totalChunks, data: b64 }),
           });
           const chunkData = await chunkRes.json();
-          if (!chunkData.ok) {
-            await fetch(RACCOON_ASSETS_URL, { method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ action: "multipart_abort", level: pending.level, upload_id: uploadId }) });
-            throw new Error(`Ошибка загрузки части ${i + 1}`);
-          }
-          parts.push({ part_number: i + 1, etag: chunkData.etag });
+          if (!chunkData.ok) throw new Error(`Ошибка загрузки части ${i + 1} из ${totalChunks}`);
         }
 
-        // 3. Завершаем
-        const completeRes = await fetch(RACCOON_ASSETS_URL, {
+        // Финализируем — собираем и кладём в S3
+        const finishRes = await fetch(UPLOAD_VIDEO_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "multipart_complete", level: pending.level, upload_id: uploadId, parts }),
+          body: JSON.stringify({ action: "upload_raccoon_finish", level: pending.level, total_chunks: totalChunks }),
         });
-        const completeData = await completeRes.json();
-        if (!completeData.ok) throw new Error("Ошибка завершения загрузки");
+        const finishData = await finishRes.json();
+        if (!finishData.ok) throw new Error(finishData.error || "Ошибка сохранения видео");
 
         setRaccoonAssets((prev) => ({
           ...prev,
-          [String(pending.level)]: { ...prev[String(pending.level)], video: completeData.url + "?t=" + Date.now() },
+          [String(pending.level)]: { ...prev[String(pending.level)], video: finishData.url + "?t=" + Date.now() },
         }));
         sonerToast.success(`Уровень ${pending.level}: видео загружено`);
       }
