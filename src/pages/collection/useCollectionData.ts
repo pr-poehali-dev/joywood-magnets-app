@@ -71,6 +71,7 @@ export function useCollectionData() {
 
   const phone = usePhoneInput();
   const [verificationEnabled, setVerificationEnabled] = useState(true);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [policyUrl, setPolicyUrl] = useState("");
   const [needsConsent, setNeedsConsent] = useState(false);
@@ -84,8 +85,9 @@ export function useCollectionData() {
         setVerificationEnabled(s.phone_verification_enabled !== "false");
         setShowRegister(s.show_register_page === "true");
         setPolicyUrl(s.privacy_policy_url || "");
+        setSettingsLoaded(true);
       })
-      .catch(() => {});
+      .catch(() => setSettingsLoaded(true));
 
     getBreedPhotos().catch(() => {});
     getBreedNotes().then((n) => setBreedNotes(n)).catch(() => {});
@@ -93,9 +95,16 @@ export function useCollectionData() {
   }, []);
 
   useEffect(() => {
+    if (!settingsLoaded) return;
     const urlPhone = searchParams.get("phone");
     const session = loadSession();
     if (session && step === "phone" && !urlPhone) {
+      if (verificationEnabled) {
+        setVerifiedPhone(session.phone);
+        loadWidgetAssets().catch(() => {});
+        setStep("verify");
+        return;
+      }
       setData(session.data);
       setBreedPhotos(session.photos);
       setStep("collection");
@@ -170,7 +179,7 @@ export function useCollectionData() {
         clearTimeout(retryTimer.current);
       };
     }
-  }, []);
+  }, [settingsLoaded]);
 
   const doSearch = useCallback(async (searchPhone: string, isNewRegistration = false) => {
     setLoading(true);
