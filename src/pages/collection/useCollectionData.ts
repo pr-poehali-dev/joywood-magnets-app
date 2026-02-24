@@ -71,6 +71,7 @@ export function useCollectionData() {
 
   const phone = usePhoneInput();
   const [verificationEnabled, setVerificationEnabled] = useState(true);
+  const verificationEnabledRef = useRef(true);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [policyUrl, setPolicyUrl] = useState("");
@@ -82,7 +83,9 @@ export function useCollectionData() {
     fetch(SETTINGS_URL)
       .then((r) => r.json())
       .then((s) => {
-        setVerificationEnabled(s.phone_verification_enabled !== "false");
+        const verif = s.phone_verification_enabled !== "false";
+        verificationEnabledRef.current = verif;
+        setVerificationEnabled(verif);
         setShowRegister(s.show_register_page === "true");
         setPolicyUrl(s.privacy_policy_url || "");
         setSettingsLoaded(true);
@@ -99,7 +102,7 @@ export function useCollectionData() {
     const urlPhone = searchParams.get("phone");
     const session = loadSession();
     if (session && step === "phone" && !urlPhone) {
-      if (verificationEnabled) {
+      if (verificationEnabledRef.current) {
         setVerifiedPhone(session.phone);
         loadWidgetAssets().catch(() => {});
         setStep("verify");
