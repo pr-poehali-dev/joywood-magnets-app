@@ -95,7 +95,6 @@ def _handle_delete(event):
         cur.execute("DELETE FROM bonuses WHERE registration_id = %s" % int(client_id))
         cur.execute("DELETE FROM orders WHERE registration_id = %s" % int(client_id))
         cur.execute("DELETE FROM policy_consents WHERE registration_id = %s" % int(client_id))
-        cur.execute("DELETE FROM lookup_log WHERE registration_id = %s" % int(client_id))
         cur.execute("DELETE FROM registrations WHERE id = %s" % int(client_id))
         conn.commit()
         return ok({'ok': True})
