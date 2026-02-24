@@ -92,7 +92,10 @@ def _handle_delete(event):
         if not cur.fetchone():
             return err('Клиент не найден', 404)
         cur.execute("DELETE FROM client_magnets WHERE registration_id = %s" % int(client_id))
+        cur.execute("DELETE FROM bonuses WHERE registration_id = %s" % int(client_id))
         cur.execute("DELETE FROM orders WHERE registration_id = %s" % int(client_id))
+        cur.execute("DELETE FROM policy_consents WHERE registration_id = %s" % int(client_id))
+        cur.execute("DELETE FROM lookup_log WHERE registration_id = %s" % int(client_id))
         cur.execute("DELETE FROM registrations WHERE id = %s" % int(client_id))
         conn.commit()
         return ok({'ok': True})
