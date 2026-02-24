@@ -27,25 +27,45 @@ def handler(event, context):
         return _get_attention_clients()
     if action == 'lookup_log':
         return _get_lookup_log(params)
+    if action == 'client_by_id':
+        return _get_client_by_id(params)
 
-    return _get_clients()
+    return _get_clients(params)
 
 
-def _get_clients():
+def _row_to_client(row):
+    return {
+        'id': row[0], 'name': row[1], 'phone': row[2], 'channel': row[3],
+        'ozon_order_code': row[4], 'created_at': str(row[5]),
+        'registered': bool(row[6]), 'total_amount': float(row[7]), 'channels': row[8] or [],
+        'comment': row[9] or '',
+    }
+
+
+def _get_clients(params):
+    page = max(1, int(params.get('page', 1)))
+    limit = min(max(1, int(params.get('limit', 50))), 200)
+    q = (params.get('q') or '').strip()
     conn = db()
     try:
         cur = conn.cursor()
-        rows = repo.get_clients(cur)
-        clients = [
-            {
-                'id': row[0], 'name': row[1], 'phone': row[2], 'channel': row[3],
-                'ozon_order_code': row[4], 'created_at': str(row[5]),
-                'registered': bool(row[6]), 'total_amount': float(row[7]), 'channels': row[8] or [],
-                'comment': row[9] or '',
-            }
-            for row in rows
-        ]
-        return ok({'clients': clients})
+        rows, total = repo.get_clients(cur, page=page, limit=limit, q=q)
+        return ok({'clients': [_row_to_client(r) for r in rows], 'total': total, 'page': page, 'limit': limit})
+    finally:
+        conn.close()
+
+
+def _get_client_by_id(params):
+    client_id = params.get('id', '')
+    if not client_id or not str(client_id).isdigit():
+        return err('Укажите id')
+    conn = db()
+    try:
+        cur = conn.cursor()
+        row = repo.get_client_by_id(cur, int(client_id))
+        if not row:
+            return err('Клиент не найден', 404)
+        return ok({'client': _row_to_client(row)})
     finally:
         conn.close()
 

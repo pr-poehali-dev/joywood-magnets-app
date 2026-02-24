@@ -1,7 +1,23 @@
 SCHEMA = 't_p65563100_joywood_magnets_app'
 
 
-def get_clients(cur):
+def get_clients(cur, page=1, limit=50, q=''):
+    where = ''
+    if q:
+        safe_q = q.replace("'", "''")
+        where = (
+            "WHERE LOWER(r.name) LIKE '%%%s%%' "
+            "OR r.phone LIKE '%%%s%%' "
+            "OR LOWER(r.channel) LIKE '%%%s%%' "
+            "OR LOWER(r.ozon_order_code) LIKE '%%%s%%'"
+        ) % (safe_q.lower(), safe_q, safe_q.lower(), safe_q.lower())
+
+    cur.execute(
+        "SELECT COUNT(*) FROM %s.registrations r %s" % (SCHEMA, where)
+    )
+    total = cur.fetchone()[0]
+
+    offset = (page - 1) * limit
     cur.execute(
         "SELECT r.id, r.name, r.phone, r.channel, r.ozon_order_code, r.created_at, r.registered, "
         "COALESCE(SUM(o.amount), 0) as total_amount, "
@@ -9,9 +25,23 @@ def get_clients(cur):
         "r.comment "
         "FROM %s.registrations r "
         "LEFT JOIN %s.orders o ON o.registration_id = r.id "
-        "GROUP BY r.id ORDER BY r.created_at DESC" % (SCHEMA, SCHEMA)
+        "%s GROUP BY r.id ORDER BY r.created_at DESC LIMIT %d OFFSET %d"
+        % (SCHEMA, SCHEMA, where, limit, offset)
     )
-    return cur.fetchall()
+    return cur.fetchall(), total
+
+
+def get_client_by_id(cur, client_id):
+    cur.execute(
+        "SELECT r.id, r.name, r.phone, r.channel, r.ozon_order_code, r.created_at, r.registered, "
+        "COALESCE(SUM(o.amount), 0) as total_amount, "
+        "array_remove(array_agg(DISTINCT o.channel), NULL) as channels, "
+        "r.comment "
+        "FROM %s.registrations r "
+        "LEFT JOIN %s.orders o ON o.registration_id = r.id "
+        "WHERE r.id = %d GROUP BY r.id" % (SCHEMA, SCHEMA, int(client_id))
+    )
+    return cur.fetchone()
 
 
 def get_registrations_list(cur):
