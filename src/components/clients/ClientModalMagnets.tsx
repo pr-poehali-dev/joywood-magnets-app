@@ -1,10 +1,55 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import Icon from "@/components/ui/icon";
 import { WOOD_BREEDS, STAR_LABELS, BONUS_MILESTONES } from "@/lib/store";
 import { ClientMagnet, ClientOrder, starBg } from "./types";
+
+interface DeleteClientConfirmProps {
+  hasMagnets: boolean;
+  deleting: boolean;
+  onDelete: (returnMagnets: boolean) => void;
+  onCancel: () => void;
+}
+
+const DeleteClientConfirm = ({ hasMagnets, deleting, onDelete, onCancel }: DeleteClientConfirmProps) => {
+  const [returnMagnets, setReturnMagnets] = useState(true);
+  return (
+    <div className="w-full bg-red-50 border border-red-200 rounded-lg p-3 space-y-3">
+      <p className="text-sm font-semibold text-red-800 flex items-center gap-1.5">
+        <Icon name="AlertTriangle" size={14} />
+        Удалить клиента?
+      </p>
+      {hasMagnets && (
+        <div className="space-y-1.5">
+          <p className="text-xs text-red-700">Что сделать с магнитами клиента?</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setReturnMagnets(true)}
+              className={`flex-1 text-xs rounded-md border px-2.5 py-1.5 transition-colors ${returnMagnets ? "bg-white border-red-400 font-semibold text-red-800" : "bg-transparent border-red-200 text-red-600 hover:border-red-300"}`}
+            >
+              Вернуть на склад
+            </button>
+            <button
+              onClick={() => setReturnMagnets(false)}
+              className={`flex-1 text-xs rounded-md border px-2.5 py-1.5 transition-colors ${!returnMagnets ? "bg-white border-red-400 font-semibold text-red-800" : "bg-transparent border-red-200 text-red-600 hover:border-red-300"}`}
+            >
+              Просто удалить
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <Button size="sm" variant="destructive" disabled={deleting} onClick={() => onDelete(hasMagnets ? returnMagnets : false)} className="gap-1">
+          {deleting ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Trash2" size={14} />}
+          Да, удалить
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onCancel} disabled={deleting}>Отмена</Button>
+      </div>
+    </div>
+  );
+};
 
 interface Props {
   magnets: ClientMagnet[];
@@ -33,7 +78,7 @@ interface Props {
   onSaveComment: () => void;
   onConfirmDelete: () => void;
   onCancelDelete: () => void;
-  onDelete: () => void;
+  onDelete: (returnMagnets: boolean) => void;
   onGiveBonus: (milestone: typeof BONUS_MILESTONES[0]) => void;
 }
 
@@ -276,14 +321,12 @@ const ClientModalMagnets = ({
       {/* Удаление клиента */}
       <div className="border-t pt-4 flex justify-end">
         {confirmDelete ? (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Удалить клиента?</span>
-            <Button size="sm" variant="destructive" disabled={deleting} onClick={onDelete} className="gap-1">
-              {deleting ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Trash2" size={14} />}
-              Да, удалить
-            </Button>
-            <Button size="sm" variant="ghost" onClick={onCancelDelete}>Отмена</Button>
-          </div>
+          <DeleteClientConfirm
+            hasMagnets={magnets.length > 0}
+            deleting={deleting}
+            onDelete={onDelete}
+            onCancel={onCancelDelete}
+          />
         ) : (
           <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50 gap-1" onClick={onConfirmDelete}>
             <Icon name="Trash2" size={14} />

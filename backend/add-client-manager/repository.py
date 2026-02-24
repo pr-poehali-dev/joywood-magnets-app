@@ -108,7 +108,21 @@ def get_order_full(cur, order_id):
     return cur.fetchone()
 
 
-def delete_client_cascade(cur, reg_id):
+def get_client_magnets_breeds(cur, reg_id):
+    cur.execute(
+        "SELECT breed FROM %s.client_magnets WHERE registration_id = %d" % (SCHEMA, int(reg_id))
+    )
+    return [r[0] for r in cur.fetchall()]
+
+
+def delete_client_cascade(cur, reg_id, return_magnets=False):
+    if return_magnets:
+        breeds = get_client_magnets_breeds(cur, reg_id)
+        for breed in breeds:
+            cur.execute(
+                "UPDATE %s.magnet_inventory SET stock = stock + 1, updated_at = now() WHERE breed = '%s'"
+                % (SCHEMA, breed.replace("'", "''"))
+            )
     for table in ('client_magnets', 'bonuses', 'orders', 'policy_consents'):
         cur.execute(
             "DELETE FROM %s.%s WHERE registration_id = %d" % (SCHEMA, table, int(reg_id))

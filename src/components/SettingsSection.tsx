@@ -19,6 +19,8 @@ interface ConsentItem {
   id: number; phone: string; name: string; policy_version: string; ip: string; created_at: string;
 }
 
+const CONSENTS_PAGE_SIZE = 50;
+
 interface SettingRowProps {
   label: string;
   description: string;
@@ -90,6 +92,8 @@ const SettingsSection = () => {
   const [uploading, setUploading] = useState(false);
   const [consents, setConsents] = useState<ConsentItem[]>([]);
   const [consentsLoading, setConsentsLoading] = useState(false);
+  const [consentsPage, setConsentsPage] = useState(1);
+  const [consentsTotal, setConsentsTotal] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -120,16 +124,16 @@ const SettingsSection = () => {
       .finally(() => setRaccoonLoading(false));
   }, []);
 
-  const loadConsents = () => {
+  const loadConsents = useCallback((page = 1) => {
     setConsentsLoading(true);
-    fetch(GET_CONSENTS_URL)
+    fetch(`${GET_CONSENTS_URL}?page=${page}`)
       .then((r) => r.json())
-      .then((d) => setConsents(d.consents || []))
+      .then((d) => { setConsents(d.consents || []); setConsentsTotal(d.total ?? 0); setConsentsPage(page); })
       .catch(() => {})
       .finally(() => setConsentsLoading(false));
-  };
+  }, []);
 
-  useEffect(() => { if (policyUrl) loadConsents(); }, [policyUrl]);
+  useEffect(() => { if (policyUrl) loadConsents(1); }, [policyUrl, loadConsents]);
 
   const saveSetting = async (key: string, value: boolean, onSuccess: (v: boolean) => void, labels: [string, string]) => {
     setLoadingKey(key);
@@ -337,9 +341,9 @@ const SettingsSection = () => {
                   <p className="text-sm font-medium text-foreground flex items-center gap-2">
                     <Icon name="Users" size={15} className="text-slate-500" />
                     Согласия клиентов
-                    <span className="text-xs text-muted-foreground font-normal">({consents.length})</span>
+                    <span className="text-xs text-muted-foreground font-normal">({consentsTotal.toLocaleString("ru-RU")})</span>
                   </p>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={loadConsents} disabled={consentsLoading}>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={() => loadConsents(consentsPage)} disabled={consentsLoading}>
                     <Icon name={consentsLoading ? "Loader2" : "RefreshCw"} size={12} className={consentsLoading ? "animate-spin" : ""} />
                     Обновить
                   </Button>
@@ -347,35 +351,48 @@ const SettingsSection = () => {
                 {consents.length === 0 && !consentsLoading ? (
                   <p className="text-xs text-muted-foreground">Согласий пока нет</p>
                 ) : (
-                  <div className="rounded-md border overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-xs">Клиент</TableHead>
-                          <TableHead className="text-xs">Версия политики</TableHead>
-                          <TableHead className="text-xs">IP-адрес</TableHead>
-                          <TableHead className="text-xs">Дата и время</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {consentsLoading && (
-                          <TableRow><TableCell colSpan={4} className="text-center py-6"><Icon name="Loader2" size={20} className="mx-auto animate-spin opacity-40" /></TableCell></TableRow>
-                        )}
-                        {!consentsLoading && consents.map((c) => (
-                          <TableRow key={c.id}>
-                            <TableCell className="text-xs">
-                              <p className="font-medium">{c.name}</p>
-                              <p className="text-muted-foreground">{c.phone}</p>
-                            </TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{c.policy_version}</TableCell>
-                            <TableCell className="text-xs font-mono text-muted-foreground">{c.ip}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                              {new Date(c.created_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                            </TableCell>
+                  <div className="space-y-2">
+                    <div className="rounded-md border overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-xs">Клиент</TableHead>
+                            <TableHead className="text-xs">Версия политики</TableHead>
+                            <TableHead className="text-xs">IP-адрес</TableHead>
+                            <TableHead className="text-xs">Дата и время</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {consentsLoading && (
+                            <TableRow><TableCell colSpan={4} className="text-center py-6"><Icon name="Loader2" size={20} className="mx-auto animate-spin opacity-40" /></TableCell></TableRow>
+                          )}
+                          {!consentsLoading && consents.map((c) => (
+                            <TableRow key={c.id}>
+                              <TableCell className="text-xs">
+                                <p className="font-medium">{c.name}</p>
+                                <p className="text-muted-foreground">{c.phone}</p>
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{c.policy_version}</TableCell>
+                              <TableCell className="text-xs font-mono text-muted-foreground">{c.ip}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                                {new Date(c.created_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {consentsTotal > CONSENTS_PAGE_SIZE && (
+                      <div className="flex items-center justify-center gap-2">
+                        <Button variant="outline" size="sm" disabled={consentsPage <= 1 || consentsLoading} onClick={() => loadConsents(consentsPage - 1)}>
+                          <Icon name="ChevronLeft" size={14} />
+                        </Button>
+                        <span className="text-xs text-muted-foreground px-1">{consentsPage} / {Math.ceil(consentsTotal / CONSENTS_PAGE_SIZE)}</span>
+                        <Button variant="outline" size="sm" disabled={consentsPage >= Math.ceil(consentsTotal / CONSENTS_PAGE_SIZE) || consentsLoading} onClick={() => loadConsents(consentsPage + 1)}>
+                          <Icon name="ChevronRight" size={14} />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

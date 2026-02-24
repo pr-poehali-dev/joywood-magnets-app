@@ -172,10 +172,12 @@ const ClientModal = ({
     } finally { setGivingMagnet(false); }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (returnMagnets: boolean) => {
     setDeleting(true);
     try {
-      const res = await fetch(`${ADD_CLIENT_URL}?id=${client.id}`, { method: "DELETE" });
+      const params = new URLSearchParams({ id: String(client.id) });
+      if (returnMagnets) params.set("return_magnets", "1");
+      const res = await fetch(`${ADD_CLIENT_URL}?${params}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка");
       toast.success("Клиент удалён");
@@ -350,7 +352,7 @@ const ClientModal = ({
               onSaveComment={handleSaveComment}
               onConfirmDelete={() => setConfirmDelete(true)}
               onCancelDelete={() => setConfirmDelete(false)}
-              onDelete={handleDelete}
+              onDelete={(returnMagnets) => handleDelete(returnMagnets)}
               onGiveBonus={handleGiveBonus}
             />
           </div>

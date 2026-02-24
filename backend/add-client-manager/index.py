@@ -60,12 +60,13 @@ def _handle_delete_client(event):
     client_id = params.get('id')
     if not client_id or not client_id.isdigit():
         return err('Укажите id клиента')
+    return_magnets = params.get('return_magnets') == '1'
     conn = db()
     try:
         cur = conn.cursor()
         if not repo.find_registration(cur, int(client_id)):
             return err('Клиент не найден', 404)
-        repo.delete_client_cascade(cur, int(client_id))
+        repo.delete_client_cascade(cur, int(client_id), return_magnets=return_magnets)
         conn.commit()
         return ok({'ok': True})
     finally:
