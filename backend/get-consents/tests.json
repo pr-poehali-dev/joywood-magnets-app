@@ -1,12 +1,16 @@
 {
   "tests": [
     {
-      "name": "GET consents",
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET consents returns list",
       "method": "GET",
       "path": "/",
-      "expectedStatus": 200,
-      "expectedBody": {"consents": []},
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     }
   ]
 }

@@ -1,56 +1,23 @@
-import os
-import json
-import psycopg2
-
-SCHEMA = 't_p65563100_joywood_magnets_app'
-CORS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-}
-
-
-def get_conn():
-    return psycopg2.connect(os.environ['DATABASE_URL'])
+from utils import OPTIONS_RESPONSE, ok, db
+import repository as repo
 
 
 def handler(event: dict, context) -> dict:
     """Список клиентов, давших согласие с политикой конфиденциальности"""
     if event.get('httpMethod') == 'OPTIONS':
-        return {'statusCode': 200, 'headers': {**CORS, 'Access-Control-Max-Age': '86400'}, 'body': ''}
+        return OPTIONS_RESPONSE
 
-    conn = get_conn()
+    conn = db()
     try:
         cur = conn.cursor()
-        cur.execute("""
-            SELECT
-                pc.id,
-                pc.phone,
-                r.name,
-                pc.policy_version,
-                pc.ip_address,
-                pc.created_at
-            FROM %s.policy_consents pc
-            LEFT JOIN %s.registrations r ON r.id = pc.registration_id
-            ORDER BY pc.created_at DESC
-            LIMIT 500
-        """ % (SCHEMA, SCHEMA))
-        rows = cur.fetchall()
         consents = [
             {
-                'id': r[0],
-                'phone': r[1],
-                'name': r[2] or '—',
-                'policy_version': r[3] or '—',
-                'ip': r[4] or '—',
+                'id': r[0], 'phone': r[1], 'name': r[2] or '—',
+                'policy_version': r[3] or '—', 'ip': r[4] or '—',
                 'created_at': str(r[5]),
             }
-            for r in rows
+            for r in repo.get_consents(cur)
         ]
-        return {
-            'statusCode': 200,
-            'headers': {**CORS, 'Content-Type': 'application/json'},
-            'body': json.dumps({'consents': consents}),
-        }
+        return ok({'consents': consents})
     finally:
         conn.close()

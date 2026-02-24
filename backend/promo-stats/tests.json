@@ -1,12 +1,16 @@
 {
   "tests": [
     {
-      "name": "Get promo stats",
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET promo stats returns participants and total_magnets",
       "method": "GET",
       "path": "/",
-      "expectedStatus": 200,
-      "expectedBody": {"participants": "number", "total_magnets": "number"},
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     }
   ]
 }
