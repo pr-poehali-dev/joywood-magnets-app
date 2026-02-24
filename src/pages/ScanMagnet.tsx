@@ -33,6 +33,7 @@ export default function ScanMagnet() {
   const [loading, setLoading] = useState(false);
   const [verifiedPhone, setVerifiedPhone] = useState("");
   const [verificationEnabled, setVerificationEnabled] = useState(true);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [showAnimation, setShowAnimation] = useState(false);
   const [revealModal, setRevealModal] = useState<{ breed: string; photoUrl?: string; stars: number; category: string } | null>(null);
   const [welcomeLevelUp, setWelcomeLevelUp] = useState(false);
@@ -42,16 +43,26 @@ export default function ScanMagnet() {
   useEffect(() => {
     fetch(SETTINGS_URL)
       .then((r) => r.json())
-      .then((s) => setVerificationEnabled(s.phone_verification_enabled !== "false"))
-      .catch(() => {});
+      .then((s) => {
+        setVerificationEnabled(s.phone_verification_enabled !== "false");
+        setSettingsLoaded(true);
+      })
+      .catch(() => setSettingsLoaded(true));
   }, []);
 
   useEffect(() => {
+    if (!settingsLoaded) return;
     const session = loadSession();
     if (session && step === "phone") {
-      doScan(session.phone);
+      if (verificationEnabled) {
+        setVerifiedPhone(session.phone);
+        loadWidgetAssets().catch(() => {});
+        setStep("verify");
+      } else {
+        doScan(session.phone);
+      }
     }
-  }, []);
+  }, [settingsLoaded]);
 
   const doScan = useCallback(async (userPhone: string) => {
     setStep("scanning");
