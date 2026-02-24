@@ -1,6 +1,8 @@
 import json
 import re
 from utils import OPTIONS_RESPONSE, ok, err, db
+import repository as repo
+import service
 
 
 def handler(event, context):
@@ -25,69 +27,11 @@ def handler(event, context):
     conn = db()
     try:
         cur = conn.cursor()
-
-        cur.execute(
-            "SELECT r.id, r.name, r.phone FROM registrations r "
-            "WHERE regexp_replace(r.phone, '\\D', '', 'g') LIKE '%%%s%%' LIMIT 1"
-            % digits[-10:]
-        )
-        reg = cur.fetchone()
-
+        reg = repo.find_registration_by_phone(cur, digits[-10:])
         if not reg:
             return err('Участник не найден', 404)
 
-        registration_id = reg[0]
-
-        cur.execute(
-            "SELECT id, status, stars, category FROM client_magnets "
-            "WHERE registration_id = %d AND breed = '%s' LIMIT 1"
-            % (registration_id, breed.replace("'", "''"))
-        )
-        magnet_row = cur.fetchone()
-
-        if not magnet_row:
-            cur.execute(
-                "SELECT breed FROM magnet_inventory WHERE breed = '%s' AND active = true LIMIT 1"
-                % breed.replace("'", "''")
-            )
-            breed_exists = cur.fetchone()
-            return ok({
-                'result': 'not_in_collection',
-                'breed': breed,
-                'breed_known': breed_exists is not None,
-                'client_name': reg[1],
-            })
-
-        magnet_id = magnet_row[0]
-        current_status = magnet_row[1]
-        magnet_stars = magnet_row[2]
-        magnet_category = magnet_row[3]
-
-        if current_status == 'in_transit':
-            cur.execute(
-                "UPDATE client_magnets SET status = 'revealed' WHERE id = %d" % magnet_id
-            )
-            conn.commit()
-            # Первый скан Падука = приветствие в программе
-            is_welcome = breed == 'Падук'
-            return ok({
-                'result': 'revealed',
-                'breed': breed,
-                'stars': magnet_stars,
-                'category': magnet_category,
-                'client_name': reg[1],
-                'magnet_id': magnet_id,
-                'is_welcome': is_welcome,
-            })
-
-        return ok({
-            'result': 'already_revealed',
-            'breed': breed,
-            'stars': magnet_stars,
-            'category': magnet_category,
-            'client_name': reg[1],
-            'magnet_id': magnet_id,
-        })
-
+        result = service.scan(cur, conn, reg, breed)
+        return ok(result)
     finally:
         conn.close()

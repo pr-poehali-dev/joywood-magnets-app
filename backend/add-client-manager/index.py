@@ -1,5 +1,7 @@
 import json
 from utils import OPTIONS_RESPONSE, ok, err, db
+import repository as repo
+import service
 
 
 def handler(event, context):
@@ -11,12 +13,11 @@ def handler(event, context):
         params = event.get('queryStringParameters') or {}
         if params.get('order_id'):
             return _handle_delete_order(params)
-        return _handle_delete(event)
+        return _handle_delete_client(event)
 
     if event.get('httpMethod') == 'PUT':
         body = json.loads(event.get('body') or '{}')
-        action = body.get('action', '')
-        if action == 'update_order':
+        if body.get('action') == 'update_order':
             return _handle_update_order(body)
         return _handle_update_client(body)
 
@@ -45,42 +46,16 @@ def _handle_delete_order(params):
     conn = db()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT id FROM orders WHERE id = %d" % int(order_id))
+        cur.execute("SELECT id FROM t_p65563100_joywood_magnets_app.orders WHERE id = %d" % int(order_id))
         if not cur.fetchone():
             return err('Заказ не найден', 404)
-        cur.execute("SELECT id, breed FROM client_magnets WHERE order_id = %d" % int(order_id))
-        magnets = cur.fetchall()
-        removed_breeds = []
-        for magnet in magnets:
-            if return_magnets:
-                cur.execute("UPDATE magnet_inventory SET stock = stock + 1, updated_at = now() WHERE breed = '%s'" % magnet[1].replace("'", "''"))
-            cur.execute("DELETE FROM client_magnets WHERE id = %d" % magnet[0])
-            removed_breeds.append(magnet[1])
-        cur.execute("SELECT id, reward FROM bonuses WHERE order_id = %d" % int(order_id))
-        bonuses = cur.fetchall()
-        returned_bonuses = []
-        for bonus in bonuses:
-            if return_bonuses:
-                cur.execute(
-                    "INSERT INTO bonus_stock (reward, stock, updated_at) VALUES ('%s', 1, now()) "
-                    "ON CONFLICT (reward) DO UPDATE SET stock = bonus_stock.stock + 1, updated_at = now()"
-                    % bonus[1].replace("'", "''")
-                )
-            cur.execute("DELETE FROM bonuses WHERE id = %d" % bonus[0])
-            returned_bonuses.append(bonus[1])
-        cur.execute("DELETE FROM orders WHERE id = %d" % int(order_id))
-        conn.commit()
-        return ok({
-            'ok': True,
-            'magnet_removed': len(removed_breeds) > 0,
-            'magnets_removed': removed_breeds,
-            'bonuses_removed': returned_bonuses,
-        })
+        result = service.delete_order(cur, conn, int(order_id), return_magnets, return_bonuses)
+        return ok(result)
     finally:
         conn.close()
 
 
-def _handle_delete(event):
+def _handle_delete_client(event):
     params = event.get('queryStringParameters') or {}
     client_id = params.get('id')
     if not client_id or not client_id.isdigit():
@@ -88,14 +63,9 @@ def _handle_delete(event):
     conn = db()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT id FROM registrations WHERE id = %s" % int(client_id))
-        if not cur.fetchone():
+        if not repo.find_registration(cur, int(client_id)):
             return err('Клиент не найден', 404)
-        cur.execute("DELETE FROM client_magnets WHERE registration_id = %s" % int(client_id))
-        cur.execute("DELETE FROM bonuses WHERE registration_id = %s" % int(client_id))
-        cur.execute("DELETE FROM orders WHERE registration_id = %s" % int(client_id))
-        cur.execute("DELETE FROM policy_consents WHERE registration_id = %s" % int(client_id))
-        cur.execute("DELETE FROM registrations WHERE id = %s" % int(client_id))
+        repo.delete_client_cascade(cur, int(client_id))
         conn.commit()
         return ok({'ok': True})
     finally:
@@ -110,71 +80,15 @@ def _handle_update_client(body):
     phone = (body.get('phone') or '').strip()
     if not name and not phone:
         return err('Укажите имя или телефон')
-
     conn = db()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT id FROM registrations WHERE id = %s" % int(client_id))
-        if not cur.fetchone():
+        if not repo.find_registration(cur, int(client_id)):
             return err('Клиент не найден', 404)
-
-        updates = []
-        if name:
-            updates.append("name = '%s'" % name.replace("'", "''"))
-        if phone:
-            updates.append("phone = '%s'" % phone.replace("'", "''"))
-
-        has_real_data = (name and len(name) >= 2) or (
-            phone and len(phone.replace(' ', '').replace('(', '').replace(')', '').replace('-', '').replace('+', '')) >= 11
-        )
-        if has_real_data:
-            updates.append("registered = TRUE")
-
-        cur.execute("UPDATE registrations SET %s WHERE id = %s" % (', '.join(updates), int(client_id)))
-        conn.commit()
-
-        cur.execute("SELECT id, name, phone, channel, ozon_order_code, registered FROM registrations WHERE id = %s" % int(client_id))
-        row = cur.fetchone()
-        return ok({'ok': True, 'client': {
-            'id': row[0], 'name': row[1], 'phone': row[2],
-            'channel': row[3], 'ozon_order_code': row[4], 'registered': row[5],
-        }})
+        result = service.update_client(cur, conn, int(client_id), name, phone)
+        return ok(result)
     finally:
         conn.close()
-
-
-def _get_pending_bonuses(cur, registration_id, total_magnets, unique_breeds):
-    milestones = [
-        {'count': 5, 'type': 'magnets', 'reward': 'Кисть для клея Titebrush TM Titebond'},
-        {'count': 10, 'type': 'breeds', 'reward': 'Клей Titebond III 473 мл'},
-        {'count': 30, 'type': 'breeds', 'reward': 'Клей Titebond III 946 мл'},
-        {'count': 50, 'type': 'breeds', 'reward': 'Клей Titebond III 3,785 л'},
-    ]
-    cur.execute("SELECT milestone_count, milestone_type FROM bonuses WHERE registration_id = %d" % registration_id)
-    given = set((r[0], r[1]) for r in cur.fetchall())
-    return [
-        m for m in milestones
-        if (total_magnets if m['type'] == 'magnets' else unique_breeds) >= m['count']
-        and (m['count'], m['type']) not in given
-    ]
-
-
-def _give_paduk(cur, registration_id, phone, order_id):
-    cur.execute(
-        "SELECT id FROM client_magnets WHERE registration_id = %d AND breed = 'Падук' LIMIT 1"
-        % registration_id
-    )
-    if cur.fetchone():
-        return
-    cur.execute(
-        "INSERT INTO client_magnets (registration_id, phone, breed, stars, category, order_id, status) "
-        "VALUES (%d, '%s', 'Падук', 2, 'Особенный', %d, 'in_transit')"
-        % (registration_id, (phone or '').replace("'", "''"), order_id)
-    )
-    cur.execute(
-        "UPDATE magnet_inventory SET stock = GREATEST(stock - 1, 0), updated_at = now() "
-        "WHERE breed = 'Падук' AND stock > 0"
-    )
 
 
 def _handle_create_order(body):
@@ -188,144 +102,18 @@ def _handle_create_order(body):
     except (ValueError, TypeError):
         amount = 0
 
-    if client_id:
-        return _create_order_for_client(int(client_id), order_number, channel, amount)
-
-    if not order_number or len(order_number) < 3:
-        return err('Укажите номер заказа (минимум 3 символа)')
-
-    prefix = order_number.split('-')[0].strip()
     conn = db()
     try:
         cur = conn.cursor()
-
-        cur.execute("SELECT id FROM orders WHERE order_code = '%s' LIMIT 1" % order_number.replace("'", "''"))
-        if cur.fetchone():
-            return err('Заказ с таким номером уже существует', 409)
-
-        cur.execute(
-            "SELECT id, name, phone, ozon_order_code, registered FROM registrations "
-            "WHERE ozon_order_code IS NOT NULL "
-            "AND split_part(ozon_order_code, '-', 1) = '%s' ORDER BY id LIMIT 1"
-            % prefix.replace("'", "''")
-        )
-        row = cur.fetchone()
-
-        if row:
-            cid = row[0]
-            existing_code = row[3] or ''
-            registered = bool(row[4])
-
-            cur.execute(
-                "SELECT id FROM orders WHERE registration_id = %d AND order_code = '%s' LIMIT 1"
-                % (cid, order_number.replace("'", "''"))
-            )
-            if cur.fetchone():
-                return err('Заказ с таким номером уже существует', 409)
-
-            if order_number not in existing_code:
-                codes = existing_code + ', ' + order_number if existing_code else order_number
-                cur.execute("UPDATE registrations SET ozon_order_code = '%s' WHERE id = %d" % (codes.replace("'", "''"), cid))
-
-            cur.execute(
-                "INSERT INTO orders (registration_id, order_code, amount, channel) "
-                "VALUES (%d, '%s', %s, '%s') RETURNING id, created_at, status"
-                % (cid, order_number.replace("'", "''"), amount, channel.replace("'", "''"))
-            )
-            ord_row = cur.fetchone()
-            conn.commit()
-
-            pending_bonuses = []
-            if registered:
-                cur.execute("SELECT COUNT(*) FROM client_magnets WHERE registration_id = %d" % cid)
-                total_magnets = cur.fetchone()[0]
-                cur.execute("SELECT COUNT(DISTINCT breed) FROM client_magnets WHERE registration_id = %d" % cid)
-                unique_breeds = cur.fetchone()[0]
-                pending_bonuses = _get_pending_bonuses(cur, cid, total_magnets, unique_breeds)
-
-            return ok({
-                'client_id': cid, 'client_name': row[1], 'client_phone': row[2] or '',
-                'order_id': ord_row[0], 'order_code': order_number, 'amount': amount,
-                'channel': channel, 'created_at': str(ord_row[1]), 'status': ord_row[2] or 'active',
-                'is_new': False, 'registered': registered, 'pending_bonuses': pending_bonuses,
-                'message': 'Заказ добавлен к существующему клиенту',
-            })
+        if client_id:
+            result = service.create_order_for_client(cur, conn, int(client_id), order_number, channel, amount)
         else:
-            client_name = 'Клиент ' + prefix
-            cur.execute(
-                "INSERT INTO registrations (name, phone, channel, ozon_order_code, registered) "
-                "VALUES ('%s', '', '%s', '%s', FALSE) RETURNING id"
-                % (client_name.replace("'", "''"), channel.replace("'", "''"), order_number.replace("'", "''"))
-            )
-            new_id = cur.fetchone()[0]
-            cur.execute(
-                "INSERT INTO orders (registration_id, order_code, amount, channel) "
-                "VALUES (%d, '%s', %s, '%s') RETURNING id, created_at, status"
-                % (new_id, order_number.replace("'", "''"), amount, channel.replace("'", "''"))
-            )
-            ord_row = cur.fetchone()
-            order_id = ord_row[0]
-            _give_paduk(cur, new_id, '', order_id)
-            conn.commit()
-            return ok({
-                'client_id': new_id, 'client_name': client_name, 'client_phone': '',
-                'order_id': order_id, 'order_code': order_number, 'amount': amount,
-                'channel': channel, 'created_at': str(ord_row[1]), 'status': ord_row[2] or 'active',
-                'is_new': True, 'registered': False, 'pending_bonuses': [], 'magnet_given': 'Падук',
-                'message': 'Создан новый клиент',
-            })
-    finally:
-        conn.close()
-
-
-def _create_order_for_client(client_id, order_code, channel, amount):
-    conn = db()
-    try:
-        cur = conn.cursor()
-        cur.execute("SELECT id, name, phone, registered FROM registrations WHERE id = %d" % client_id)
-        row = cur.fetchone()
-        if not row:
-            return err('Клиент не найден', 404)
-
-        registered = bool(row[3])
-        cur.execute("SELECT COUNT(*) FROM orders WHERE registration_id = %d" % client_id)
-        existing_orders = cur.fetchone()[0]
-
-        cur.execute(
-            "INSERT INTO orders (registration_id, order_code, amount, channel) "
-            "VALUES (%d, %s, %s, '%s') RETURNING id, created_at, status"
-            % (
-                client_id,
-                ("'" + order_code.replace("'", "''") + "'") if order_code else 'NULL',
-                amount,
-                channel.replace("'", "''"),
-            )
-        )
-        ord_row = cur.fetchone()
-        order_id = ord_row[0]
-
-        if existing_orders == 0:
-            _give_paduk(cur, client_id, row[2] or '', order_id)
-
-        conn.commit()
-
-        pending_bonuses = []
-        if registered:
-            cur.execute("SELECT COUNT(*) FROM client_magnets WHERE registration_id = %d" % client_id)
-            total_magnets = cur.fetchone()[0]
-            cur.execute("SELECT COUNT(DISTINCT breed) FROM client_magnets WHERE registration_id = %d" % client_id)
-            unique_breeds = cur.fetchone()[0]
-            pending_bonuses = _get_pending_bonuses(cur, client_id, total_magnets, unique_breeds)
-
-        return ok({
-            'client_id': client_id, 'client_name': row[1], 'client_phone': row[2] or '',
-            'order_id': order_id, 'order_code': order_code or '', 'amount': amount,
-            'channel': channel, 'created_at': str(ord_row[1]), 'status': ord_row[2] or 'active',
-            'is_new': False, 'registered': registered,
-            'is_first_order': existing_orders == 0,
-            'magnet_given': 'Падук' if existing_orders == 0 else None,
-            'pending_bonuses': pending_bonuses, 'message': 'Заказ оформлен',
-        })
+            if not order_number or len(order_number) < 3:
+                return err('Укажите номер заказа (минимум 3 символа)')
+            result = service.create_order_by_ozon_code(cur, conn, order_number, channel, amount)
+        return ok(result)
+    except service.ClientError as e:
+        return err(str(e), e.status)
     finally:
         conn.close()
 
@@ -337,14 +125,13 @@ def _handle_update_order(body):
     conn = db()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT id FROM orders WHERE id = %d" % int(order_id))
+        cur.execute("SELECT id FROM t_p65563100_joywood_magnets_app.orders WHERE id = %d" % int(order_id))
         if not cur.fetchone():
             return err('Заказ не найден', 404)
         updates = []
         if 'amount' in body:
             try:
-                amount = float(body['amount'])
-                updates.append("amount = %s" % amount)
+                updates.append("amount = %s" % float(body['amount']))
             except (ValueError, TypeError):
                 return err('Некорректная сумма')
         if 'order_code' in body:
@@ -355,10 +142,11 @@ def _handle_update_order(body):
             updates.append("comment = '%s'" % comment.replace("'", "''"))
         if not updates:
             return err('Нет данных для обновления')
-        cur.execute("UPDATE orders SET %s WHERE id = %d" % (', '.join(updates), int(order_id)))
+        cur.execute(
+            "UPDATE t_p65563100_joywood_magnets_app.orders SET %s WHERE id = %d" % (', '.join(updates), int(order_id))
+        )
         conn.commit()
-        cur.execute("SELECT id, order_code, amount, channel, status, created_at, comment, magnet_comment FROM orders WHERE id = %d" % int(order_id))
-        row = cur.fetchone()
+        row = repo.get_order_full(cur, int(order_id))
         return ok({'ok': True, 'order': {
             'id': row[0], 'order_code': row[1], 'amount': float(row[2] or 0),
             'channel': row[3], 'status': row[4], 'created_at': str(row[5]),
@@ -376,7 +164,10 @@ def _handle_update_client_comment(body):
     conn = db()
     try:
         cur = conn.cursor()
-        cur.execute("UPDATE registrations SET comment = '%s' WHERE id = %d" % (comment.replace("'", "''"), int(client_id)))
+        cur.execute(
+            "UPDATE t_p65563100_joywood_magnets_app.registrations SET comment = '%s' WHERE id = %d"
+            % (comment.replace("'", "''"), int(client_id))
+        )
         conn.commit()
         return ok({'ok': True})
     finally:
@@ -393,7 +184,10 @@ def _handle_save_magnet_comment(body):
     conn = db()
     try:
         cur = conn.cursor()
-        cur.execute("UPDATE orders SET magnet_comment = '%s' WHERE id = %d" % (comment.replace("'", "''"), int(order_id)))
+        cur.execute(
+            "UPDATE t_p65563100_joywood_magnets_app.orders SET magnet_comment = '%s' WHERE id = %d"
+            % (comment.replace("'", "''"), int(order_id))
+        )
         conn.commit()
         return ok({'ok': True})
     finally:
@@ -419,16 +213,7 @@ def _handle_add_client(body):
     conn = db()
     try:
         cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO registrations (name, phone, channel, ozon_order_code, registered) "
-            "VALUES ('%s', '%s', '%s', %s, %s) RETURNING id, created_at"
-            % (
-                name.replace("'", "''"), phone.replace("'", "''"), channel.replace("'", "''"),
-                "'" + ozon_order_code.replace("'", "''") + "'" if ozon_order_code else 'NULL',
-                'TRUE' if registered else 'FALSE',
-            )
-        )
-        row = cur.fetchone()
+        row = repo.insert_registration(cur, name, phone, channel, ozon_order_code, registered)
         conn.commit()
         return ok({'id': row[0], 'created_at': str(row[1]), 'registered': registered})
     finally:

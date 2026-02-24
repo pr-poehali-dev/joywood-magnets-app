@@ -1,5 +1,6 @@
-import re
+import json
 from utils import OPTIONS_RESPONSE, ok, err, db
+import service
 
 
 def handler(event, context):
@@ -10,7 +11,6 @@ def handler(event, context):
     if event.get('httpMethod') != 'POST':
         return err('Method not allowed', 405)
 
-    import json
     body = json.loads(event.get('body', '{}'))
     name = (body.get('name') or '').strip()
     phone = (body.get('phone') or '').strip()
@@ -24,98 +24,9 @@ def handler(event, context):
     conn = db()
     try:
         cur = conn.cursor()
-
-        merged = False
-        existing_id = None
-
-        if ozon_order_code:
-            # Извлекаем числовой префикс из кода заказа (до первого дефиса)
-            ozon_prefix = re.split(r'[-\s]', ozon_order_code.strip())[0]
-
-            if ozon_prefix and ozon_prefix.isdigit():
-                # Ищем запись где ozon_order_code содержит этот префикс и клиент ещё не зарегистрирован
-                cur.execute(
-                    "SELECT id, ozon_order_code FROM registrations "
-                    "WHERE ozon_order_code IS NOT NULL "
-                    "AND ozon_order_code LIKE '%s%%' "
-                    "AND registered = FALSE "
-                    "ORDER BY id LIMIT 1"
-                    % ozon_prefix.replace("'", "''")
-                )
-                row = cur.fetchone()
-                if row:
-                    existing_id = row[0]
-                    display_name = ('%s %s' % (ozon_prefix, name)).replace("'", "''")
-                    cur.execute(
-                        "UPDATE registrations SET name='%s', phone='%s', channel='Ozon', "
-                        "registered=TRUE "
-                        "WHERE id=%d"
-                        % (
-                            display_name,
-                            phone.replace("'", "''"),
-                            existing_id,
-                        )
-                    )
-                    conn.commit()
-                    merged = True
-                else:
-                    # Код Ozon не найден среди незарегистрированных — логируем и возвращаем ошибку
-                    cur.execute(
-                        "INSERT INTO t_p65563100_joywood_magnets_app.lookup_log "
-                        "(phone, event, details) VALUES ('%s', 'ozon_code_not_matched', '%s')"
-                        % (phone.replace("'", "''"), ozon_order_code.replace("'", "''"))
-                    )
-                    conn.commit()
-                    return err(
-                        'К сожалению, система не нашла ваши заказы — возможно, они ещё не были совершены. '
-                        'Если это не так, для выяснения свяжитесь с нами по номеру +79277760036',
-                        404
-                    )
-
-        if not merged:
-            # Проверяем, существует ли уже клиент с таким телефоном
-            cur.execute(
-                "SELECT id FROM registrations WHERE phone='%s' LIMIT 1"
-                % phone.replace("'", "''")
-            )
-            existing = cur.fetchone()
-
-            if existing:
-                existing_id = existing[0]
-                cur.execute(
-                    "UPDATE registrations SET name='%s', registered=TRUE %s WHERE id=%d"
-                    % (
-                        name.replace("'", "''"),
-                        (", ozon_order_code='%s'" % ozon_order_code.replace("'", "''")) if ozon_order_code else '',
-                        existing_id,
-                    )
-                )
-                conn.commit()
-            else:
-                channel = 'Ozon' if ozon_order_code else ''
-                cur.execute(
-                    "INSERT INTO registrations (name, phone, channel, ozon_order_code, registered) "
-                    "VALUES ('%s', '%s', '%s', %s, TRUE) RETURNING id, created_at"
-                    % (
-                        name.replace("'", "''"),
-                        phone.replace("'", "''"),
-                        channel,
-                        "'" + ozon_order_code.replace("'", "''") + "'" if ozon_order_code else 'NULL',
-                    )
-                )
-                row = cur.fetchone()
-                conn.commit()
-                existing_id = row[0]
-
-        event_name = 'registered_merged' if merged else 'registered_new'
-        details = ozon_order_code.replace("'", "''") if ozon_order_code else ''
-        cur.execute(
-            "INSERT INTO t_p65563100_joywood_magnets_app.lookup_log "
-            "(phone, event, details) VALUES ('%s', '%s', '%s')"
-            % (phone.replace("'", "''"), event_name, details)
-        )
-        conn.commit()
-
-        return ok({'id': existing_id, 'merged': merged, 'message': 'Регистрация успешна'})
+        result = service.register(cur, conn, name, phone, ozon_order_code)
+        return ok(result)
+    except service.OzonCodeNotFound as e:
+        return err(str(e), 404)
     finally:
         conn.close()
