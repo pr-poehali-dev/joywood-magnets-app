@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Icon from "@/components/ui/icon";
@@ -7,6 +7,8 @@ import OzonOrderForm from "./orders/OzonOrderForm";
 import RegularOrderForm from "./orders/RegularOrderForm";
 import OrdersTable from "./orders/OrdersTable";
 
+const PAGE_SIZE = 50;
+
 interface Props {
   onNavigateToClient?: (clientId: number) => void;
 }
@@ -14,33 +16,65 @@ interface Props {
 const OrdersSection = ({ onNavigateToClient }: Props) => {
   const [mode, setMode] = useState("ozon");
   const [clients, setClients] = useState<ClientOption[]>([]);
+
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState("");
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const loadOrders = useCallback(() => {
+  const fetchOrders = useCallback((p: number, q: string, channel: string) => {
     setOrdersLoading(true);
-    fetch(`${GET_REGISTRATIONS_URL}?action=orders`)
+    const params = new URLSearchParams({
+      action: "orders",
+      page: String(p),
+      limit: String(PAGE_SIZE),
+      channel,
+    });
+    if (q) params.set("q", q);
+    fetch(`${GET_REGISTRATIONS_URL}?${params}`)
       .then((r) => r.json())
-      .then((data) => setOrders(data.orders || []))
+      .then((data) => {
+        setOrders(data.orders || []);
+        setTotal(data.total ?? 0);
+      })
       .catch(() => {})
       .finally(() => setOrdersLoading(false));
   }, []);
+
+  const channel = mode === "ozon" ? "ozon" : "other";
+
+  useEffect(() => {
+    setPage(1);
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    searchDebounce.current = setTimeout(() => {
+      fetchOrders(1, search, channel);
+    }, 350);
+    return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current); };
+  }, [search, mode, fetchOrders, channel]);
+
+  useEffect(() => {
+    fetchOrders(page, search, channel);
+  }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetch(GET_REGISTRATIONS_URL)
       .then((r) => r.json())
       .then((data) => setClients(data.clients || []))
       .catch(() => {});
-    loadOrders();
-  }, [loadOrders]);
+  }, []);
 
   const handleOrderCreated = (order: OrderRecord) => {
     setOrders((prev) => [order, ...prev]);
+    setTotal((t) => t + 1);
   };
 
   const handleOrderUpdated = (updated: OrderRecord) => {
     setOrders((prev) => prev.map((o) => o.id === updated.id ? { ...o, ...updated } : o));
   };
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="space-y-6">
@@ -93,7 +127,7 @@ const OrdersSection = ({ onNavigateToClient }: Props) => {
         </CardContent>
       </Card>
 
-      <Tabs value={mode} onValueChange={setMode}>
+      <Tabs value={mode} onValueChange={(v) => { setMode(v); setPage(1); setSearch(""); }}>
         <TabsList className="mb-4">
           <TabsTrigger value="ozon" className="flex items-center gap-1.5">
             <Icon name="Package" size={14} />
@@ -105,10 +139,32 @@ const OrdersSection = ({ onNavigateToClient }: Props) => {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="ozon">
-          <OrdersTable orders={orders} loading={ordersLoading} ozonOnly={true} onNavigateToClient={onNavigateToClient} onOrderUpdated={handleOrderUpdated} />
+          <OrdersTable
+            orders={orders}
+            loading={ordersLoading}
+            total={total}
+            page={page}
+            totalPages={totalPages}
+            search={search}
+            onSearchChange={(q) => { setSearch(q); }}
+            onPageChange={setPage}
+            onNavigateToClient={onNavigateToClient}
+            onOrderUpdated={handleOrderUpdated}
+          />
         </TabsContent>
         <TabsContent value="regular">
-          <OrdersTable orders={orders} loading={ordersLoading} ozonOnly={false} onNavigateToClient={onNavigateToClient} onOrderUpdated={handleOrderUpdated} />
+          <OrdersTable
+            orders={orders}
+            loading={ordersLoading}
+            total={total}
+            page={page}
+            totalPages={totalPages}
+            search={search}
+            onSearchChange={(q) => { setSearch(q); }}
+            onPageChange={setPage}
+            onNavigateToClient={onNavigateToClient}
+            onOrderUpdated={handleOrderUpdated}
+          />
         </TabsContent>
       </Tabs>
     </div>

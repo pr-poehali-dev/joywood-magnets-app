@@ -56,15 +56,38 @@ def get_recent_registrations(cur):
     return cur.fetchall()
 
 
-def get_orders(cur):
+def get_orders(cur, page=1, limit=50, q='', channel=''):
+    conditions = []
+    if q:
+        safe_q = q.replace("'", "''")
+        conditions.append(
+            "(LOWER(r.name) LIKE '%%%s%%' OR r.phone LIKE '%%%s%%' OR LOWER(o.order_code) LIKE '%%%s%%')"
+            % (safe_q.lower(), safe_q, safe_q.lower())
+        )
+    if channel == 'ozon':
+        conditions.append("LOWER(o.channel) = 'ozon'")
+    elif channel == 'other':
+        conditions.append("LOWER(o.channel) != 'ozon'")
+
+    where = ('WHERE ' + ' AND '.join(conditions)) if conditions else ''
+    offset = (page - 1) * limit
+
+    cur.execute(
+        "SELECT COUNT(*) FROM %s.orders o "
+        "LEFT JOIN %s.registrations r ON r.id = o.registration_id %s"
+        % (SCHEMA, SCHEMA, where)
+    )
+    total = cur.fetchone()[0]
+
     cur.execute(
         "SELECT o.id, o.order_code, o.amount, o.channel, o.status, o.created_at, "
         "o.registration_id, r.name, r.phone, o.magnet_comment, o.comment "
         "FROM %s.orders o "
         "LEFT JOIN %s.registrations r ON r.id = o.registration_id "
-        "ORDER BY o.created_at DESC" % (SCHEMA, SCHEMA)
+        "%s ORDER BY o.created_at DESC LIMIT %d OFFSET %d"
+        % (SCHEMA, SCHEMA, where, limit, offset)
     )
-    return cur.fetchall()
+    return cur.fetchall(), total
 
 
 def get_attention_clients(cur):

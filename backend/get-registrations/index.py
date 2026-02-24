@@ -12,7 +12,7 @@ def handler(event, context):
     action = params.get('action', '')
 
     if action == 'orders':
-        return _get_orders()
+        return _get_orders(params)
     if action == 'client_orders':
         return _get_client_orders(params)
     if action == 'recent_registrations':
@@ -101,10 +101,16 @@ def _get_recent_registrations():
         conn.close()
 
 
-def _get_orders():
+def _get_orders(params):
+    page = max(1, int(params.get('page', 1)))
+    limit = min(max(1, int(params.get('limit', 50))), 200)
+    q = (params.get('q') or '').strip()
+    channel = (params.get('channel') or '').strip().lower()
+
     conn = db()
     try:
         cur = conn.cursor()
+        rows, total = repo.get_orders(cur, page=page, limit=limit, q=q, channel=channel)
         orders = [
             {
                 'id': r[0], 'order_code': r[1] or '', 'amount': float(r[2]) if r[2] else 0,
@@ -112,9 +118,9 @@ def _get_orders():
                 'registration_id': r[6], 'client_name': r[7] or '',
                 'client_phone': r[8] or '', 'magnet_comment': r[9] or '', 'comment': r[10] or '',
             }
-            for r in repo.get_orders(cur)
+            for r in rows
         ]
-        return ok({'orders': orders})
+        return ok({'orders': orders, 'total': total, 'page': page, 'limit': limit})
     finally:
         conn.close()
 
