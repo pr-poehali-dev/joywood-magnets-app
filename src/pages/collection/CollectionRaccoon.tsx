@@ -152,6 +152,8 @@ const CollectionRaccoon = ({ raccoon, animateXp, videoLevel, onVideoEnd }: Props
               src={videoUrl}
               className="absolute inset-0 w-full h-full object-cover"
               playsInline
+              preload="auto"
+              disablePictureInPicture
               style={{ opacity: videoReady ? 1 : 0, transition: "opacity 0.3s" }}
             />
           </>

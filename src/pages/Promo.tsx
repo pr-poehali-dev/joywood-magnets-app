@@ -83,6 +83,8 @@ const Promo = () => {
           muted
           loop
           playsInline
+          preload="auto"
+          disablePictureInPicture
           className="absolute inset-0 w-full h-full object-cover opacity-50"
         />
         <div className="absolute inset-0 bg-black/50" />
