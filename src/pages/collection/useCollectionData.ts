@@ -93,8 +93,9 @@ export function useCollectionData() {
   }, []);
 
   useEffect(() => {
+    const urlPhone = searchParams.get("phone");
     const session = loadSession();
-    if (session && step === "phone") {
+    if (session && step === "phone" && !urlPhone) {
       setData(session.data);
       setBreedPhotos(session.photos);
       setStep("collection");
