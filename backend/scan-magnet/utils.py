@@ -1,3 +1,6 @@
+# Единый источник правды для всех backend-функций.
+# НЕ редактировать копии в папках функций — только этот файл.
+# После изменений запустить: python3 scripts/sync_utils.py
 import json
 import os
 import psycopg2

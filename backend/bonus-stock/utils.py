@@ -1,3 +1,6 @@
+# Единый источник правды для всех backend-функций.
+# НЕ редактировать копии в папках функций — только этот файл.
+# После изменений запустить: python3 scripts/sync_utils.py
 import json
 import os
 import psycopg2
@@ -8,7 +11,9 @@ CORS_HEADERS = {
     'Access-Control-Allow-Headers': 'Content-Type, X-User-Id, X-Auth-Token, X-Session-Id',
     'Access-Control-Max-Age': '86400',
 }
+
 CORS = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
+
 OPTIONS_RESPONSE = {'statusCode': 200, 'headers': CORS_HEADERS, 'body': ''}
 
 
