@@ -40,6 +40,7 @@ def handler(event: dict, context) -> dict:
         return _me(session_id)
     if action == "change_password" and method == "POST":
         return _change_password(session_id, event)
+
     if action == "setup_admin" and method == "POST":
         return _setup_admin(event)
 
@@ -62,6 +63,7 @@ def handler(event: dict, context) -> dict:
 
 
 # ─── AUTH ────────────────────────────────────────────────────────────────────
+
 
 def _setup_admin(event):
     """Одноразовая установка пароля для первого admin через старый ADMIN_PASSWORD секрет"""
