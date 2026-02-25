@@ -356,14 +356,16 @@ def _db():
 
 
 def _get_session_id(event):
+    headers = event.get("headers") or {}
     # Из cookie (через прокси X-Cookie)
-    cookie_header = (event.get("headers") or {}).get("x-cookie", "") or (event.get("headers") or {}).get("cookie", "")
+    cookie_header = headers.get("x-cookie", "") or headers.get("cookie", "")
     for part in cookie_header.split(";"):
         part = part.strip()
         if part.startswith("jw_admin_sid="):
             return part[len("jw_admin_sid="):]
-    # Из заголовка X-Session-Id (fallback для фронтенда без cookie)
-    return (event.get("headers") or {}).get("x-session-id", "")
+    # Из заголовка X-Session-Id (case-insensitive)
+    lower_headers = {k.lower(): v for k, v in headers.items()}
+    return lower_headers.get("x-session-id", "")
 
 
 def _session_user(cur, session_id):

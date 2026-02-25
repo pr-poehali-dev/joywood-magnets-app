@@ -1,0 +1,1 @@
+ALTER TABLE t_p65563100_joywood_magnets_app.admin_users ADD COLUMN IF NOT EXISTS display_name TEXT;

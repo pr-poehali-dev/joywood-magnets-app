@@ -33,7 +33,8 @@ const authFetch = (path: string, opts: RequestInit = {}, sid?: string | null) =>
     "Content-Type": "application/json",
     ...(opts.headers as Record<string, string>),
   };
-  if (sid) headers["X-Session-Id"] = sid;
+  const effectiveSid = sid || sessionStorage.getItem("jw_admin_sid");
+  if (effectiveSid) headers["X-Session-Id"] = effectiveSid;
   return fetch(`${ADMIN_AUTH_URL}${path}`, { ...opts, headers });
 };
 
