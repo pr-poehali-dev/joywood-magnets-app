@@ -40,7 +40,7 @@ const App = () => (
         <ChunkErrorBoundary>
           <Suspense fallback={null}>
             <Routes>
-              <Route path="/" element={<MyCollection />} />
+              <Route path="/" element={<Promo />} />
               <Route path="/my-collection" element={<MyCollection />} />
               <Route path="/register" element={<Register />} />
               <Route path="/promo" element={<Promo />} />
