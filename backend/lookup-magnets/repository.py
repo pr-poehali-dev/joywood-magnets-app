@@ -70,25 +70,25 @@ def get_all_rating_stats(cur):
 
 def get_top_by_magnets(cur):
     cur.execute("""
-        SELECT r2.name, COUNT(cm2.id) AS total_magnets, %s AS collection_value
+        SELECT r2.id, r2.name, COUNT(cm2.id) AS total_magnets, %s AS collection_value
         FROM %s.registrations r2
         LEFT JOIN %s.client_magnets cm2
             ON cm2.registration_id = r2.id AND cm2.status = 'revealed'
         WHERE r2.registered = true
         GROUP BY r2.id, r2.name
-        ORDER BY total_magnets DESC LIMIT 3
+        ORDER BY total_magnets DESC, r2.id ASC LIMIT 3
     """ % (CV_FORMULA, SCHEMA, SCHEMA))
-    return [{'name': r[0], 'total_magnets': r[1], 'collection_value': int(r[2])} for r in cur.fetchall()]
+    return [{'id': r[0], 'name': r[1], 'total_magnets': r[2], 'collection_value': int(r[3])} for r in cur.fetchall()]
 
 
 def get_top_by_value(cur):
     cur.execute("""
-        SELECT r2.name, COUNT(cm2.id) AS total_magnets, %s AS collection_value
+        SELECT r2.id, r2.name, COUNT(cm2.id) AS total_magnets, %s AS collection_value
         FROM %s.registrations r2
         LEFT JOIN %s.client_magnets cm2
             ON cm2.registration_id = r2.id AND cm2.status = 'revealed'
         WHERE r2.registered = true
         GROUP BY r2.id, r2.name
-        ORDER BY collection_value DESC LIMIT 3
+        ORDER BY collection_value DESC, r2.id ASC LIMIT 3
     """ % (CV_FORMULA, SCHEMA, SCHEMA))
-    return [{'name': r[0], 'total_magnets': r[1], 'collection_value': int(r[2])} for r in cur.fetchall()]
+    return [{'id': r[0], 'name': r[1], 'total_magnets': r[2], 'collection_value': int(r[3])} for r in cur.fetchall()]

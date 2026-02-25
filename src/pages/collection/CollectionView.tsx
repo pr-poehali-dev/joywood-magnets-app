@@ -157,13 +157,13 @@ const RaccoonRatingBlock = ({
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
               🏅 По магнитам
             </p>
-            {renderTop(rating.top_magnets ?? [], rating.rank_magnets, "total_magnets", "", totalMagnets)}
+            {renderTop(rating.top_magnets ?? [], rating.rank_magnets, "total_magnets", "", totalMagnets, rating.my_reg_id)}
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-3">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
               💎 По стоимости
             </p>
-            {renderTop(rating.top_value ?? [], rating.rank_value, "collection_value", "", rating.my_collection_value)}
+            {renderTop(rating.top_value ?? [], rating.rank_value, "collection_value", "", rating.my_collection_value, rating.my_reg_id)}
           </div>
           <p className="text-[10px] text-center text-muted-foreground/60">
             Среди {rating.total_participants} участников

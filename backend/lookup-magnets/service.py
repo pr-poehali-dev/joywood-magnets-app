@@ -45,6 +45,7 @@ def get_rating(cur, reg_id):
         'rank_value': rank_value,
         'total_participants': c['total_participants'],
         'my_collection_value': my_collection_value,
+        'my_reg_id': reg_id,
         'top_magnets': c['top_magnets'],
         'top_value': c['top_value'],
     }

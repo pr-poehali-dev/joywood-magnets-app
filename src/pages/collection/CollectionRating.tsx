@@ -14,15 +14,17 @@ export const renderTop = (
   myRank: number,
   valueKey: "total_magnets" | "collection_value",
   label: string,
-  myValue: number
+  myValue: number,
+  myRegId?: number
 ) => {
-  const isTop = myRank <= 3;
+  const myIndexInTop = myRegId != null ? list.findIndex((e) => e.id === myRegId) : -1;
+  const isInTop = myIndexInTop !== -1;
   return (
     <div className="space-y-2">
       {label && <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>}
       <div className="space-y-1.5">
         {list.map((entry, i) => {
-          const isMe = isTop && i + 1 === myRank;
+          const isMe = isInTop && i === myIndexInTop;
           return (
             <div
               key={i}
@@ -40,7 +42,7 @@ export const renderTop = (
             </div>
           );
         })}
-        {!isTop && (
+        {!isInTop && myRank != null && (
           <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm bg-gold-100 border border-gold-300 font-semibold">
             <span className="text-base w-6 text-center">#{myRank}</span>
             <span className="flex-1">Вы</span>
@@ -57,7 +59,7 @@ export const renderTop = (
 };
 
 const CollectionRating = ({ rating, totalMagnets }: Props) => {
-  const { rank_magnets, rank_value, total_participants, my_collection_value, top_magnets = [], top_value = [] } = rating;
+  const { rank_magnets, rank_value, total_participants, my_collection_value, my_reg_id, top_magnets = [], top_value = [] } = rating;
 
   return (
     <Card className="h-full flex flex-col">
@@ -68,8 +70,8 @@ const CollectionRating = ({ rating, totalMagnets }: Props) => {
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 space-y-5">
-        {renderTop(top_magnets, rank_magnets, "total_magnets", "По количеству магнитов", totalMagnets)}
-        {renderTop(top_value, rank_value, "collection_value", "По стоимости коллекции", my_collection_value)}
+        {renderTop(top_magnets, rank_magnets, "total_magnets", "По количеству магнитов", totalMagnets, my_reg_id)}
+        {renderTop(top_value, rank_value, "collection_value", "По стоимости коллекции", my_collection_value, my_reg_id)}
       </CardContent>
     </Card>
   );

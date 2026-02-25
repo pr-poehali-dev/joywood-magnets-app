@@ -23,6 +23,7 @@ export interface BonusRecord {
 }
 
 export interface RatingEntry {
+  id?: number;
   name: string;
   total_magnets: number;
   collection_value: number;
@@ -33,6 +34,7 @@ export interface Rating {
   rank_value: number;
   total_participants: number;
   my_collection_value: number;
+  my_reg_id?: number;
   top_magnets: RatingEntry[];
   top_value: RatingEntry[];
 }
