@@ -22,7 +22,7 @@ def get_clients(cur, page=1, limit=50, q=''):
         "SELECT r.id, r.name, r.phone, r.channel, r.ozon_order_code, r.created_at, r.registered, "
         "COALESCE(SUM(o.amount), 0) as total_amount, "
         "array_remove(array_agg(DISTINCT o.channel), NULL) as channels, "
-        "r.comment "
+        "r.comment, r.created_by "
         "FROM %s.registrations r "
         "LEFT JOIN %s.orders o ON o.registration_id = r.id "
         "%s GROUP BY r.id ORDER BY r.created_at DESC LIMIT %d OFFSET %d"
@@ -111,7 +111,7 @@ def get_orders(cur, page=1, limit=50, q='', channel=''):
 
     cur.execute(
         "SELECT o.id, o.order_code, o.amount, o.channel, o.status, o.created_at, "
-        "o.registration_id, r.name, r.phone, o.magnet_comment, o.comment "
+        "o.registration_id, r.name, r.phone, o.magnet_comment, o.comment, o.created_by "
         "FROM %s.orders o "
         "LEFT JOIN %s.registrations r ON r.id = o.registration_id "
         "%s ORDER BY o.created_at DESC LIMIT %d OFFSET %d"

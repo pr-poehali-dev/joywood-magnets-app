@@ -27,3 +27,30 @@ def err(message: str, status: int = 400) -> dict:
 
 def db():
     return psycopg2.connect(os.environ['DATABASE_URL'])
+
+
+SCHEMA = 't_p65563100_joywood_magnets_app'
+
+
+def resolve_actor(event: dict) -> str | None:
+    """Возвращает email менеджера по X-Session-Id заголовку, или None если сессия не найдена."""
+    headers = event.get('headers') or {}
+    sid = headers.get('x-session-id') or headers.get('X-Session-Id') or ''
+    if not sid:
+        return None
+    try:
+        conn = db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                f"SELECT u.email FROM {SCHEMA}.admin_sessions s"
+                f" JOIN {SCHEMA}.admin_users u ON u.id = s.user_id"
+                f" WHERE s.id = %s AND s.revoked = false AND s.expires_at > now() AND u.is_active = true",
+                (sid,)
+            )
+            row = cur.fetchone()
+            return row[0] if row else None
+        finally:
+            conn.close()
+    except Exception:
+        return None

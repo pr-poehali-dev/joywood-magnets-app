@@ -1,13 +1,17 @@
 import json
-from utils import OPTIONS_RESPONSE, ok, err, db
+from utils import OPTIONS_RESPONSE, ok, err, db, resolve_actor
 import repository as repo
 import service
+
+SCHEMA = 't_p65563100_joywood_magnets_app'
 
 
 def handler(event, context):
     """Управление клиентами и заказами: добавление, редактирование, удаление, оформление заказов"""
     if event.get('httpMethod') == 'OPTIONS':
         return OPTIONS_RESPONSE
+
+    actor = resolve_actor(event)
 
     if event.get('httpMethod') == 'DELETE':
         params = event.get('queryStringParameters') or {}
@@ -28,13 +32,13 @@ def handler(event, context):
     action = body.get('action', '')
 
     if action == 'create_order':
-        return _handle_create_order(body)
+        return _handle_create_order(body, actor)
     if action == 'save_magnet_comment':
         return _handle_save_magnet_comment(body)
     if action == 'update_client_comment':
         return _handle_update_client_comment(body)
 
-    return _handle_add_client(body)
+    return _handle_add_client(body, actor)
 
 
 def _handle_delete_order(params):
@@ -46,7 +50,7 @@ def _handle_delete_order(params):
     conn = db()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT id FROM t_p65563100_joywood_magnets_app.orders WHERE id = %d" % int(order_id))
+        cur.execute("SELECT id FROM %s.orders WHERE id = %d" % (SCHEMA, int(order_id)))
         if not cur.fetchone():
             return err('Заказ не найден', 404)
         result = service.delete_order(cur, conn, int(order_id), return_magnets, return_bonuses)
@@ -92,7 +96,7 @@ def _handle_update_client(body):
         conn.close()
 
 
-def _handle_create_order(body):
+def _handle_create_order(body, actor):
     order_number = (body.get('order_number') or '').strip()
     channel = (body.get('channel') or '').strip() or 'Ozon'
     amount = body.get('amount', 0)
@@ -112,6 +116,12 @@ def _handle_create_order(body):
             if not order_number or len(order_number) < 3:
                 return err('Укажите номер заказа (минимум 3 символа)')
             result = service.create_order_by_ozon_code(cur, conn, order_number, channel, amount)
+        if actor and result.get('order_id'):
+            cur.execute(
+                "UPDATE %s.orders SET created_by = %%s WHERE id = %%s" % SCHEMA,
+                (actor, result['order_id'])
+            )
+            conn.commit()
         return ok(result)
     except service.ClientError as e:
         return err(str(e), e.status)
@@ -126,7 +136,7 @@ def _handle_update_order(body):
     conn = db()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT id FROM t_p65563100_joywood_magnets_app.orders WHERE id = %d" % int(order_id))
+        cur.execute("SELECT id FROM %s.orders WHERE id = %d" % (SCHEMA, int(order_id)))
         if not cur.fetchone():
             return err('Заказ не найден', 404)
         updates = []
@@ -144,7 +154,7 @@ def _handle_update_order(body):
         if not updates:
             return err('Нет данных для обновления')
         cur.execute(
-            "UPDATE t_p65563100_joywood_magnets_app.orders SET %s WHERE id = %d" % (', '.join(updates), int(order_id))
+            "UPDATE %s.orders SET %s WHERE id = %d" % (SCHEMA, ', '.join(updates), int(order_id))
         )
         conn.commit()
         row = repo.get_order_full(cur, int(order_id))
@@ -166,8 +176,8 @@ def _handle_update_client_comment(body):
     try:
         cur = conn.cursor()
         cur.execute(
-            "UPDATE t_p65563100_joywood_magnets_app.registrations SET comment = '%s' WHERE id = %d"
-            % (comment.replace("'", "''"), int(client_id))
+            "UPDATE %s.registrations SET comment = '%s' WHERE id = %d"
+            % (SCHEMA, comment.replace("'", "''"), int(client_id))
         )
         conn.commit()
         return ok({'ok': True})
@@ -186,8 +196,8 @@ def _handle_save_magnet_comment(body):
     try:
         cur = conn.cursor()
         cur.execute(
-            "UPDATE t_p65563100_joywood_magnets_app.orders SET magnet_comment = '%s' WHERE id = %d"
-            % (comment.replace("'", "''"), int(order_id))
+            "UPDATE %s.orders SET magnet_comment = '%s' WHERE id = %d"
+            % (SCHEMA, comment.replace("'", "''"), int(order_id))
         )
         conn.commit()
         return ok({'ok': True})
@@ -195,7 +205,7 @@ def _handle_save_magnet_comment(body):
         conn.close()
 
 
-def _handle_add_client(body):
+def _handle_add_client(body, actor):
     name = (body.get('name') or '').strip()
     phone = (body.get('phone') or '').strip()
     channel = (body.get('channel') or '').strip()
@@ -215,6 +225,11 @@ def _handle_add_client(body):
     try:
         cur = conn.cursor()
         row = repo.insert_registration(cur, name, phone, channel, ozon_order_code, registered)
+        if actor:
+            cur.execute(
+                "UPDATE %s.registrations SET created_by = %%s WHERE id = %%s" % SCHEMA,
+                (actor, row[0])
+            )
         conn.commit()
         return ok({'id': row[0], 'created_at': str(row[1]), 'registered': registered})
     finally:

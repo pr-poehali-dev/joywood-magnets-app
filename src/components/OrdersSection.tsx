@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { adminFetch } from "@/lib/adminFetch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Icon from "@/components/ui/icon";
@@ -33,7 +34,7 @@ const OrdersSection = ({ onNavigateToClient }: Props) => {
       channel,
     });
     if (q) params.set("q", q);
-    fetch(`${GET_REGISTRATIONS_URL}?${params}`)
+    adminFetch(`${GET_REGISTRATIONS_URL}?${params}`)
       .then((r) => r.json())
       .then((data) => {
         setOrders(data.orders || []);

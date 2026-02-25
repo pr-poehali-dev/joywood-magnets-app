@@ -1,7 +1,9 @@
 import json
-from utils import OPTIONS_RESPONSE, ok, err, db
+from utils import OPTIONS_RESPONSE, ok, err, db, resolve_actor
 import repository as repo
 import service
+
+SCHEMA = 't_p65563100_joywood_magnets_app'
 
 
 def handler(event, context):
@@ -89,6 +91,7 @@ def handler(event, context):
             conn.close()
 
     if method == 'POST':
+        actor = resolve_actor(event)
         body = json.loads(event.get('body') or '{}')
 
         if body.get('action') == 'give_bonus':
@@ -121,6 +124,12 @@ def handler(event, context):
         try:
             cur = conn.cursor()
             result = service.give_magnet(cur, conn, registration_id, breed, stars, category)
+            if actor and result.get('magnet_id'):
+                cur.execute(
+                    "UPDATE %s.client_magnets SET created_by = %%s WHERE id = %%s" % SCHEMA,
+                    (actor, result['magnet_id'])
+                )
+                conn.commit()
             return ok(result)
         except service.MagnetError as e:
             return err(str(e), e.status)

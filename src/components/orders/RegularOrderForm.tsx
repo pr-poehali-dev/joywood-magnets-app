@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { adminFetch } from "@/lib/adminFetch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -92,7 +93,7 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
       let clientId: number;
 
       if (isNewClient) {
-        const addRes = await fetch(ADD_CLIENT_URL, {
+        const addRes = await adminFetch(ADD_CLIENT_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -114,7 +115,7 @@ const RegularOrderForm = ({ clients, onClientAdded, onOrderCreated }: Props) => 
         clientId = parseInt(selectedClientId);
       }
 
-      const res = await fetch(ADD_CLIENT_URL, {
+      const res = await adminFetch(ADD_CLIENT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { adminFetch } from "@/lib/adminFetch";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -55,7 +56,7 @@ const ClientsSection = ({ focusClientId, onFocusHandled, reloadKey }: ClientsSec
     setLoading(true);
     const params = new URLSearchParams({ page: String(p), limit: String(PAGE_SIZE) });
     if (q) params.set("q", q);
-    fetch(`${GET_REGISTRATIONS_URL}?${params}`)
+    adminFetch(`${GET_REGISTRATIONS_URL}?${params}`)
       .then((r) => r.json())
       .then((data) => {
         setClients(data.clients || []);
@@ -85,7 +86,7 @@ const ClientsSection = ({ focusClientId, onFocusHandled, reloadKey }: ClientsSec
   // При focusClientId — грузим конкретного клиента отдельным запросом
   useEffect(() => {
     if (focusClientId == null) return;
-    fetch(`${GET_REGISTRATIONS_URL}?action=client_by_id&id=${focusClientId}`)
+    adminFetch(`${GET_REGISTRATIONS_URL}?action=client_by_id&id=${focusClientId}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.client) {
@@ -103,8 +104,8 @@ const ClientsSection = ({ focusClientId, onFocusHandled, reloadKey }: ClientsSec
   const loadClientMagnets = useCallback((regId: number) => {
     setMagnetsLoading((p) => ({ ...p, [regId]: true }));
     Promise.all([
-      fetch(`${GIVE_MAGNET_URL}?registration_id=${regId}`).then((r) => r.json()),
-      fetch(`${GIVE_MAGNET_URL}?action=bonuses&registration_id=${regId}`).then((r) => r.json()),
+      adminFetch(`${GIVE_MAGNET_URL}?registration_id=${regId}`).then((r) => r.json()),
+      adminFetch(`${GIVE_MAGNET_URL}?action=bonuses&registration_id=${regId}`).then((r) => r.json()),
     ])
       .then(([magnetsData, bonusesData]) => {
         setClientMagnets((p) => ({ ...p, [regId]: magnetsData.magnets || [] }));
@@ -179,13 +180,14 @@ const ClientsSection = ({ focusClientId, onFocusHandled, reloadKey }: ClientsSec
               <TableHead>Код Ozon</TableHead>
               <TableHead>Статус</TableHead>
               <TableHead>Дата</TableHead>
+              <TableHead className="hidden md:table-cell">Менеджер</TableHead>
               <TableHead className="w-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                   <Icon name="Loader2" size={32} className="mx-auto mb-3 animate-spin opacity-40" />
                   Загрузка...
                 </TableCell>
@@ -226,6 +228,9 @@ const ClientsSection = ({ focusClientId, onFocusHandled, reloadKey }: ClientsSec
                 <TableCell className="text-muted-foreground text-sm">
                   {new Date(client.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
                 </TableCell>
+                <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                  {client.created_by ? client.created_by.split("@")[0] : "—"}
+                </TableCell>
                 <TableCell className="text-center">
                   {client.comment && (
                     <span title={client.comment} className="inline-flex">
@@ -237,7 +242,7 @@ const ClientsSection = ({ focusClientId, onFocusHandled, reloadKey }: ClientsSec
             ))}
             {!loading && clients.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                   <Icon name="SearchX" size={40} className="mx-auto mb-3 opacity-30" />
                   Клиенты не найдены
                 </TableCell>

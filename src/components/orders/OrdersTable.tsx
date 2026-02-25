@@ -85,6 +85,7 @@ const OrdersTable = ({
               <TableHead>Номер заказа</TableHead>
               <TableHead className="text-right">Сумма</TableHead>
               <TableHead>Дата</TableHead>
+              <TableHead className="hidden md:table-cell">Менеджер</TableHead>
               <TableHead className="w-8"></TableHead>
               <TableHead className="w-8"></TableHead>
             </TableRow>
@@ -92,7 +93,7 @@ const OrdersTable = ({
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                   <Icon name="Loader2" size={32} className="mx-auto mb-3 animate-spin opacity-40" />
                   Загрузка...
                 </TableCell>
@@ -126,6 +127,9 @@ const OrdersTable = ({
                     minute: "2-digit",
                   })}
                 </TableCell>
+                <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                  {order.created_by ? order.created_by.split("@")[0] : "—"}
+                </TableCell>
                 <TableCell className="text-center">
                   {order.comment && (
                     <span title={order.comment} className="inline-flex">
@@ -140,7 +144,7 @@ const OrdersTable = ({
             ))}
             {!loading && orders.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                   <Icon name="ShoppingCart" size={40} className="mx-auto mb-3 opacity-30" />
                   {search ? "Ничего не найдено" : "Заказов пока нет"}
                 </TableCell>

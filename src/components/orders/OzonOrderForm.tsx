@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { adminFetch } from "@/lib/adminFetch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,7 +33,7 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
     setFormError(null);
     setSubmitting(true);
     try {
-      const res = await fetch(ADD_CLIENT_URL, {
+      const res = await adminFetch(ADD_CLIENT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

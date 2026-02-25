@@ -22,4 +22,5 @@ export interface OrderRecord {
   client_phone: string;
   magnet_comment?: string;
   comment?: string;
+  created_by?: string | null;
 }

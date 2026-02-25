@@ -16,6 +16,7 @@ export interface Registration {
   registered: boolean;
   total_amount: number;
   comment?: string;
+  created_by?: string | null;
 }
 
 export interface ClientMagnet {

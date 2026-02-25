@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { adminFetch } from "@/lib/adminFetch";
 import { toast } from "sonner";
 import { WOOD_BREEDS, STAR_LABELS, BONUS_MILESTONES } from "@/lib/store";
 import { GIVE_MAGNET_URL, ADD_CLIENT_URL } from "../clients/types";
@@ -154,7 +155,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
   const handleGive = async (breed: string, stars: number, category: string) => {
     setGiving(true);
     try {
-      const res = await fetch(GIVE_MAGNET_URL, {
+      const res = await adminFetch(GIVE_MAGNET_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ registration_id: registrationId, breed, stars, category }),
@@ -200,7 +201,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
   const givePendingToBackend = async (picks: Array<{ breed: string; stars: number; category: string }>): Promise<GivenMagnet[]> => {
     const confirmed: GivenMagnet[] = [...given];
     for (const pick of picks) {
-      const res = await fetch(GIVE_MAGNET_URL, {
+      const res = await adminFetch(GIVE_MAGNET_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ registration_id: registrationId, breed: pick.breed, stars: pick.stars, category: pick.category }),
@@ -286,7 +287,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
     const key = `${bonus.count}-${bonus.type}`;
     setGivingBonus(key);
     try {
-      const res = await fetch(GIVE_MAGNET_URL, {
+      const res = await adminFetch(GIVE_MAGNET_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

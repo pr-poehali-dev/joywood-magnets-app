@@ -38,7 +38,7 @@ def _row_to_client(row):
         'id': row[0], 'name': row[1], 'phone': row[2], 'channel': row[3],
         'ozon_order_code': row[4], 'created_at': str(row[5]),
         'registered': bool(row[6]), 'total_amount': float(row[7]), 'channels': row[8] or [],
-        'comment': row[9] or '',
+        'comment': row[9] or '', 'created_by': row[10] if len(row) > 10 else None,
     }
 
 
@@ -137,6 +137,7 @@ def _get_orders(params):
                 'channel': r[3], 'status': r[4], 'created_at': str(r[5]),
                 'registration_id': r[6], 'client_name': r[7] or '',
                 'client_phone': r[8] or '', 'magnet_comment': r[9] or '', 'comment': r[10] or '',
+                'created_by': r[11] if len(r) > 11 else None,
             }
             for r in rows
         ]

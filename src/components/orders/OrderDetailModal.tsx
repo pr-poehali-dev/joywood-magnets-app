@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { adminFetch } from "@/lib/adminFetch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,7 +75,7 @@ const OrderDetailModal = ({ order, open, onClose, onNavigateToClient, onOrderUpd
     if (!order) return;
     setSaving(true);
     try {
-      const res = await fetch(ADD_CLIENT_URL, {
+      const res = await adminFetch(ADD_CLIENT_URL, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
