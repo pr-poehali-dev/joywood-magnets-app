@@ -43,6 +43,7 @@ def handler(event: dict, context) -> dict:
     if action == "setup_admin" and method == "POST":
         return _setup_admin(event)
 
+
     # Все actions ниже требуют авторизации
     user = _require_session(session_id)
     if isinstance(user, dict) and "statusCode" in user:
