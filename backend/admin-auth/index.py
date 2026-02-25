@@ -15,7 +15,7 @@ MIN_PASSWORD_LEN = 10
 CORS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-Session-Id",
+    "Access-Control-Allow-Headers": "Content-Type, X-Session-Id, X-Authorization",
     "Access-Control-Max-Age": "86400",
 }
 
@@ -57,6 +57,8 @@ def handler(event: dict, context) -> dict:
         return _require_admin(user, lambda: _create_user(user, event))
     if action == "users" and method == "PUT":
         return _require_admin(user, lambda: _update_user(user, event, params))
+    if action == "users" and method == "DELETE":
+        return _require_admin(user, lambda: _delete_user(user, event, params))
     if action == "audit" and method == "GET":
         return _require_admin(user, lambda: _get_audit(params))
 
@@ -296,6 +298,13 @@ def _update_user(actor, event, params):
         updates = []
         values = []
 
+        if "email" in body:
+            new_email = (body["email"] or "").strip().lower()
+            if not new_email or "@" not in new_email:
+                return _resp(400, {"error": "Некорректный email"})
+            updates.append("email = %s")
+            values.append(new_email)
+
         if "is_active" in body:
             updates.append("is_active = %s")
             values.append(bool(body["is_active"]))
@@ -321,6 +330,33 @@ def _update_user(actor, event, params):
             values
         )
         _audit(cur, actor["id"], "user_updated", f"id={user_id} {list(body.keys())}", ip, ua)
+        conn.commit()
+        return _resp(200, {"ok": True})
+    finally:
+        conn.close()
+
+
+def _delete_user(actor, event, params):
+    user_id = int(params.get("id") or 0)
+    ip = (event.get("requestContext") or {}).get("identity", {}).get("sourceIp") or ""
+    ua = (event.get("headers") or {}).get("user-agent", "")
+
+    if not user_id:
+        return _resp(400, {"error": "Укажите id"})
+    if user_id == actor["id"]:
+        return _resp(400, {"error": "Нельзя удалить себя"})
+
+    conn = _db()
+    try:
+        cur = conn.cursor()
+        cur.execute(f"SELECT email FROM {SCHEMA}.admin_users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+        if not row:
+            return _resp(404, {"error": "Пользователь не найден"})
+        target_email = row[0]
+        cur.execute(f"UPDATE {SCHEMA}.admin_sessions SET revoked = true WHERE user_id = %s", (user_id,))
+        cur.execute(f"DELETE FROM {SCHEMA}.admin_users WHERE id = %s", (user_id,))
+        _audit(cur, actor["id"], "user_deleted", target_email, ip, ua)
         conn.commit()
         return _resp(200, {"ok": True})
     finally:

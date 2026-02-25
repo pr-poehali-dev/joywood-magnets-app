@@ -39,7 +39,7 @@ const authFetch = (path: string, opts: RequestInit = {}, sid?: string | null) =>
 };
 
 const ManagersSection = () => {
-  const { sessionId } = useAdmin();
+  const { sessionId, user: currentUser } = useAdmin();
   const [managers, setManagers] = useState<Manager[]>([]);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,9 +49,21 @@ const ManagersSection = () => {
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState<"manager" | "admin">("manager");
   const [creating, setCreating] = useState(false);
+
+  // Сброс пароля
   const [resetId, setResetId] = useState<number | null>(null);
   const [resetPw, setResetPw] = useState("");
   const [resetting, setResetting] = useState(false);
+
+  // Редактирование
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editEmail, setEditEmail] = useState("");
+  const [editRole, setEditRole] = useState<"manager" | "admin">("manager");
+  const [editing, setEditing] = useState(false);
+
+  // Удаление
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -135,6 +147,67 @@ const ManagersSection = () => {
     }
   };
 
+  const openEdit = (m: Manager) => {
+    setEditId(m.id);
+    setEditEmail(m.email);
+    setEditRole(m.role);
+    setResetId(null);
+    setDeleteConfirmId(null);
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editId) return;
+    setEditing(true);
+    try {
+      const m = managers.find((x) => x.id === editId);
+      const body: Record<string, string> = {};
+      if (editEmail !== m?.email) body.email = editEmail;
+      if (editRole !== m?.role) body.role = editRole;
+      if (Object.keys(body).length === 0) {
+        setEditId(null);
+        return;
+      }
+      const res = await authFetch(`/?action=users&id=${editId}`, {
+        method: "PUT",
+        body: JSON.stringify(body),
+      }, sessionId);
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        toast.success("Данные обновлены");
+        setEditId(null);
+        load();
+      } else {
+        toast.error(data.error || "Ошибка");
+      }
+    } catch {
+      toast.error("Ошибка соединения");
+    } finally {
+      setEditing(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    setDeleting(true);
+    try {
+      const res = await authFetch(`/?action=users&id=${id}`, {
+        method: "DELETE",
+      }, sessionId);
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        toast.success("Менеджер удалён");
+        setDeleteConfirmId(null);
+        load();
+      } else {
+        toast.error(data.error || "Ошибка");
+      }
+    } catch {
+      toast.error("Ошибка соединения");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const fmtDate = (s: string | null) => {
     if (!s) return "—";
     return new Date(s).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -147,6 +220,7 @@ const ManagersSection = () => {
     logout: "Выход",
     user_created: "Создан пользователь",
     user_updated: "Изменён пользователь",
+    user_deleted: "Удалён пользователь",
     password_changed: "Смена пароля",
   };
 
@@ -226,6 +300,46 @@ const ManagersSection = () => {
         </Card>
       )}
 
+      {editId !== null && (
+        <Card className="border-indigo-200 bg-indigo-50/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Редактировать — {managers.find((m) => m.id === editId)?.email}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleEdit} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Email</label>
+                  <Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} required />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Роль</label>
+                  <div className="flex gap-2 mt-1">
+                    {(["manager", "admin"] as const).map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setEditRole(r)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${editRole === r ? "bg-indigo-500 text-white border-indigo-500" : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300"}`}
+                      >
+                        {r === "admin" ? "Администратор" : "Менеджер"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" disabled={editing}>
+                  {editing ? <Icon name="Loader2" size={14} className="animate-spin mr-1" /> : null}
+                  Сохранить
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setEditId(null)}>Отмена</Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
           <Icon name="Loader2" size={18} className="animate-spin" />
@@ -255,20 +369,53 @@ const ManagersSection = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => { setResetId(m.id); setResetPw(""); }}>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => openEdit(m)}>
+                      <Icon name="Pencil" size={13} className="mr-1" />
+                      Изменить
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => { setResetId(m.id); setResetPw(""); setEditId(null); setDeleteConfirmId(null); }}>
                       <Icon name="KeyRound" size={13} className="mr-1" />
                       Пароль
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className={`text-xs h-7 ${m.is_active ? "text-red-500 hover:text-red-600" : "text-green-600 hover:text-green-700"}`}
+                      className={`text-xs h-7 ${m.is_active ? "text-amber-600 hover:text-amber-700" : "text-green-600 hover:text-green-700"}`}
                       onClick={() => toggleActive(m)}
                     >
                       <Icon name={m.is_active ? "UserX" : "UserCheck"} size={13} className="mr-1" />
                       {m.is_active ? "Деактивировать" : "Активировать"}
                     </Button>
+                    {currentUser?.id !== m.id && (
+                      deleteConfirmId === m.id ? (
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-red-600">Удалить?</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-7 text-red-600 hover:text-red-700 px-2"
+                            onClick={() => handleDelete(m.id)}
+                            disabled={deleting}
+                          >
+                            {deleting ? <Icon name="Loader2" size={12} className="animate-spin" /> : "Да"}
+                          </Button>
+                          <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={() => setDeleteConfirmId(null)}>
+                            Нет
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-7 text-red-400 hover:text-red-600"
+                          onClick={() => { setDeleteConfirmId(m.id); setEditId(null); setResetId(null); }}
+                        >
+                          <Icon name="Trash2" size={13} className="mr-1" />
+                          Удалить
+                        </Button>
+                      )
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -306,7 +453,7 @@ const ManagersSection = () => {
                       <td className="px-4 py-1.5 whitespace-nowrap text-muted-foreground">{fmtDate(a.ts)}</td>
                       <td className="px-4 py-1.5">{a.actor_email || "—"}</td>
                       <td className="px-4 py-1.5">
-                        <span className={`inline-flex items-center gap-1 ${a.action.includes("fail") || a.action.includes("blocked") ? "text-red-600" : a.action.includes("success") || a.action.includes("created") ? "text-green-700" : "text-slate-700"}`}>
+                        <span className={`inline-flex items-center gap-1 ${a.action.includes("fail") || a.action.includes("blocked") || a.action.includes("deleted") ? "text-red-600" : a.action.includes("success") || a.action.includes("created") ? "text-green-700" : "text-slate-700"}`}>
                           {ACTION_LABELS[a.action] || a.action}
                         </span>
                       </td>
