@@ -34,7 +34,7 @@ const STAR_GROUP_LABELS: Record<number, string> = {
 
 const getScanUrl = (breed: string) => {
   const slug = BREED_SLUG[breed] ?? encodeURIComponent(breed);
-  return `${window.location.origin}/my-collection?scan=${slug}`;
+  return `${window.location.origin}/q/${slug}`;
 };
 
 const MagnetsPhotos = ({

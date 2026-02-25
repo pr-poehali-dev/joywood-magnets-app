@@ -10,6 +10,7 @@ const Register = lazy(() => import("./pages/Register"));
 const MyCollection = lazy(() => import("./pages/MyCollection"));
 const Promo = lazy(() => import("./pages/Promo"));
 const ScanMagnet = lazy(() => import("./pages/ScanMagnet"));
+const QRedirect = lazy(() => import("./pages/QRedirect"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="/promo" element={<Promo />} />
               <Route path="/admin" element={<Index />} />
               <Route path="/scan/:breed" element={<ScanMagnet />} />
+              <Route path="/q/:breed" element={<QRedirect />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
