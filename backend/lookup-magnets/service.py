@@ -22,8 +22,8 @@ def get_rating(cur, reg_id):
     now = time.time()
     if _rating_cache is None or (now - _rating_cache_ts) > _RATING_TTL:
         all_stats = repo.get_all_rating_stats(cur)
-        sorted_by_magnets = sorted(all_stats, key=lambda x: x[1], reverse=True)
-        sorted_by_value = sorted(all_stats, key=lambda x: float(x[2]), reverse=True)
+        sorted_by_magnets = sorted(all_stats, key=lambda x: (-x[1], x[3] or ''))
+        sorted_by_value = sorted(all_stats, key=lambda x: (-float(x[2]), x[3] or ''))
         _rating_cache = {
             'all_stats': all_stats,
             'sorted_by_magnets': sorted_by_magnets,

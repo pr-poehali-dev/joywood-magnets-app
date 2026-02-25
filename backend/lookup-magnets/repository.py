@@ -58,7 +58,8 @@ def get_bonuses(cur, registration_id):
 
 def get_all_rating_stats(cur):
     cur.execute("""
-        SELECT r2.id, COUNT(cm2.id) AS total_magnets, %s AS collection_value
+        SELECT r2.id, COUNT(cm2.id) AS total_magnets, %s AS collection_value,
+               MAX(cm2.given_at) AS last_magnet_at
         FROM %s.registrations r2
         LEFT JOIN %s.client_magnets cm2
             ON cm2.registration_id = r2.id AND cm2.status = 'revealed'
@@ -76,7 +77,7 @@ def get_top_by_magnets(cur):
             ON cm2.registration_id = r2.id AND cm2.status = 'revealed'
         WHERE r2.registered = true
         GROUP BY r2.id, r2.name
-        ORDER BY total_magnets DESC, r2.id ASC LIMIT 3
+        ORDER BY total_magnets DESC, MAX(cm2.given_at) ASC LIMIT 3
     """ % (CV_FORMULA, SCHEMA, SCHEMA))
     return [{'id': r[0], 'name': r[1], 'total_magnets': r[2], 'collection_value': int(r[3])} for r in cur.fetchall()]
 
@@ -89,6 +90,6 @@ def get_top_by_value(cur):
             ON cm2.registration_id = r2.id AND cm2.status = 'revealed'
         WHERE r2.registered = true
         GROUP BY r2.id, r2.name
-        ORDER BY collection_value DESC, r2.id ASC LIMIT 3
+        ORDER BY collection_value DESC, MAX(cm2.given_at) ASC LIMIT 3
     """ % (CV_FORMULA, SCHEMA, SCHEMA))
     return [{'id': r[0], 'name': r[1], 'total_magnets': r[2], 'collection_value': int(r[3])} for r in cur.fetchall()]
