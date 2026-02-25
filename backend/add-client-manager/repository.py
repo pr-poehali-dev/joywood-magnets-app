@@ -171,6 +171,15 @@ def delete_order(cur, order_id):
     cur.execute("DELETE FROM %s.orders WHERE id = %d" % (SCHEMA, int(order_id)))
 
 
+def has_magnet_given_today(cur, reg_id):
+    cur.execute(
+        "SELECT COUNT(*) FROM %s.client_magnets "
+        "WHERE registration_id = %d AND given_at::date = CURRENT_DATE"
+        % (SCHEMA, int(reg_id))
+    )
+    return cur.fetchone()[0] > 0
+
+
 def give_paduk(cur, registration_id, phone, order_id):
     cur.execute(
         "SELECT id FROM %s.client_magnets WHERE registration_id = %d AND breed = 'Падук' LIMIT 1"

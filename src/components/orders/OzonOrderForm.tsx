@@ -18,7 +18,7 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   interface PendingBonus { count: number; type: string; reward: string; }
-  const [pendingClient, setPendingClient] = useState<{ id: number; orderId: number; name: string; amount: number; isFirstOrder: boolean; isRegistered: boolean; pendingBonuses: PendingBonus[] } | null>(null);
+  const [pendingClient, setPendingClient] = useState<{ id: number; orderId: number; name: string; amount: number; isFirstOrder: boolean; isRegistered: boolean; pendingBonuses: PendingBonus[]; magnetGivenToday: boolean } | null>(null);
 
   const handleSubmit = async () => {
     if (!orderNumber.trim() || orderNumber.trim().length < 3) {
@@ -69,7 +69,7 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
 
       setOrderNumber("");
       setAmount("");
-      setPendingClient({ id: data.client_id, orderId: data.order_id, name: data.client_name, amount: data.amount || 0, isFirstOrder: data.is_new === true, isRegistered: data.registered === true, pendingBonuses: data.pending_bonuses || [] });
+      setPendingClient({ id: data.client_id, orderId: data.order_id, name: data.client_name, amount: data.amount || 0, isFirstOrder: data.is_new === true, isRegistered: data.registered === true, pendingBonuses: data.pending_bonuses || [], magnetGivenToday: data.magnet_given_today === true });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Ошибка оформления";
       if (msg.includes("уже существует")) {
@@ -92,6 +92,7 @@ const OzonOrderForm = ({ onOrderCreated }: Props) => {
         isFirstOrder={pendingClient.isFirstOrder}
         isRegistered={pendingClient.isRegistered}
         pendingBonuses={pendingClient.pendingBonuses}
+        magnetGivenToday={pendingClient.magnetGivenToday}
         onDone={() => setPendingClient(null)}
       />
     );

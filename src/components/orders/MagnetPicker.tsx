@@ -24,10 +24,11 @@ interface Props {
   isFirstOrder: boolean;
   isRegistered: boolean;
   pendingBonuses: PendingBonus[];
+  magnetGivenToday?: boolean;
   onDone: () => void;
 }
 
-const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirstOrder, isRegistered, pendingBonuses, onDone }: Props) => {
+const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirstOrder, isRegistered, pendingBonuses, magnetGivenToday = false, onDone }: Props) => {
   const { inventory: inventoryFull, stockMap: inventory, decrementStock, incrementStock } = useInventory();
 
   const activeBreeds = useMemo(
@@ -356,6 +357,7 @@ const MagnetPicker = ({ registrationId, orderId, clientName, orderAmount, isFirs
               <MagnetPickerMagnetsStep
                 isFirstOrder={isFirstOrder}
                 isRegistered={isRegistered}
+                magnetGivenToday={magnetGivenToday}
                 alreadyOwnedLoaded={alreadyOwnedLoaded && clientTotalLoaded}
                 mode={mode}
                 giving={giving}

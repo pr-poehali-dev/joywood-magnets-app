@@ -15,6 +15,7 @@ interface PendingPick {
 interface Props {
   isFirstOrder: boolean;
   isRegistered: boolean;
+  magnetGivenToday?: boolean;
   alreadyOwnedLoaded: boolean;
   mode: "pick" | "no_magnet";
   giving: boolean;
@@ -54,6 +55,7 @@ interface Props {
 const MagnetPickerMagnetsStep = ({
   isFirstOrder,
   isRegistered,
+  magnetGivenToday = false,
   alreadyOwnedLoaded,
   mode,
   giving,
@@ -103,6 +105,16 @@ const MagnetPickerMagnetsStep = ({
 
   return (
     <>
+      {magnetGivenToday && (
+        <div className="bg-red-500 rounded-lg p-3 flex items-start gap-2.5">
+          <Icon name="AlertTriangle" size={18} className="text-white mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-bold text-white">Магнит сегодня уже выдавался!</p>
+            <p className="text-xs text-red-100 mt-0.5">Клиент сегодня уже получал магнит в рамках другого заказа. Убедитесь, что повторная выдача обоснована.</p>
+          </div>
+        </div>
+      )}
+
       {!isRegistered && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
           <Icon name="Info" size={15} className="text-blue-500 mt-0.5 shrink-0" />

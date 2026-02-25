@@ -32,6 +32,7 @@ def create_order_by_ozon_code(cur, conn, order_number, channel, amount):
         if order_number not in (existing_code or ''):
             repo.append_ozon_code(cur, cid, order_number, existing_code or '')
 
+        magnet_given_today = repo.has_magnet_given_today(cur, cid)
         ord_row = repo.insert_order(cur, cid, order_number, amount, channel)
         conn.commit()
 
@@ -46,6 +47,7 @@ def create_order_by_ozon_code(cur, conn, order_number, channel, amount):
             'order_id': ord_row[0], 'order_code': order_number, 'amount': amount,
             'channel': channel, 'created_at': str(ord_row[1]), 'status': ord_row[2] or 'active',
             'is_new': False, 'registered': registered, 'pending_bonuses': pending_bonuses,
+            'magnet_given_today': magnet_given_today,
             'message': 'Заказ добавлен к существующему клиенту',
         }
     else:
@@ -72,6 +74,7 @@ def create_order_for_client(cur, conn, client_id, order_code, channel, amount):
 
     registered = bool(row[3])
     existing_orders = repo.count_orders(cur, client_id)
+    magnet_given_today = repo.has_magnet_given_today(cur, client_id)
     ord_row = repo.insert_order(cur, client_id, order_code, amount, channel)
     order_id = ord_row[0]
 
@@ -93,6 +96,7 @@ def create_order_for_client(cur, conn, client_id, order_code, channel, amount):
         'is_new': False, 'registered': registered,
         'is_first_order': existing_orders == 0,
         'magnet_given': 'Падук' if existing_orders == 0 else None,
+        'magnet_given_today': magnet_given_today,
         'pending_bonuses': pending_bonuses, 'message': 'Заказ оформлен',
     }
 
