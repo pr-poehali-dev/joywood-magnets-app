@@ -34,7 +34,7 @@ const authFetch = (path: string, opts: RequestInit = {}, sid?: string | null) =>
     ...(opts.headers as Record<string, string>),
   };
   if (sid) headers["X-Session-Id"] = sid;
-  return fetch(`${ADMIN_AUTH_URL}${path}`, { ...opts, headers, credentials: "include" });
+  return fetch(`${ADMIN_AUTH_URL}${path}`, { ...opts, headers });
 };
 
 interface Props {
