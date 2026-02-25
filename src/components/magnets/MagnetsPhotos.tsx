@@ -53,6 +53,7 @@ const MagnetsPhotos = ({
 }: Props) => {
   const [copiedBreed, setCopiedBreed] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState("");
 
   const handleCopy = (breed: string) => {
     const url = getScanUrl(breed);
@@ -98,15 +99,34 @@ const MagnetsPhotos = ({
     setEditingNote((prev) => { const n = { ...prev }; delete n[breed]; return n; });
   };
 
+  const searchQuery = search.trim().toLowerCase();
   const grouped = [1, 2, 3].map((stars) => ({
     stars,
     breeds: WOOD_BREEDS
-      .filter((b) => b.stars === stars)
+      .filter((b) => b.stars === stars && (searchQuery === "" || b.breed.toLowerCase().includes(searchQuery)))
       .sort((a, b) => a.breed.localeCompare(b.breed, "ru")),
   }));
 
   return (
     <div className="space-y-4">
+      <div className="relative">
+        <Icon name="Search" size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Поиск по названию породы..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-8 pr-8 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-orange-300 bg-white"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          >
+            <Icon name="X" size={14} />
+          </button>
+        )}
+      </div>
       <p className="text-sm text-muted-foreground">
         Загрузите квадратное фото для каждой породы. В поле «Заметки» можно добавить текст — каждый абзац будет показан еноту клиента как отдельная заметка о породе. Переключатель участия управляет видимостью магнита. QR-ссылка печатается на магните.
       </p>
@@ -117,7 +137,7 @@ const MagnetsPhotos = ({
         </div>
       ) : (
         <div className="space-y-6">
-          {grouped.map(({ stars, breeds }) => (
+          {grouped.filter(({ breeds }) => breeds.length > 0).map(({ stars, breeds }) => (
             <div key={stars}>
               <h3 className="text-sm font-semibold text-foreground mb-3">{STAR_GROUP_LABELS[stars]}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
