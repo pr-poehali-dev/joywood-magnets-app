@@ -7,6 +7,7 @@ import { loadRaccoonAssets } from "@/lib/raccoon";
 import { toast } from "sonner";
 import { usePhoneInput } from "@/hooks/usePhoneInput";
 import { CollectionData, Step, saveSession, loadSession } from "./types";
+import { SLUG_TO_BREED } from "@/lib/store";
 
 const LOOKUP_URL = "https://functions.poehali.dev/58aabebd-4ca5-40ce-9188-288ec6f26ec4";
 const BREED_PHOTOS_URL = "https://functions.poehali.dev/264a19bd-40c8-4203-a8cd-9f3709bedcee";
@@ -67,7 +68,8 @@ export function useCollectionData() {
   const modalOpenRef = useRef(false);
   const notFoundRef = useRef<HTMLDivElement>(null);
   const autoSearched = useRef(false);
-  const scanBreed = searchParams.get("scan") || "";
+  const scanSlug = searchParams.get("scan") || "";
+  const scanBreed = SLUG_TO_BREED[scanSlug] ?? scanSlug;
 
   const phone = usePhoneInput();
   const [verificationEnabled, setVerificationEnabled] = useState(true);

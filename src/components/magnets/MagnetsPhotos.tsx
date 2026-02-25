@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { Switch } from "@/components/ui/switch";
-import { WOOD_BREEDS } from "@/lib/store";
+import { WOOD_BREEDS, BREED_SLUG } from "@/lib/store";
 import { toast } from "sonner";
 
 interface InventoryItem {
@@ -32,8 +32,10 @@ const STAR_GROUP_LABELS: Record<number, string> = {
   3: "⭐⭐⭐ Элитные",
 };
 
-const getScanUrl = (breed: string) =>
-  `${window.location.origin}/my-collection?scan=${encodeURIComponent(breed)}`;
+const getScanUrl = (breed: string) => {
+  const slug = BREED_SLUG[breed] ?? encodeURIComponent(breed);
+  return `${window.location.origin}/my-collection?scan=${slug}`;
+};
 
 const MagnetsPhotos = ({
   photos,
