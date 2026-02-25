@@ -1,0 +1,37 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/?action=login",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Login без данных",
+      "method": "POST",
+      "path": "/?action=login",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "Введите email и пароль"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Login с неверными данными",
+      "method": "POST",
+      "path": "/?action=login",
+      "body": {"email": "wrong@test.com", "password": "wrongpassword123"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Неверные данные для входа"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Logout без сессии",
+      "method": "POST",
+      "path": "/?action=logout",
+      "body": {},
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

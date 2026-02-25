@@ -1,15 +1,17 @@
 import { useState, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Icon from "@/components/ui/icon";
+import { Button } from "@/components/ui/button";
 import ClientsSection from "@/components/ClientsSection";
 import MagnetsSection from "@/components/MagnetsSection";
 import OrdersSection from "@/components/OrdersSection";
 import RecentRegistrations from "@/components/RecentRegistrations";
-import AdminGuard from "@/components/AdminGuard";
+import AdminGuard, { useAdmin } from "@/components/AdminGuard";
 import AnalyticsSection from "@/components/AnalyticsSection";
 import SettingsSection from "@/components/SettingsSection";
+import ManagersSection from "@/components/ManagersSection";
 
-const tabsList = [
+const BASE_TABS = [
   { value: "orders", label: "Заказы", icon: "ShoppingCart" },
   { value: "clients", label: "Клиенты", icon: "Users" },
   { value: "registrations", label: "Регистрации", icon: "UserCheck" },
@@ -18,11 +20,19 @@ const tabsList = [
   { value: "settings", label: "Настройки", icon: "Settings" },
 ];
 
-const Index = () => {
+const ADMIN_TABS = [
+  ...BASE_TABS,
+  { value: "managers", label: "Менеджеры", icon: "ShieldCheck" },
+];
+
+const AdminContent = () => {
+  const { user, logout } = useAdmin();
   const [activeTab, setActiveTab] = useState("orders");
   const [focusClientId, setFocusClientId] = useState<number | null>(null);
   const [newRegsCount, setNewRegsCount] = useState(0);
   const [clientsReloadKey, setClientsReloadKey] = useState(0);
+
+  const tabsList = user?.role === "admin" ? ADMIN_TABS : BASE_TABS;
 
   const navigateToClient = useCallback((clientId: number) => {
     setFocusClientId(clientId);
@@ -35,21 +45,16 @@ const Index = () => {
   };
 
   return (
-    <AdminGuard>
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center gap-3 flex-1">
             <img src="https://cdn.poehali.dev/projects/d4862cdc-db07-4efa-aa4f-e8229141eeb3/bucket/1a067cd5-eb6a-42be-8edd-d1ca100bf90c.jpg" alt="Joywood" className="w-10 h-10 object-contain" />
             <div>
-              <h1 className="text-xl font-bold text-foreground">
-                Joywood Магниты
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Панель управления акцией
-              </p>
+              <h1 className="text-xl font-bold text-foreground">Joywood Магниты</h1>
+              <p className="text-sm text-muted-foreground">Панель управления акцией</p>
             </div>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-3">
               <a
                 href="/"
                 target="_blank"
@@ -59,6 +64,15 @@ const Index = () => {
                 <Icon name="ExternalLink" size={14} />
                 Страница клиента
               </a>
+              <div className="flex items-center gap-2 pl-3 border-l">
+                <div className="text-right hidden sm:block">
+                  <p className="text-xs font-medium text-foreground">{user?.email}</p>
+                  <p className="text-[10px] text-muted-foreground">{user?.role === "admin" ? "Администратор" : "Менеджер"}</p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={logout} className="text-slate-400 hover:text-red-500 px-2">
+                  <Icon name="LogOut" size={16} />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -106,11 +120,21 @@ const Index = () => {
           <TabsContent value="settings">
             <SettingsSection />
           </TabsContent>
+          {user?.role === "admin" && (
+            <TabsContent value="managers">
+              <ManagersSection />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
     </div>
-    </AdminGuard>
   );
 };
+
+const Index = () => (
+  <AdminGuard>
+    <AdminContent />
+  </AdminGuard>
+);
 
 export default Index;
