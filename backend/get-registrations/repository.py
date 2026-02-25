@@ -5,12 +5,16 @@ def get_clients(cur, page=1, limit=50, q=''):
     where = ''
     if q:
         safe_q = q.replace("'", "''")
+        digits_only = ''.join(c for c in safe_q if c.isdigit())
+        phone_cond = "r.phone LIKE '%%%s%%'" % safe_q
+        if digits_only and digits_only != safe_q:
+            phone_cond = "(r.phone LIKE '%%%s%%' OR r.phone LIKE '%%%s%%')" % (safe_q, digits_only)
         where = (
             "WHERE LOWER(r.name) LIKE '%%%s%%' "
-            "OR r.phone LIKE '%%%s%%' "
+            "OR %s "
             "OR LOWER(r.channel) LIKE '%%%s%%' "
             "OR LOWER(r.ozon_order_code) LIKE '%%%s%%'"
-        ) % (safe_q.lower(), safe_q, safe_q.lower(), safe_q.lower())
+        ) % (safe_q.lower(), phone_cond, safe_q.lower(), safe_q.lower())
 
     cur.execute(
         "SELECT COUNT(*) FROM %s.registrations r %s" % (SCHEMA, where)
@@ -90,9 +94,13 @@ def get_orders(cur, page=1, limit=50, q='', channel=''):
     conditions = []
     if q:
         safe_q = q.replace("'", "''")
+        digits_only = ''.join(c for c in safe_q if c.isdigit())
+        phone_cond = "r.phone LIKE '%%%s%%'" % safe_q
+        if digits_only and digits_only != safe_q:
+            phone_cond = "(r.phone LIKE '%%%s%%' OR r.phone LIKE '%%%s%%')" % (safe_q, digits_only)
         conditions.append(
-            "(LOWER(r.name) LIKE '%%%s%%' OR r.phone LIKE '%%%s%%' OR LOWER(o.order_code) LIKE '%%%s%%')"
-            % (safe_q.lower(), safe_q, safe_q.lower())
+            "(LOWER(r.name) LIKE '%%%s%%' OR %s OR LOWER(o.order_code) LIKE '%%%s%%')"
+            % (safe_q.lower(), phone_cond, safe_q.lower())
         )
     if channel == 'ozon':
         conditions.append("LOWER(o.channel) = 'ozon'")
