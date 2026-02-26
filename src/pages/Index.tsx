@@ -78,26 +78,32 @@ const AdminContent = () => {
         </div>
       </header>
 
+      <div className="sticky top-[73px] z-20 bg-slate-50 border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2">
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
+            <TabsList className="bg-white border shadow-sm h-auto flex-wrap p-1">
+              {tabsList.map((tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="flex items-center gap-1.5 data-[state=active]:bg-orange-50 data-[state=active]:text-orange-700 px-4 py-2"
+                >
+                  <Icon name={tab.icon} size={16} />
+                  {tab.label}
+                  {tab.value === "registrations" && newRegsCount > 0 && (
+                    <span className="ml-1 bg-green-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                      {newRegsCount > 9 ? "9+" : newRegsCount}
+                    </span>
+                  )}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
+      </div>
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="bg-white border shadow-sm h-auto flex-wrap p-1">
-            {tabsList.map((tab) => (
-              <TabsTrigger
-                key={tab.value}
-                value={tab.value}
-                className="flex items-center gap-1.5 data-[state=active]:bg-orange-50 data-[state=active]:text-orange-700 px-4 py-2"
-              >
-                <Icon name={tab.icon} size={16} />
-                {tab.label}
-                {tab.value === "registrations" && newRegsCount > 0 && (
-                  <span className="ml-1 bg-green-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
-                    {newRegsCount > 9 ? "9+" : newRegsCount}
-                  </span>
-                )}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
           <TabsContent value="clients">
             <ClientsSection
               focusClientId={focusClientId}
