@@ -70,7 +70,7 @@ def _handle_delete_client(event):
         cur = conn.cursor()
         if not repo.find_registration(cur, int(client_id)):
             return err('Клиент не найден', 404)
-        repo.delete_client_cascade(cur, int(client_id), return_magnets=return_magnets)
+        repo.soft_remove_client(cur, int(client_id), return_magnets=return_magnets)
         conn.commit()
         return ok({'ok': True})
     finally:

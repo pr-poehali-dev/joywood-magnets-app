@@ -118,7 +118,7 @@ def delete_order(cur, conn, order_id, return_magnets, return_bonuses):
         repo.delete_bonus(cur, b[0])
         returned_bonuses.append(b[1])
 
-    repo.delete_order(cur, order_id)
+    repo.soft_remove_order(cur, order_id)
     conn.commit()
     return {
         'ok': True,

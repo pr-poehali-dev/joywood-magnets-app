@@ -8,6 +8,7 @@ import { toast as sonerToast } from "sonner";
 import Icon from "@/components/ui/icon";
 import { RACCOON_LEVELS } from "@/lib/raccoon";
 import LevelUpModal from "@/components/LevelUpModal";
+import TrashSection from "@/components/TrashSection";
 
 const SETTINGS_URL = "https://functions.poehali.dev/8d9bf70e-b9a7-466a-a2e0-7e510754dde1";
 const UPLOAD_POLICY_URL = "https://functions.poehali.dev/a3dfac54-994c-4651-8b8f-e2191da2f608";
@@ -487,6 +488,8 @@ const SettingsSection = () => {
           )}
         </CardContent>
       </Card>
+
+      <TrashSection />
 
       {previewLevel !== null && (
         <LevelUpModal newLevel={previewLevel} onClose={() => setPreviewLevel(null)} />

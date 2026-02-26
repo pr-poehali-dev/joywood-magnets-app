@@ -3,7 +3,7 @@ SCHEMA = 't_p65563100_joywood_magnets_app'
 
 def find_registration(cur, reg_id):
     cur.execute(
-        "SELECT id, name, phone, registered FROM %s.registrations WHERE id = %d" % (SCHEMA, int(reg_id))
+        "SELECT id, name, phone, registered FROM %s.registrations WHERE id = %d AND removed_at IS NULL" % (SCHEMA, int(reg_id))
     )
     return cur.fetchone()
 
@@ -11,7 +11,7 @@ def find_registration(cur, reg_id):
 def find_registration_by_ozon_prefix(cur, prefix):
     cur.execute(
         "SELECT id, name, phone, ozon_order_code, registered FROM %s.registrations "
-        "WHERE ozon_order_code IS NOT NULL "
+        "WHERE ozon_order_code IS NOT NULL AND removed_at IS NULL "
         "AND split_part(ozon_order_code, '-', 1) = '%s' ORDER BY id LIMIT 1"
         % (SCHEMA, prefix.replace("'", "''"))
     )
@@ -20,7 +20,7 @@ def find_registration_by_ozon_prefix(cur, prefix):
 
 def order_exists_by_code(cur, order_code):
     cur.execute(
-        "SELECT id FROM %s.orders WHERE order_code = '%s' LIMIT 1"
+        "SELECT id FROM %s.orders WHERE order_code = '%s' AND removed_at IS NULL LIMIT 1"
         % (SCHEMA, order_code.replace("'", "''"))
     )
     return cur.fetchone() is not None
@@ -28,14 +28,16 @@ def order_exists_by_code(cur, order_code):
 
 def order_exists_for_client(cur, reg_id, order_code):
     cur.execute(
-        "SELECT id FROM %s.orders WHERE registration_id = %d AND order_code = '%s' LIMIT 1"
+        "SELECT id FROM %s.orders WHERE registration_id = %d AND order_code = '%s' AND removed_at IS NULL LIMIT 1"
         % (SCHEMA, int(reg_id), order_code.replace("'", "''"))
     )
     return cur.fetchone() is not None
 
 
 def count_orders(cur, reg_id):
-    cur.execute("SELECT COUNT(*) FROM %s.orders WHERE registration_id = %d" % (SCHEMA, int(reg_id)))
+    cur.execute(
+        "SELECT COUNT(*) FROM %s.orders WHERE registration_id = %d AND removed_at IS NULL" % (SCHEMA, int(reg_id))
+    )
     return cur.fetchone()[0]
 
 
@@ -115,7 +117,7 @@ def get_client_magnets_breeds(cur, reg_id):
     return [r[0] for r in cur.fetchall()]
 
 
-def delete_client_cascade(cur, reg_id, return_magnets=False):
+def soft_remove_client(cur, reg_id, return_magnets=False):
     if return_magnets:
         breeds = get_client_magnets_breeds(cur, reg_id)
         for breed in breeds:
@@ -123,10 +125,21 @@ def delete_client_cascade(cur, reg_id, return_magnets=False):
                 "UPDATE %s.magnet_inventory SET stock = stock + 1, updated_at = now() WHERE breed = '%s'"
                 % (SCHEMA, breed.replace("'", "''"))
             )
-    for table in ('client_magnets', 'bonuses', 'orders', 'policy_consents'):
+    cur.execute(
+        "UPDATE %s.registrations SET removed_at = now() WHERE id = %d" % (SCHEMA, int(reg_id))
+    )
+    cur.execute(
+        "UPDATE %s.orders SET removed_at = now() WHERE registration_id = %d AND removed_at IS NULL"
+        % (SCHEMA, int(reg_id))
+    )
+
+
+def hard_remove_client(cur, reg_id):
+    for table in ('client_magnets', 'bonuses', 'policy_consents'):
         cur.execute(
             "DELETE FROM %s.%s WHERE registration_id = %d" % (SCHEMA, table, int(reg_id))
         )
+    cur.execute("DELETE FROM %s.orders WHERE registration_id = %d" % (SCHEMA, int(reg_id)))
     cur.execute("DELETE FROM %s.registrations WHERE id = %d" % (SCHEMA, int(reg_id)))
 
 
@@ -167,7 +180,13 @@ def delete_bonus(cur, bonus_id):
     cur.execute("DELETE FROM %s.bonuses WHERE id = %d" % (SCHEMA, int(bonus_id)))
 
 
-def delete_order(cur, order_id):
+def soft_remove_order(cur, order_id):
+    cur.execute(
+        "UPDATE %s.orders SET removed_at = now() WHERE id = %d" % (SCHEMA, int(order_id))
+    )
+
+
+def hard_remove_order(cur, order_id):
     cur.execute("DELETE FROM %s.orders WHERE id = %d" % (SCHEMA, int(order_id)))
 
 

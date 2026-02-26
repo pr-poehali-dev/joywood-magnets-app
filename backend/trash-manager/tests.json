@@ -1,0 +1,50 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET list trash",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"clients": [], "orders": []},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST restore unknown client",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "restore_client", "client_id": 999999},
+      "expectedStatus": 404
+    },
+    {
+      "name": "POST restore unknown order",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "restore_order", "order_id": 999999},
+      "expectedStatus": 404
+    },
+    {
+      "name": "DELETE purge unknown client",
+      "method": "DELETE",
+      "path": "/?client_id=999999",
+      "expectedStatus": 404
+    },
+    {
+      "name": "DELETE purge unknown order",
+      "method": "DELETE",
+      "path": "/?order_id=999999",
+      "expectedStatus": 404
+    },
+    {
+      "name": "DELETE without params fails",
+      "method": "DELETE",
+      "path": "/",
+      "expectedStatus": 400
+    }
+  ]
+}
